@@ -1,2 +1,7 @@
 .superpowers
 docs*
+node_modules/
+dist/
+*.env
+.env
+pnpm-lock.yaml
