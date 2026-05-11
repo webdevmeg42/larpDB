@@ -1,0 +1,13 @@
+{
+  "version": "6",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1778517633684,
+      "tag": "0000_black_phantom_reporter",
+      "breakpoints": true
+    }
+  ]
+}
