@@ -1,0 +1,16 @@
+import { z } from 'zod'
+
+export const SetupInput = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  displayName: z.string().min(1).max(100),
+  gameName: z.string().min(1).max(200),
+})
+
+export const LoginInput = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+})
+
+export type SetupInput = z.infer<typeof SetupInput>
+export type LoginInput = z.infer<typeof LoginInput>
