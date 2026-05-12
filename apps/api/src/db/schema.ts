@@ -7,6 +7,7 @@ import {
   integer,
   jsonb,
 } from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 import type { SchemaField } from '@larpdb/shared'
 
 export const users = pgTable('users', {
@@ -125,7 +126,7 @@ export const plots = pgTable('plots', {
   title: text('title').notNull(),
   description: text('description'),
   status: text('status', { enum: ['active', 'resolved'] }).notNull().default('active'),
-  linkedEventIds: uuid('linked_event_ids').array().notNull().default([]),
+  linkedEventIds: uuid('linked_event_ids').array().notNull().default(sql`'{}'`),
   createdBy: uuid('created_by').notNull().references(() => users.id),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
