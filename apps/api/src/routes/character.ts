@@ -104,9 +104,19 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         }
       }
 
+      const setData: {
+        updatedAt: Date
+        name?: string
+        portraitUrl?: string | null
+        data?: Record<string, unknown>
+      } = { updatedAt: new Date() }
+      if (result.data.name !== undefined) setData.name = result.data.name
+      if (result.data.portraitUrl !== undefined) setData.portraitUrl = result.data.portraitUrl
+      if (result.data.data !== undefined) setData.data = result.data.data
+
       const [updated] = await db
         .update(characters)
-        .set({ ...result.data, updatedAt: new Date() })
+        .set(setData)
         .where(eq(characters.id, id))
         .returning()
 

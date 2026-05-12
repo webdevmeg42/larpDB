@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { eq, ne } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { characterSchemas } from '../db/schema.js'
+import type { SchemaField } from '@larpdb/shared'
 import { CreateCharacterSchemaInput, UpdateCharacterSchemaInput } from '@larpdb/shared'
 
 export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
@@ -40,7 +41,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [schema] = await db.insert(characterSchemas).values({
         name: result.data.name,
-        fields: result.data.fields,
+        fields: result.data.fields as SchemaField[],
         templateSource: result.data.templateSource ?? null,
         version: 1,
         isActive: false,
@@ -69,7 +70,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [newVersion] = await db.insert(characterSchemas).values({
         name: result.data.name ?? existing.name,
-        fields: result.data.fields ?? existing.fields,
+        fields: (result.data.fields ?? existing.fields) as SchemaField[],
         templateSource: existing.templateSource,
         version: existing.version + 1,
         isActive: false,

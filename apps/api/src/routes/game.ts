@@ -43,9 +43,14 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(404).send({ error: 'Site config not found' })
       }
 
+      // Zod spreads include `undefined` for absent optional fields; filter before passing to Drizzle
+      const patch = Object.fromEntries(
+        Object.entries({ ...result.data, updatedAt: new Date() }).filter(([, v]) => v !== undefined),
+      ) as Parameters<ReturnType<typeof db.update<typeof siteConfig>>['set']>[0]
+
       const [updated] = await db
         .update(siteConfig)
-        .set({ ...result.data, updatedAt: new Date() })
+        .set(patch)
         .where(eq(siteConfig.id, existing.id))
         .returning()
 
