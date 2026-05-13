@@ -7,6 +7,10 @@ import { gameRoutes } from './routes/game.js'
 import { schemaTemplateRoutes } from './routes/schemaTemplate.js'
 import { characterSchemaRoutes } from './routes/characterSchema.js'
 import { characterRoutes } from './routes/character.js'
+import { eventRoutes } from './routes/event.js'
+import { npcRoutes } from './routes/npc.js'
+import { plotRoutes } from './routes/plot.js'
+import { userRoutes } from './routes/user.js'
 import { seedBuiltinTemplates } from './db/seeds/templates.js'
 
 export function buildApp() {
@@ -21,6 +25,10 @@ export function buildApp() {
   app.register(schemaTemplateRoutes)
   app.register(characterSchemaRoutes)
   app.register(characterRoutes)
+  app.register(eventRoutes)
+  app.register(npcRoutes)
+  app.register(plotRoutes)
+  app.register(userRoutes)
 
   app.addHook('onReady', async () => {
     if (env.NODE_ENV !== 'test') {
