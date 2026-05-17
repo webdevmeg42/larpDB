@@ -13,6 +13,7 @@ import {
   Swords,
   Map,
   LogOut,
+  UserRound,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -25,6 +26,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['owner', 'gm', 'player'] },
+  { label: 'My Characters', href: '/characters', icon: UserRound, roles: ['owner', 'gm', 'player'] },
   { label: 'Events', href: '/events', icon: Calendar, roles: ['owner', 'gm', 'player'] },
   { label: 'Schema Builder', href: '/admin/schemas', icon: Layers, roles: ['owner'] },
   { label: 'Site Settings', href: '/admin/site-config', icon: Settings, roles: ['owner'] },

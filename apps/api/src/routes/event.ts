@@ -168,14 +168,17 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
         .from(eventRegistrations)
         .where(and(eq(eventRegistrations.eventId, id), eq(eventRegistrations.userId, sub)))
         .limit(1)
-      if (existing) return reply.status(409).send({ error: 'Already registered for this event' })
+
+      if (existing && existing.status !== 'cancelled') {
+        return reply.status(409).send({ error: 'Already registered for this event' })
+      }
 
       const result = RegisterForEventInput.safeParse(request.body)
       if (!result.success) {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
-      let status: 'pending' | 'waitlist' = 'pending'
+      let newStatus: 'pending' | 'waitlist' = 'pending'
       if (event.maxPlayers !== null) {
         const countResult = await db
           .select({ value: count() })
@@ -183,15 +186,25 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
           .where(and(eq(eventRegistrations.eventId, id), eq(eventRegistrations.status, 'confirmed')))
         const confirmedCount = countResult[0]?.value ?? 0
         if (confirmedCount >= event.maxPlayers) {
-          status = 'waitlist'
+          newStatus = 'waitlist'
         }
+      }
+
+      if (existing) {
+        // Re-registering after cancellation: update the existing row
+        const [updated] = await db
+          .update(eventRegistrations)
+          .set({ status: newStatus, characterId: result.data.characterId ?? null })
+          .where(eq(eventRegistrations.id, existing.id))
+          .returning()
+        return reply.status(201).send(updated)
       }
 
       const [registration] = await db.insert(eventRegistrations).values({
         eventId: id,
         userId: sub,
         characterId: result.data.characterId ?? null,
-        status,
+        status: newStatus,
       }).returning()
 
       return reply.status(201).send(registration)
