@@ -1,12 +1,10 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
   "/login/page": "app/login/page.js",
-  "/setup/page": "app/setup/page.js",
-  "/page": "app/page.js",
-  "/(app)/admin/schemas/new/page": "app/(app)/admin/schemas/new/page.js",
-  "/(app)/admin/schemas/[id]/page": "app/(app)/admin/schemas/[id]/page.js",
-  "/(app)/admin/schemas/page": "app/(app)/admin/schemas/page.js",
+  "/(app)/characters/page": "app/(app)/characters/page.js",
+  "/(app)/dashboard/page": "app/(app)/dashboard/page.js",
   "/(app)/admin/site-config/page": "app/(app)/admin/site-config/page.js",
+  "/(app)/admin/schemas/page": "app/(app)/admin/schemas/page.js",
   "/(app)/admin/users/page": "app/(app)/admin/users/page.js",
-  "/(app)/dashboard/page": "app/(app)/dashboard/page.js"
+  "/(app)/events/page": "app/(app)/events/page.js"
 }
