@@ -1,5 +1,45 @@
 import { z } from 'zod'
 
+export const GameCodexSchema = z.object({
+  eventName: z.string().optional(),
+  eventTagline: z.string().optional(),
+  eventAbout: z.string().optional(),
+  eventDates: z.string().optional(),
+  locationName: z.string().optional(),
+  keyTimes: z.string().optional(),
+  travelNotes: z.string().optional(),
+  genre: z.string().optional(),
+  tone: z.string().optional(),
+  worldLore: z.string().optional(),
+  factions: z.string().optional(),
+  safetyMechanics: z.string().optional(),
+  contentWarnings: z.string().optional(),
+  registrationInfo: z.string().optional(),
+  rulebookLink: z.string().optional(),
+  classesInfo: z.string().optional(),
+  prebuiltCharacters: z.string().optional(),
+  whatToBring: z.string().optional(),
+  whatProvided: z.string().optional(),
+  ticketTiers: z.string().optional(),
+  registrationOpenDate: z.string().optional(),
+  registrationCloseDate: z.string().optional(),
+  cancellationPolicy: z.string().optional(),
+  organizerTeam: z.string().optional(),
+  contactEmail: z.string().email().optional(),
+  socialMedia: z.string().optional(),
+  npcCall: z.string().optional(),
+  ageRestrictions: z.string().optional(),
+  codeOfConduct: z.string().optional(),
+  liabilityWaiver: z.string().optional(),
+  faq: z.string().optional(),
+  testimonials: z.string().optional(),
+  mediaLinks: z.string().optional(),
+  sponsors: z.string().optional(),
+  anythingElse: z.string().optional(),
+})
+
+export type GameCodexInput = z.infer<typeof GameCodexSchema>
+
 export const UpdateSiteConfigInput = z.object({
   siteTitle: z.string().min(1).max(200).optional(),
   tagline: z.string().max(300).nullable().optional(),
@@ -16,6 +56,8 @@ export const UpdateSiteConfigInput = z.object({
   welcomeMessage: z.string().max(2000).nullable().optional(),
   footerText: z.string().max(500).nullable().optional(),
   customCss: z.string().max(10000).nullable().optional(),
+  codex: GameCodexSchema.nullable().optional(),
+  currencyName: z.string().min(1).max(100).optional(),
 })
 
 export type UpdateSiteConfigInput = z.infer<typeof UpdateSiteConfigInput>

@@ -35,7 +35,7 @@ export default function NewSchemaPage() {
       const schema = await api.post<CharacterSchema>('/character-schemas', {
         name: name.trim(),
         fields: selected ? selected.fields : [],
-        templateSource: selected ? selected.name : null,
+        templateSource: selected ? selected.id : null,
       })
       router.push(`/admin/schemas/${schema.id}`)
     } catch (err: unknown) {

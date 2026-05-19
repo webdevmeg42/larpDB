@@ -11,6 +11,7 @@ import { eventRoutes } from './routes/event.js'
 import { npcRoutes } from './routes/npc.js'
 import { plotRoutes } from './routes/plot.js'
 import { userRoutes } from './routes/user.js'
+import { storeRoutes } from './routes/store.js'
 import { seedBuiltinTemplates } from './db/seeds/templates.js'
 
 export function buildApp() {
@@ -29,6 +30,7 @@ export function buildApp() {
   app.register(npcRoutes)
   app.register(plotRoutes)
   app.register(userRoutes)
+  app.register(storeRoutes)
 
   app.addHook('onReady', async () => {
     if (env.NODE_ENV !== 'test') {

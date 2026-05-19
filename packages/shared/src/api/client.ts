@@ -9,7 +9,7 @@ export function createApiClient(baseUrl: string, getToken: () => string | null) 
     const res = await fetch(`${baseUrl}${path}`, {
       method,
       headers: {
-        'Content-Type': 'application/json',
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),

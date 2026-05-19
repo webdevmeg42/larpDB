@@ -5,6 +5,7 @@ import * as schema from '../src/db/schema.js'
 import {
   users, game, siteConfig, characterSchemas, characters,
   xpTransactions, events, eventRegistrations, npcs, plots, schemaTemplates,
+  storeItems, purchases,
 } from '../src/db/schema.js'
 
 const testPool = new Pool({
@@ -18,8 +19,10 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
+  await testDb.delete(purchases)
   await testDb.delete(xpTransactions)
   await testDb.delete(eventRegistrations)
+  await testDb.delete(storeItems)
   await testDb.delete(characters)
   await testDb.delete(events)
   await testDb.delete(npcs)

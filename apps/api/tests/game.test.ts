@@ -107,3 +107,78 @@ describe('PATCH /config', () => {
     await app.close()
   })
 })
+
+describe('PATCH /config — codex', () => {
+  it('saves and returns codex data', async () => {
+    const { app, token } = await setupAndLogin()
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/config',
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        codex: {
+          eventName: 'The Siege of Thornwall',
+          genre: 'high fantasy',
+          codeOfConduct: 'Be excellent to each other.',
+        },
+      },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.codex.eventName).toBe('The Siege of Thornwall')
+    expect(body.codex.genre).toBe('high fantasy')
+    expect(body.codex.codeOfConduct).toBe('Be excellent to each other.')
+    await app.close()
+  })
+
+  it('can set codex to null', async () => {
+    const { app, token } = await setupAndLogin()
+
+    await app.inject({
+      method: 'PATCH',
+      url: '/config',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { codex: { eventName: 'Test' } },
+    })
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/config',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { codex: null },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().codex).toBeNull()
+    await app.close()
+  })
+})
+
+describe('PATCH /config — currencyName', () => {
+  it('updates currency name', async () => {
+    const { app, token } = await setupAndLogin()
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/config',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { currencyName: 'gold pieces' },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().currencyName).toBe('gold pieces')
+    await app.close()
+  })
+
+  it('defaults to monies', async () => {
+    const { app } = await setupAndLogin()
+
+    const res = await app.inject({ method: 'GET', url: '/config' })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().currencyName).toBe('monies')
+    await app.close()
+  })
+})

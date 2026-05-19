@@ -31,8 +31,8 @@ export const SchemaFieldSchema = z.object({
 
 export const CreateCharacterSchemaInput = z.object({
   name: z.string().min(1).max(200),
-  fields: z.array(SchemaFieldSchema).min(1),
-  templateSource: z.string().uuid().optional(),
+  fields: z.array(SchemaFieldSchema),
+  templateSource: z.string().uuid().nullish(),
 })
 
 export const UpdateCharacterSchemaInput = z.object({

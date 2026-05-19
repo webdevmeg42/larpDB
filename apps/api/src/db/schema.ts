@@ -8,7 +8,7 @@ import {
   jsonb,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
-import type { SchemaField } from '@larpdb/shared'
+import type { SchemaField, GameCodex } from '@larpdb/shared'
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -45,6 +45,8 @@ export const siteConfig = pgTable('site_config', {
   welcomeMessage: text('welcome_message'),
   footerText: text('footer_text'),
   customCss: text('custom_css'),
+  codex: jsonb('codex').$type<GameCodex>(),
+  currencyName: text('currency_name').notNull().default('monies'),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
@@ -129,4 +131,27 @@ export const plots = pgTable('plots', {
   linkedEventIds: uuid('linked_event_ids').array().notNull().default(sql`'{}'`),
   createdBy: uuid('created_by').notNull().references(() => users.id),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export const storeItems = pgTable('store_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  eventId: uuid('event_id').notNull().references(() => events.id),
+  name: text('name').notNull(),
+  description: text('description'),
+  price: integer('price').notNull().default(0),
+  quantityAvailable: integer('quantity_available'),
+  isAvailable: boolean('is_available').notNull().default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export const purchases = pgTable('purchases', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  storeItemId: uuid('store_item_id').notNull().references(() => storeItems.id),
+  eventId: uuid('event_id').notNull().references(() => events.id),
+  userId: uuid('user_id').notNull().references(() => users.id),
+  characterId: uuid('character_id').notNull().references(() => characters.id),
+  quantity: integer('quantity').notNull().default(1),
+  unitPrice: integer('unit_price').notNull(),
+  currencyName: text('currency_name').notNull(),
+  purchasedAt: timestamp('purchased_at').notNull().defaultNow(),
 })

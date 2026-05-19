@@ -98,4 +98,47 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.send(activated)
     },
   )
+
+  fastify.post(
+    '/character-schemas/:id/deactivate',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      if (request.user.role !== 'owner') {
+        return reply.status(403).send({ error: 'Owner role required' })
+      }
+
+      const { id } = request.params as { id: string }
+      const [target] = await db.select().from(characterSchemas).where(eq(characterSchemas.id, id)).limit(1)
+      if (!target) return reply.status(404).send({ error: 'Schema not found' })
+
+      const [deactivated] = await db.update(characterSchemas).set({ isActive: false }).where(eq(characterSchemas.id, id)).returning()
+      return reply.send(deactivated)
+    },
+  )
+
+  fastify.delete(
+    '/character-schemas/:id',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      if (request.user.role !== 'owner') {
+        return reply.status(403).send({ error: 'Owner role required' })
+      }
+
+      const { id } = request.params as { id: string }
+      const [target] = await db.select().from(characterSchemas).where(eq(characterSchemas.id, id)).limit(1)
+      if (!target) return reply.status(404).send({ error: 'Schema not found' })
+
+      if (target.isActive) {
+        return reply.status(409).send({ error: 'Cannot delete the active schema. Deactivate it first.' })
+      }
+
+      try {
+        await db.delete(characterSchemas).where(eq(characterSchemas.id, id))
+      } catch {
+        return reply.status(409).send({ error: 'Cannot delete this schema because characters are using it.' })
+      }
+
+      return reply.status(204).send()
+    },
+  )
 }
