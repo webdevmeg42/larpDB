@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { SiteConfig, GameCodex } from '@larpdb/shared'
+import { DatePicker } from '@/components/ui/date-picker'
 
 interface Props {
   config: SiteConfig | null
@@ -89,7 +90,8 @@ function EventBasicsSection({ codex, onSave }: SectionProps) {
     eventName: '',
     eventTagline: '',
     eventAbout: '',
-    eventDates: '',
+    eventStartDate: '',
+    eventEndDate: '',
     locationName: '',
     keyTimes: '',
     travelNotes: '',
@@ -101,7 +103,8 @@ function EventBasicsSection({ codex, onSave }: SectionProps) {
       eventName: codex.eventName ?? '',
       eventTagline: codex.eventTagline ?? '',
       eventAbout: codex.eventAbout ?? '',
-      eventDates: codex.eventDates ?? '',
+      eventStartDate: codex.eventStartDate ?? '',
+      eventEndDate: codex.eventEndDate ?? '',
       locationName: codex.locationName ?? '',
       keyTimes: codex.keyTimes ?? '',
       travelNotes: codex.travelNotes ?? '',
@@ -125,8 +128,19 @@ function EventBasicsSection({ codex, onSave }: SectionProps) {
           <Field label="About this event">
             <Textarea rows={8} value={form.eventAbout} onChange={e => setForm(f => ({ ...f, eventAbout: e.target.value }))} placeholder="2–4 paragraphs about the event" />
           </Field>
-          <Field label="Date(s)">
-            <Input value={form.eventDates} onChange={e => setForm(f => ({ ...f, eventDates: e.target.value }))} placeholder="Aug 15–17, 2026" />
+          <Field label="Event start date">
+            <DatePicker
+              value={form.eventStartDate || undefined}
+              onChange={val => setForm(f => ({ ...f, eventStartDate: val ?? '' }))}
+              placeholder="Pick start date"
+            />
+          </Field>
+          <Field label="Event end date">
+            <DatePicker
+              value={form.eventEndDate || undefined}
+              onChange={val => setForm(f => ({ ...f, eventEndDate: val ?? '' }))}
+              placeholder="Pick end date"
+            />
           </Field>
           <Field label="Location name + address">
             <Textarea rows={2} value={form.locationName} onChange={e => setForm(f => ({ ...f, locationName: e.target.value }))} />
