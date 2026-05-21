@@ -9,7 +9,8 @@ export interface GameCodex {
   eventName?: string
   eventTagline?: string
   eventAbout?: string
-  eventDates?: string
+  eventStartDate?: string
+  eventEndDate?: string
   locationName?: string
   keyTimes?: string
   travelNotes?: string
