@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,9 +33,15 @@ export default function StoreTab({ config, reload }: Props) {
   }, [config])
 
   useEffect(() => {
-    void api.get<LarpEvent[]>('/events').then(setEvents)
-    void api.get<StoreItem[]>('/store/items').then(setItems)
-    void api.get<PurchaseDetail[]>('/store/purchases').then(setPurchases)
+    void Promise.all([
+      api.get<LarpEvent[]>('/events'),
+      api.get<StoreItem[]>('/store/items'),
+      api.get<PurchaseDetail[]>('/store/purchases'),
+    ]).then(([evts, itms, purch]) => {
+      setEvents(evts)
+      setItems(itms)
+      setPurchases(purch)
+    })
   }, [])
 
   async function saveCurrency(e: React.FormEvent) {
@@ -65,10 +72,6 @@ export default function StoreTab({ config, reload }: Props) {
     const url = filterEventId ? `/store/purchases?eventId=${filterEventId}` : '/store/purchases'
     void api.get<PurchaseDetail[]>(url).then(setPurchases)
   }, [filterEventId])
-
-  const filteredPurchases = filterEventId
-    ? purchases.filter(p => p.eventId === filterEventId)
-    : purchases
 
   return (
     <div className="space-y-6">
@@ -109,7 +112,7 @@ export default function StoreTab({ config, reload }: Props) {
         <TabsContent value="purchases" className="mt-4">
           <PurchaseLogSection
             events={events}
-            purchases={filteredPurchases}
+            purchases={purchases}
             filterEventId={filterEventId}
             onFilterChange={setFilterEventId}
             currencyName={currencyName}
@@ -151,7 +154,7 @@ function ItemsSection({ events, items, currencyName, onRefresh }: ItemsSectionPr
       await api.delete(`/store/items/${id}`)
       await onRefresh()
     } catch (err: unknown) {
-      alert((err as { message?: string }).message ?? 'Failed to delete item')
+      alert(getErrorMessage(err, 'Failed to delete item'))
     }
   }
 
@@ -306,7 +309,7 @@ function ItemForm({ events, currencyName, item, onSave, onCancel }: ItemFormProp
       }
       await onSave()
     } catch (err: unknown) {
-      setError((err as { message?: string }).message ?? 'Save failed')
+      setError(getErrorMessage(err, 'Save failed'))
     } finally {
       setSaving(false)
     }

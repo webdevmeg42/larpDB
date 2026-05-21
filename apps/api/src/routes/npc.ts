@@ -3,10 +3,9 @@ import { eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { npcs } from '../db/schema.js'
 import { CreateNpcInput, UpdateNpcInput } from '@larpdb/shared'
+import { gmOrOwner } from '../lib/roles.js'
 
 export const npcRoutes: FastifyPluginAsync = async (fastify) => {
-  const gmOrOwner = (role: string) => role === 'owner' || role === 'gm'
-
   fastify.get(
     '/npcs',
     { preHandler: [fastify.authenticate] },
@@ -75,15 +74,13 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
-      const setData: Record<string, unknown> = {}
-      if (result.data.name !== undefined) setData['name'] = result.data.name
-      if (result.data.description !== undefined) setData['description'] = result.data.description
-      if (result.data.portraitUrl !== undefined) setData['portraitUrl'] = result.data.portraitUrl
-      if (result.data.notes !== undefined) setData['notes'] = result.data.notes
+      const patch = Object.fromEntries(
+        Object.entries(result.data).filter(([, v]) => v !== undefined),
+      ) as Parameters<ReturnType<typeof db.update<typeof npcs>>['set']>[0]
 
       const [updated] = await db
         .update(npcs)
-        .set(setData as Parameters<ReturnType<typeof db.update<typeof npcs>>['set']>[0])
+        .set(patch)
         .where(eq(npcs.id, id))
         .returning()
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
+import { getErrorMessage } from '@/lib/utils'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -35,7 +36,7 @@ export default function UsersPage() {
       const updated = await api.patch<User>(`/users/${userId}/role`, { role })
       setUsers(us => us.map(u => u.id === userId ? { ...u, role: updated.role } : u))
     } catch (err: unknown) {
-      setError((err as { message?: string }).message ?? 'Failed to update role')
+      setError(getErrorMessage(err, 'Failed to update role'))
     } finally {
       setSaving(null)
     }

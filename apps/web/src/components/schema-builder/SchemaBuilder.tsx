@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { SchemaField, SchemaFieldType } from '@larpdb/shared'
+import { getErrorMessage } from '@/lib/utils'
 
 function makeDefaultField(type: SchemaFieldType, order: number): SchemaField {
   const base = { id: uuidv4(), label: '', type, required: false, order }
@@ -76,7 +77,7 @@ export function SchemaBuilder({
     try {
       await onSave(name, fields.map((f, i) => ({ ...f, order: i } as SchemaField)))
     } catch (err: unknown) {
-      setSaveError((err as { message?: string }).message ?? 'Save failed')
+      setSaveError(getErrorMessage(err, 'Save failed'))
     }
   }
 

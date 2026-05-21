@@ -3,10 +3,9 @@ import { eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { plots } from '../db/schema.js'
 import { CreatePlotInput, UpdatePlotInput } from '@larpdb/shared'
+import { gmOrOwner } from '../lib/roles.js'
 
 export const plotRoutes: FastifyPluginAsync = async (fastify) => {
-  const gmOrOwner = (role: string) => role === 'owner' || role === 'gm'
-
   fastify.get(
     '/plots',
     { preHandler: [fastify.authenticate] },
@@ -75,15 +74,13 @@ export const plotRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
-      const setData: Record<string, unknown> = {}
-      if (result.data.title !== undefined) setData['title'] = result.data.title
-      if (result.data.description !== undefined) setData['description'] = result.data.description
-      if (result.data.status !== undefined) setData['status'] = result.data.status
-      if (result.data.linkedEventIds !== undefined) setData['linkedEventIds'] = result.data.linkedEventIds
+      const patch = Object.fromEntries(
+        Object.entries(result.data).filter(([, v]) => v !== undefined),
+      ) as Parameters<ReturnType<typeof db.update<typeof plots>>['set']>[0]
 
       const [updated] = await db
         .update(plots)
-        .set(setData as Parameters<ReturnType<typeof db.update<typeof plots>>['set']>[0])
+        .set(patch)
         .where(eq(plots.id, id))
         .returning()
 

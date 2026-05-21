@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -39,7 +40,7 @@ export default function NewSchemaPage() {
       })
       router.push(`/admin/schemas/${schema.id}`)
     } catch (err: unknown) {
-      setError((err as { message?: string }).message ?? 'Failed to create schema')
+      setError(getErrorMessage(err, 'Failed to create schema'))
     } finally {
       setCreating(false)
     }

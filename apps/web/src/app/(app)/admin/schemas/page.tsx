@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
+import { getErrorMessage } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -72,7 +73,7 @@ export default function SchemasPage() {
       await api.delete(`/character-schemas/${id}`)
       setSchemas(prev => prev.filter(s => s.id !== id))
     } catch (err: unknown) {
-      alert((err as { message?: string }).message ?? 'Failed to delete schema')
+      alert(getErrorMessage(err, 'Failed to delete schema'))
     }
   }
 

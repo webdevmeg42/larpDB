@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { api } from '@/lib/api'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -79,7 +80,7 @@ export default function SiteConfigPage() {
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err: unknown) {
-      setError((err as { message?: string }).message ?? 'Save failed')
+      setError(getErrorMessage(err, 'Save failed'))
     } finally {
       setSaving(false)
     }
