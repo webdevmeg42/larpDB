@@ -298,10 +298,18 @@ function LogisticsSection({ codex, onSave }: SectionProps) {
             <Textarea rows={6} value={form.ticketTiers} onChange={e => setForm(f => ({ ...f, ticketTiers: e.target.value }))} />
           </Field>
           <Field label="Registration open date">
-            <Input type="date" value={form.registrationOpenDate} onChange={e => setForm(f => ({ ...f, registrationOpenDate: e.target.value }))} />
+            <DatePicker
+              value={form.registrationOpenDate || undefined}
+              onChange={val => setForm(f => ({ ...f, registrationOpenDate: val ?? '' }))}
+              placeholder="Pick open date"
+            />
           </Field>
           <Field label="Registration close date">
-            <Input type="date" value={form.registrationCloseDate} onChange={e => setForm(f => ({ ...f, registrationCloseDate: e.target.value }))} />
+            <DatePicker
+              value={form.registrationCloseDate || undefined}
+              onChange={val => setForm(f => ({ ...f, registrationCloseDate: val ?? '' }))}
+              placeholder="Pick close date"
+            />
           </Field>
           <Field label="Cancellation / refund policy">
             <Textarea rows={4} value={form.cancellationPolicy} onChange={e => setForm(f => ({ ...f, cancellationPolicy: e.target.value }))} />
