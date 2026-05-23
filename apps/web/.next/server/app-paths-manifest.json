@@ -1,1 +1,5 @@
-{}
+{
+  "/(app)/dashboard/page": "app/(app)/dashboard/page.js",
+  "/(app)/admin/schemas/page": "app/(app)/admin/schemas/page.js",
+  "/(app)/admin/site-config/page": "app/(app)/admin/site-config/page.js"
+}

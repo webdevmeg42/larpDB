@@ -1,5 +1,12 @@
 import { z } from 'zod'
 
+const RulebookChapterSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  content: z.string(),
+  order: z.number().int(),
+})
+
 export const GameCodexSchema = z.object({
   eventName: z.string().optional(),
   eventTagline: z.string().optional(),
@@ -37,6 +44,7 @@ export const GameCodexSchema = z.object({
   mediaLinks: z.string().optional(),
   sponsors: z.string().optional(),
   anythingElse: z.string().optional(),
+  rulebook: z.object({ chapters: z.array(RulebookChapterSchema) }).optional(),
 })
 
 export type GameCodexInput = z.infer<typeof GameCodexSchema>

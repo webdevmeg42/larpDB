@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { SiteConfig } from '@larpdb/shared'
 import CodexTab from './_components/CodexTab'
+import RulebookTab from './_components/RulebookTab'
 import StoreTab from './_components/StoreTab'
 
 type FormState = Partial<{
@@ -94,6 +95,7 @@ export default function SiteConfigPage() {
         <TabsList className="mb-6">
           <TabsTrigger value="branding">Branding</TabsTrigger>
           <TabsTrigger value="codex">The Codex</TabsTrigger>
+          <TabsTrigger value="rulebook">Rulebook</TabsTrigger>
           <TabsTrigger value="store">The Store</TabsTrigger>
         </TabsList>
 
@@ -206,6 +208,10 @@ export default function SiteConfigPage() {
 
         <TabsContent value="codex">
           <CodexTab config={config} reload={reload} />
+        </TabsContent>
+
+        <TabsContent value="rulebook">
+          <RulebookTab config={config} reload={reload} />
         </TabsContent>
 
         <TabsContent value="store">

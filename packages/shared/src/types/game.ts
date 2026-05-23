@@ -5,6 +5,13 @@ export interface Game {
   createdAt: string
 }
 
+export interface RulebookChapter {
+  id: string
+  title: string
+  content: string
+  order: number
+}
+
 export interface GameCodex {
   eventName?: string
   eventTagline?: string
@@ -42,6 +49,9 @@ export interface GameCodex {
   mediaLinks?: string
   sponsors?: string
   anythingElse?: string
+  rulebook?: {
+    chapters: RulebookChapter[]
+  }
 }
 
 export interface SiteConfig {
