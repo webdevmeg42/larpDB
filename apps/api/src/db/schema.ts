@@ -6,6 +6,7 @@ import {
   boolean,
   integer,
   jsonb,
+  unique,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import type { SchemaField, GameCodex } from '@larpdb/shared'
@@ -16,7 +17,6 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash').notNull(),
   displayName: text('display_name').notNull(),
   avatarUrl: text('avatar_url'),
-  role: text('role', { enum: ['owner', 'gm', 'player'] }).notNull().default('player'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
@@ -24,8 +24,22 @@ export const game = pgTable('game', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   description: text('description'),
+  slug: text('slug').notNull().unique(),
+  isPublic: boolean('is_public').notNull().default(true),
+  joinMode: text('join_mode', { enum: ['open', 'approval'] }).notNull().default('open'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
+
+export const gameMembers = pgTable('game_members', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  gameId: uuid('game_id').notNull().references(() => game.id),
+  userId: uuid('user_id').notNull().references(() => users.id),
+  role: text('role', { enum: ['owner', 'gm', 'player'] }).notNull().default('player'),
+  status: text('status', { enum: ['active', 'pending', 'banned'] }).notNull().default('pending'),
+  joinedAt: timestamp('joined_at').notNull().defaultNow(),
+}, (t) => ({
+  uniqGameUser: unique().on(t.gameId, t.userId),
+}))
 
 export const siteConfig = pgTable('site_config', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -52,6 +66,7 @@ export const siteConfig = pgTable('site_config', {
 
 export const schemaTemplates = pgTable('schema_templates', {
   id: uuid('id').primaryKey().defaultRandom(),
+  gameId: uuid('game_id').references(() => game.id),
   name: text('name').notNull(),
   genre: text('genre').notNull(),
   description: text('description'),
@@ -61,6 +76,7 @@ export const schemaTemplates = pgTable('schema_templates', {
 
 export const characterSchemas = pgTable('character_schemas', {
   id: uuid('id').primaryKey().defaultRandom(),
+  gameId: uuid('game_id').notNull().references(() => game.id),
   name: text('name').notNull(),
   version: integer('version').notNull().default(1),
   fields: jsonb('fields').notNull().$type<SchemaField[]>(),
@@ -71,6 +87,7 @@ export const characterSchemas = pgTable('character_schemas', {
 
 export const characters = pgTable('characters', {
   id: uuid('id').primaryKey().defaultRandom(),
+  gameId: uuid('game_id').notNull().references(() => game.id),
   userId: uuid('user_id').notNull().references(() => users.id),
   schemaId: uuid('schema_id').notNull().references(() => characterSchemas.id),
   name: text('name').notNull(),
@@ -94,6 +111,7 @@ export const xpTransactions = pgTable('xp_transactions', {
 
 export const events = pgTable('events', {
   id: uuid('id').primaryKey().defaultRandom(),
+  gameId: uuid('game_id').notNull().references(() => game.id),
   title: text('title').notNull(),
   description: text('description'),
   location: text('location'),
@@ -115,6 +133,7 @@ export const eventRegistrations = pgTable('event_registrations', {
 
 export const npcs = pgTable('npcs', {
   id: uuid('id').primaryKey().defaultRandom(),
+  gameId: uuid('game_id').notNull().references(() => game.id),
   name: text('name').notNull(),
   description: text('description'),
   portraitUrl: text('portrait_url'),
@@ -125,6 +144,7 @@ export const npcs = pgTable('npcs', {
 
 export const plots = pgTable('plots', {
   id: uuid('id').primaryKey().defaultRandom(),
+  gameId: uuid('game_id').notNull().references(() => game.id),
   title: text('title').notNull(),
   description: text('description'),
   status: text('status', { enum: ['active', 'resolved'] }).notNull().default('active'),
