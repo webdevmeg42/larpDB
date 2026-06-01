@@ -2,16 +2,24 @@ import fp from 'fastify-plugin'
 import jwt from '@fastify/jwt'
 import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify'
 import { env } from '../env.js'
-import type { User } from '@larpdb/shared'
+
+export type GameContext = {
+  userId: string
+  gameId: string
+  role: 'owner' | 'gm' | 'player'
+}
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
-    payload: { sub: string; role: User['role'] }
-    user: { sub: string; role: User['role'] }
+    payload: { sub: string }
+    user: { sub: string }
   }
 }
 
 declare module 'fastify' {
+  interface FastifyRequest {
+    gameContext: GameContext
+  }
   interface FastifyInstance {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
   }
