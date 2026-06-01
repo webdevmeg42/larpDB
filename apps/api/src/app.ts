@@ -2,8 +2,10 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import { env } from './env.js'
 import jwtPlugin from './plugins/jwt.js'
+import gameContextPlugin from './plugins/gameContext.js'
 import { authRoutes } from './routes/auth.js'
 import { gameRoutes } from './routes/game.js'
+import { gameMemberRoutes } from './routes/gameMember.js'
 import { schemaTemplateRoutes } from './routes/schemaTemplate.js'
 import { characterSchemaRoutes } from './routes/characterSchema.js'
 import { characterRoutes } from './routes/character.js'
@@ -21,8 +23,10 @@ export function buildApp() {
 
   app.register(cors, { origin: true })
   app.register(jwtPlugin)
+  app.register(gameContextPlugin)
   app.register(authRoutes)
   app.register(gameRoutes)
+  app.register(gameMemberRoutes)
   app.register(schemaTemplateRoutes)
   app.register(characterSchemaRoutes)
   app.register(characterRoutes)
