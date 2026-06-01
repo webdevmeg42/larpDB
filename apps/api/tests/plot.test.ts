@@ -3,58 +3,75 @@ import { buildApp } from '../src/app.js'
 
 const FUTURE_DATE = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
-async function setupOwnerAndGm() {
+async function createAndLogin(email = 'owner@test.com') {
   const app = buildApp()
   await app.ready()
 
-  const ownerRes = await app.inject({
+  const regRes = await app.inject({
     method: 'POST',
-    url: '/auth/setup',
-    payload: { email: 'owner@test.com', password: 'password123', displayName: 'Owner', gameName: 'Test Game' },
+    url: '/auth/register',
+    payload: { email, password: 'password123', displayName: 'Owner' },
   })
-  const { token: ownerToken } = ownerRes.json()
+  const { token } = regRes.json()
+
+  const gameRes = await app.inject({
+    method: 'POST',
+    url: '/games',
+    headers: { authorization: `Bearer ${token}` },
+    payload: { name: 'Test Game' },
+  })
+  const { id: gameId } = gameRes.json()
+
+  return { app, token, gameId }
+}
+
+async function setupOwnerAndGm() {
+  const { app, token: ownerToken, gameId } = await createAndLogin()
 
   const gmRegRes = await app.inject({
     method: 'POST',
     url: '/auth/register',
     payload: { email: 'gm@test.com', password: 'password123', displayName: 'GM User' },
   })
-  await app.inject({
-    method: 'PATCH',
-    url: `/users/${gmRegRes.json().user.id}/role`,
-    headers: { authorization: `Bearer ${ownerToken}` },
-    payload: { role: 'gm' },
-  })
-  const gmLoginRes = await app.inject({
-    method: 'POST',
-    url: '/auth/login',
-    payload: { email: 'gm@test.com', password: 'password123' },
-  })
-  const { token: gmToken } = gmLoginRes.json()
+  const { token: gmToken, user: gmUser } = gmRegRes.json()
 
   await app.inject({
+    method: 'POST',
+    url: `/games/${gameId}/join`,
+    headers: { authorization: `Bearer ${gmToken}` },
+  })
+
+  await app.inject({
+    method: 'PATCH',
+    url: `/games/${gameId}/members/${gmUser.id}`,
+    headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+    payload: { role: 'gm' },
+  })
+
+  const playerRegRes = await app.inject({
     method: 'POST',
     url: '/auth/register',
     payload: { email: 'player@test.com', password: 'password123', displayName: 'Player' },
   })
-  const playerLoginRes = await app.inject({
-    method: 'POST',
-    url: '/auth/login',
-    payload: { email: 'player@test.com', password: 'password123' },
-  })
-  const { token: playerToken } = playerLoginRes.json()
+  const { token: playerToken } = playerRegRes.json()
 
-  return { app, ownerToken, gmToken, playerToken }
+  await app.inject({
+    method: 'POST',
+    url: `/games/${gameId}/join`,
+    headers: { authorization: `Bearer ${playerToken}` },
+  })
+
+  return { app, ownerToken, gmToken, playerToken, gameId }
 }
 
 describe('POST /plots', () => {
   it('GM can create a plot', async () => {
-    const { app, gmToken } = await setupOwnerAndGm()
+    const { app, gmToken, gameId } = await setupOwnerAndGm()
 
     const res = await app.inject({
       method: 'POST',
       url: '/plots',
-      headers: { authorization: `Bearer ${gmToken}` },
+      headers: { authorization: `Bearer ${gmToken}`, 'x-game-id': gameId },
       payload: { title: 'The Dark Conspiracy', description: 'A shadow organization moves against the crown.' },
     })
 
@@ -67,12 +84,12 @@ describe('POST /plots', () => {
   })
 
   it('player cannot create plots', async () => {
-    const { app, playerToken } = await setupOwnerAndGm()
+    const { app, playerToken, gameId } = await setupOwnerAndGm()
 
     const res = await app.inject({
       method: 'POST',
       url: '/plots',
-      headers: { authorization: `Bearer ${playerToken}` },
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
       payload: { title: 'Forbidden Plot' },
     })
 
@@ -83,19 +100,19 @@ describe('POST /plots', () => {
 
 describe('GET /plots', () => {
   it('GM can list plots', async () => {
-    const { app, gmToken } = await setupOwnerAndGm()
+    const { app, gmToken, gameId } = await setupOwnerAndGm()
 
     await app.inject({
       method: 'POST',
       url: '/plots',
-      headers: { authorization: `Bearer ${gmToken}` },
+      headers: { authorization: `Bearer ${gmToken}`, 'x-game-id': gameId },
       payload: { title: 'Plot One' },
     })
 
     const res = await app.inject({
       method: 'GET',
       url: '/plots',
-      headers: { authorization: `Bearer ${gmToken}` },
+      headers: { authorization: `Bearer ${gmToken}`, 'x-game-id': gameId },
     })
 
     expect(res.statusCode).toBe(200)
@@ -106,19 +123,19 @@ describe('GET /plots', () => {
 
 describe('PATCH /plots/:id', () => {
   it('can update title and resolve a plot', async () => {
-    const { app, gmToken } = await setupOwnerAndGm()
+    const { app, gmToken, gameId } = await setupOwnerAndGm()
 
     const plot = (await app.inject({
       method: 'POST',
       url: '/plots',
-      headers: { authorization: `Bearer ${gmToken}` },
+      headers: { authorization: `Bearer ${gmToken}`, 'x-game-id': gameId },
       payload: { title: 'Active Plot' },
     })).json()
 
     const res = await app.inject({
       method: 'PATCH',
       url: `/plots/${plot.id}`,
-      headers: { authorization: `Bearer ${gmToken}` },
+      headers: { authorization: `Bearer ${gmToken}`, 'x-game-id': gameId },
       payload: { status: 'resolved', title: 'Resolved Plot' },
     })
 
@@ -129,12 +146,12 @@ describe('PATCH /plots/:id', () => {
   })
 
   it('can link events to a plot', async () => {
-    const { app, ownerToken, gmToken } = await setupOwnerAndGm()
+    const { app, ownerToken, gmToken, gameId } = await setupOwnerAndGm()
 
     const eventRes = await app.inject({
       method: 'POST',
       url: '/events',
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
       payload: { title: 'Linked Event', startAt: FUTURE_DATE },
     })
     const event = eventRes.json()
@@ -142,14 +159,14 @@ describe('PATCH /plots/:id', () => {
     const plot = (await app.inject({
       method: 'POST',
       url: '/plots',
-      headers: { authorization: `Bearer ${gmToken}` },
+      headers: { authorization: `Bearer ${gmToken}`, 'x-game-id': gameId },
       payload: { title: 'My Plot' },
     })).json()
 
     const res = await app.inject({
       method: 'PATCH',
       url: `/plots/${plot.id}`,
-      headers: { authorization: `Bearer ${gmToken}` },
+      headers: { authorization: `Bearer ${gmToken}`, 'x-game-id': gameId },
       payload: { linkedEventIds: [event.id] },
     })
 
@@ -161,19 +178,19 @@ describe('PATCH /plots/:id', () => {
 
 describe('DELETE /plots/:id', () => {
   it('GM can delete a plot', async () => {
-    const { app, gmToken } = await setupOwnerAndGm()
+    const { app, gmToken, gameId } = await setupOwnerAndGm()
 
     const plot = (await app.inject({
       method: 'POST',
       url: '/plots',
-      headers: { authorization: `Bearer ${gmToken}` },
+      headers: { authorization: `Bearer ${gmToken}`, 'x-game-id': gameId },
       payload: { title: 'To Delete' },
     })).json()
 
     const res = await app.inject({
       method: 'DELETE',
       url: `/plots/${plot.id}`,
-      headers: { authorization: `Bearer ${gmToken}` },
+      headers: { authorization: `Bearer ${gmToken}`, 'x-game-id': gameId },
     })
 
     expect(res.statusCode).toBe(204)
