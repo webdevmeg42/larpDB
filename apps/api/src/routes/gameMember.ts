@@ -38,11 +38,14 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
     '/games/:gameId/members',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
+      const { gameId } = request.params as { gameId: string }
+      if (request.gameContext.gameId !== gameId) {
+        return reply.status(403).send({ error: 'Forbidden' })
+      }
+
       if (request.gameContext.role === 'player') {
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
-
-      const { gameId } = request.params as { gameId: string }
       const statusFilter = (request.query as { status?: string }).status
 
       const rows = statusFilter
@@ -65,11 +68,14 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
     '/games/:gameId/members/:userId',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
+      const { gameId, userId } = request.params as { gameId: string; userId: string }
+      if (request.gameContext.gameId !== gameId) {
+        return reply.status(403).send({ error: 'Forbidden' })
+      }
+
       if (request.gameContext.role === 'player') {
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
-
-      const { gameId, userId } = request.params as { gameId: string; userId: string }
 
       const result = UpdateMemberInput.safeParse(request.body)
       if (!result.success) {
