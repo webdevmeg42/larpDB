@@ -1,32 +1,31 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { npcs } from '../db/schema.js'
 import { CreateNpcInput, UpdateNpcInput } from '@larpdb/shared'
-import { gmOrOwner } from '../lib/roles.js'
 
 export const npcRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/npcs',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.user.role)) {
+      if (request.gameContext.role === 'player') {
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
-      const rows = await db.select().from(npcs).orderBy(npcs.createdAt)
+      const rows = await db.select().from(npcs).where(eq(npcs.gameId, request.gameContext.gameId)).orderBy(npcs.createdAt)
       return reply.send(rows)
     },
   )
 
   fastify.get(
     '/npcs/:id',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.user.role)) {
+      if (request.gameContext.role === 'player') {
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
       const { id } = request.params as { id: string }
-      const [npc] = await db.select().from(npcs).where(eq(npcs.id, id)).limit(1)
+      const [npc] = await db.select().from(npcs).where(and(eq(npcs.id, id), eq(npcs.gameId, request.gameContext.gameId))).limit(1)
       if (!npc) return reply.status(404).send({ error: 'NPC not found' })
       return reply.send(npc)
     },
@@ -34,9 +33,9 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post(
     '/npcs',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.user.role)) {
+      if (request.gameContext.role === 'player') {
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
@@ -46,11 +45,12 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       const [npc] = await db.insert(npcs).values({
+        gameId: request.gameContext.gameId,
         name: result.data.name,
         description: result.data.description ?? null,
         portraitUrl: result.data.portraitUrl ?? null,
         notes: result.data.notes ?? null,
-        createdBy: request.user.sub,
+        createdBy: request.gameContext.userId,
       }).returning()
 
       return reply.status(201).send(npc)
@@ -59,14 +59,14 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.patch(
     '/npcs/:id',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.user.role)) {
+      if (request.gameContext.role === 'player') {
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
       const { id } = request.params as { id: string }
-      const [existing] = await db.select().from(npcs).where(eq(npcs.id, id)).limit(1)
+      const [existing] = await db.select().from(npcs).where(and(eq(npcs.id, id), eq(npcs.gameId, request.gameContext.gameId))).limit(1)
       if (!existing) return reply.status(404).send({ error: 'NPC not found' })
 
       const result = UpdateNpcInput.safeParse(request.body)
@@ -78,26 +78,21 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
         Object.entries(result.data).filter(([, v]) => v !== undefined),
       ) as Parameters<ReturnType<typeof db.update<typeof npcs>>['set']>[0]
 
-      const [updated] = await db
-        .update(npcs)
-        .set(patch)
-        .where(eq(npcs.id, id))
-        .returning()
-
+      const [updated] = await db.update(npcs).set(patch).where(eq(npcs.id, id)).returning()
       return reply.send(updated)
     },
   )
 
   fastify.delete(
     '/npcs/:id',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.user.role)) {
+      if (request.gameContext.role === 'player') {
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
       const { id } = request.params as { id: string }
-      const [existing] = await db.select().from(npcs).where(eq(npcs.id, id)).limit(1)
+      const [existing] = await db.select().from(npcs).where(and(eq(npcs.id, id), eq(npcs.gameId, request.gameContext.gameId))).limit(1)
       if (!existing) return reply.status(404).send({ error: 'NPC not found' })
 
       await db.delete(npcs).where(eq(npcs.id, id))
