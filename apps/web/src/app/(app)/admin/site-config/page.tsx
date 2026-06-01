@@ -12,9 +12,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { SiteConfig } from '@larpdb/shared'
+import dynamic from 'next/dynamic'
 import CodexTab from './_components/CodexTab'
-import RulebookTab from './_components/RulebookTab'
 import StoreTab from './_components/StoreTab'
+
+const RulebookTab = dynamic(() => import('./_components/RulebookTab'), { ssr: false })
 
 type FormState = Partial<{
   siteTitle: string

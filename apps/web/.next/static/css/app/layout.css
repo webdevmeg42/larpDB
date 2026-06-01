@@ -1414,14 +1414,14 @@ video {
 .max-w-md {
   max-width: 28rem;
 }
+.max-w-none {
+  max-width: none;
+}
 .max-w-sm {
   max-width: 24rem;
 }
 .max-w-xs {
   max-width: 20rem;
-}
-.max-w-none {
-  max-width: none;
 }
 .flex-1 {
   flex: 1 1 0%;
