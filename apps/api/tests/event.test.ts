@@ -1,63 +1,77 @@
 import { describe, it, expect } from 'vitest'
 import { buildApp } from '../src/app.js'
 
-async function setupOwnerAndGm() {
+async function createAndLogin(email = 'owner@test.com') {
   const app = buildApp()
   await app.ready()
 
-  const ownerRes = await app.inject({
+  const regRes = await app.inject({
     method: 'POST',
-    url: '/auth/setup',
-    payload: { email: 'owner@test.com', password: 'password123', displayName: 'Owner', gameName: 'Test Game' },
+    url: '/auth/register',
+    payload: { email, password: 'password123', displayName: 'Owner' },
   })
-  const { token: ownerToken, user: ownerUser } = ownerRes.json()
+  const { token } = regRes.json()
+
+  const gameRes = await app.inject({
+    method: 'POST',
+    url: '/games',
+    headers: { authorization: `Bearer ${token}` },
+    payload: { name: 'Test Game' },
+  })
+  const { id: gameId } = gameRes.json()
+
+  return { app, token, gameId }
+}
+
+async function setupOwnerAndGm() {
+  const { app, token: ownerToken, gameId } = await createAndLogin()
 
   const gmRegRes = await app.inject({
     method: 'POST',
     url: '/auth/register',
     payload: { email: 'gm@test.com', password: 'password123', displayName: 'GM User' },
   })
-  const { user: gmUser } = gmRegRes.json()
+  const { token: gmToken, user: gmUser } = gmRegRes.json()
+
+  await app.inject({
+    method: 'POST',
+    url: `/games/${gameId}/join`,
+    headers: { authorization: `Bearer ${gmToken}` },
+  })
 
   await app.inject({
     method: 'PATCH',
-    url: `/users/${gmUser.id}/role`,
-    headers: { authorization: `Bearer ${ownerToken}` },
+    url: `/games/${gameId}/members/${gmUser.id}`,
+    headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
     payload: { role: 'gm' },
   })
-
-  const gmLoginRes = await app.inject({
-    method: 'POST',
-    url: '/auth/login',
-    payload: { email: 'gm@test.com', password: 'password123' },
-  })
-  const { token: gmToken } = gmLoginRes.json()
 
   const playerRegRes = await app.inject({
     method: 'POST',
     url: '/auth/register',
     payload: { email: 'player@test.com', password: 'password123', displayName: 'Player One' },
   })
-  const playerLoginRes = await app.inject({
-    method: 'POST',
-    url: '/auth/login',
-    payload: { email: 'player@test.com', password: 'password123' },
-  })
-  const { token: playerToken } = playerLoginRes.json()
+  const { token: playerToken } = playerRegRes.json()
 
-  return { app, ownerToken, gmToken, playerToken }
+  await app.inject({
+    method: 'POST',
+    url: `/games/${gameId}/join`,
+    headers: { authorization: `Bearer ${playerToken}` },
+  })
+
+  return { app, ownerToken, gmToken, playerToken, gameId }
 }
 
 const FUTURE_DATE = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
 describe('POST /events', () => {
   it('owner can create a draft event', async () => {
-    const { app, ownerToken } = await setupOwnerAndGm()
+    const { app, ownerToken, gameId } = await setupOwnerAndGm()
 
     const res = await app.inject({
       method: 'POST',
       url: '/events',
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
       payload: { title: 'Session One', startAt: FUTURE_DATE, maxPlayers: 20 },
     })
 
@@ -70,12 +84,12 @@ describe('POST /events', () => {
   })
 
   it('GM can create a draft event', async () => {
-    const { app, gmToken } = await setupOwnerAndGm()
+    const { app, gmToken, gameId } = await setupOwnerAndGm()
 
     const res = await app.inject({
       method: 'POST',
       url: '/events',
-      headers: { authorization: `Bearer ${gmToken}` },
+      headers: { authorization: `Bearer ${gmToken}`, 'x-game-id': gameId },
       payload: { title: 'GM Event', startAt: FUTURE_DATE },
     })
 
@@ -85,12 +99,12 @@ describe('POST /events', () => {
   })
 
   it('player cannot create events', async () => {
-    const { app, playerToken } = await setupOwnerAndGm()
+    const { app, playerToken, gameId } = await setupOwnerAndGm()
 
     const res = await app.inject({
       method: 'POST',
       url: '/events',
-      headers: { authorization: `Bearer ${playerToken}` },
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
       payload: { title: 'Player Event', startAt: FUTURE_DATE },
     })
 
@@ -101,31 +115,31 @@ describe('POST /events', () => {
 
 describe('GET /events', () => {
   it('player sees only published events', async () => {
-    const { app, ownerToken, playerToken } = await setupOwnerAndGm()
+    const { app, ownerToken, playerToken, gameId } = await setupOwnerAndGm()
 
     await app.inject({
       method: 'POST',
       url: '/events',
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
       payload: { title: 'Draft Event', startAt: FUTURE_DATE },
     })
 
     const pubRes = await app.inject({
       method: 'POST',
       url: '/events',
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
       payload: { title: 'Published Event', startAt: FUTURE_DATE },
     })
     await app.inject({
       method: 'POST',
       url: `/events/${pubRes.json().id}/publish`,
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
     })
 
     const res = await app.inject({
       method: 'GET',
       url: '/events',
-      headers: { authorization: `Bearer ${playerToken}` },
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
     })
 
     expect(res.statusCode).toBe(200)
@@ -136,19 +150,19 @@ describe('GET /events', () => {
   })
 
   it('owner sees all events regardless of status', async () => {
-    const { app, ownerToken } = await setupOwnerAndGm()
+    const { app, ownerToken, gameId } = await setupOwnerAndGm()
 
     await app.inject({
       method: 'POST',
       url: '/events',
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
       payload: { title: 'Draft', startAt: FUTURE_DATE },
     })
 
     const res = await app.inject({
       method: 'GET',
       url: '/events',
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
     })
 
     expect(res.statusCode).toBe(200)
@@ -159,12 +173,12 @@ describe('GET /events', () => {
 
 describe('PATCH /events/:id', () => {
   it('owner can update event fields', async () => {
-    const { app, ownerToken } = await setupOwnerAndGm()
+    const { app, ownerToken, gameId } = await setupOwnerAndGm()
 
     const createRes = await app.inject({
       method: 'POST',
       url: '/events',
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
       payload: { title: 'Old Title', startAt: FUTURE_DATE },
     })
     const event = createRes.json()
@@ -172,7 +186,7 @@ describe('PATCH /events/:id', () => {
     const res = await app.inject({
       method: 'PATCH',
       url: `/events/${event.id}`,
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
       payload: { title: 'New Title', location: 'The Hall' },
     })
 
@@ -185,19 +199,19 @@ describe('PATCH /events/:id', () => {
 
 describe('POST /events/:id/publish', () => {
   it('publishes a draft event', async () => {
-    const { app, ownerToken } = await setupOwnerAndGm()
+    const { app, ownerToken, gameId } = await setupOwnerAndGm()
 
     const event = (await app.inject({
       method: 'POST',
       url: '/events',
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
       payload: { title: 'My Event', startAt: FUTURE_DATE },
     })).json()
 
     const res = await app.inject({
       method: 'POST',
       url: `/events/${event.id}/publish`,
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
     })
 
     expect(res.statusCode).toBe(200)
@@ -206,25 +220,25 @@ describe('POST /events/:id/publish', () => {
   })
 
   it('returns 400 when publishing a non-draft event', async () => {
-    const { app, ownerToken } = await setupOwnerAndGm()
+    const { app, ownerToken, gameId } = await setupOwnerAndGm()
 
     const event = (await app.inject({
       method: 'POST',
       url: '/events',
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
       payload: { title: 'My Event', startAt: FUTURE_DATE },
     })).json()
 
     await app.inject({
       method: 'POST',
       url: `/events/${event.id}/publish`,
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
     })
 
     const res = await app.inject({
       method: 'POST',
       url: `/events/${event.id}/publish`,
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
     })
 
     expect(res.statusCode).toBe(400)
@@ -234,25 +248,25 @@ describe('POST /events/:id/publish', () => {
 
 describe('POST /events/:id/archive', () => {
   it('archives a published event', async () => {
-    const { app, ownerToken } = await setupOwnerAndGm()
+    const { app, ownerToken, gameId } = await setupOwnerAndGm()
 
     const event = (await app.inject({
       method: 'POST',
       url: '/events',
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
       payload: { title: 'My Event', startAt: FUTURE_DATE },
     })).json()
 
     await app.inject({
       method: 'POST',
       url: `/events/${event.id}/publish`,
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
     })
 
     const res = await app.inject({
       method: 'POST',
       url: `/events/${event.id}/archive`,
-      headers: { authorization: `Bearer ${ownerToken}` },
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
     })
 
     expect(res.statusCode).toBe(200)

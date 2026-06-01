@@ -7,38 +7,36 @@ import { CreateEventInput, UpdateEventInput, RegisterForEventInput, UpdateRegist
 export const eventRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/events',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { role } = request.user
+      const { gameId, role } = request.gameContext
       const rows = (role === 'owner' || role === 'gm')
-        ? await db.select().from(events).orderBy(desc(events.startAt))
-        : await db.select().from(events).where(eq(events.status, 'published')).orderBy(desc(events.startAt))
+        ? await db.select().from(events).where(eq(events.gameId, gameId)).orderBy(desc(events.startAt))
+        : await db.select().from(events).where(and(eq(events.gameId, gameId), eq(events.status, 'published'))).orderBy(desc(events.startAt))
       return reply.send(rows)
     },
   )
 
   fastify.get(
     '/events/:id',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
+      const { gameId, role } = request.gameContext
       const { id } = request.params as { id: string }
-      const [event] = await db.select().from(events).where(eq(events.id, id)).limit(1)
+      const [event] = await db.select().from(events).where(and(eq(events.id, id), eq(events.gameId, gameId))).limit(1)
       if (!event) return reply.status(404).send({ error: 'Event not found' })
-
-      const { role } = request.user
       if (role === 'player' && event.status !== 'published') {
         return reply.status(404).send({ error: 'Event not found' })
       }
-
       return reply.send(event)
     },
   )
 
   fastify.post(
     '/events',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { role } = request.user
+      const { gameId, role } = request.gameContext
       if (role !== 'owner' && role !== 'gm') {
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
@@ -49,6 +47,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       const [event] = await db.insert(events).values({
+        gameId,
         title: result.data.title,
         description: result.data.description ?? null,
         location: result.data.location ?? null,
@@ -64,15 +63,15 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.patch(
     '/events/:id',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { role } = request.user
+      const { gameId, role } = request.gameContext
       if (role !== 'owner' && role !== 'gm') {
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
       const { id } = request.params as { id: string }
-      const [existing] = await db.select().from(events).where(eq(events.id, id)).limit(1)
+      const [existing] = await db.select().from(events).where(and(eq(events.id, id), eq(events.gameId, gameId))).limit(1)
       if (!existing) return reply.status(404).send({ error: 'Event not found' })
 
       const result = UpdateEventInput.safeParse(request.body)
@@ -91,7 +90,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
       const [updated] = await db
         .update(events)
         .set(setData as Parameters<ReturnType<typeof db.update<typeof events>>['set']>[0])
-        .where(eq(events.id, id))
+        .where(and(eq(events.id, id), eq(events.gameId, gameId)))
         .returning()
 
       return reply.send(updated)
@@ -100,64 +99,54 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post(
     '/events/:id/publish',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { role } = request.user
+      const { gameId, role } = request.gameContext
       if (role !== 'owner' && role !== 'gm') {
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
       const { id } = request.params as { id: string }
-      const [event] = await db.select().from(events).where(eq(events.id, id)).limit(1)
+      const [event] = await db.select().from(events).where(and(eq(events.id, id), eq(events.gameId, gameId))).limit(1)
       if (!event) return reply.status(404).send({ error: 'Event not found' })
       if (event.status !== 'draft') {
         return reply.status(400).send({ error: 'Only draft events can be published' })
       }
 
-      const [updated] = await db
-        .update(events)
-        .set({ status: 'published' })
-        .where(eq(events.id, id))
-        .returning()
-
+      const [updated] = await db.update(events).set({ status: 'published' }).where(eq(events.id, id)).returning()
       return reply.send(updated)
     },
   )
 
   fastify.post(
     '/events/:id/archive',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { role } = request.user
+      const { gameId, role } = request.gameContext
       if (role !== 'owner' && role !== 'gm') {
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
       const { id } = request.params as { id: string }
-      const [event] = await db.select().from(events).where(eq(events.id, id)).limit(1)
+      const [event] = await db.select().from(events).where(and(eq(events.id, id), eq(events.gameId, gameId))).limit(1)
       if (!event) return reply.status(404).send({ error: 'Event not found' })
       if (event.status !== 'published') {
         return reply.status(400).send({ error: 'Only published events can be archived' })
       }
 
-      const [updated] = await db
-        .update(events)
-        .set({ status: 'archived' })
-        .where(eq(events.id, id))
-        .returning()
-
+      const [updated] = await db.update(events).set({ status: 'archived' }).where(eq(events.id, id)).returning()
       return reply.send(updated)
     },
   )
 
   fastify.post(
     '/events/:id/register',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { sub } = request.user
+      const { gameId, userId } = request.gameContext
       const { id } = request.params as { id: string }
 
-      const [event] = await db.select().from(events).where(eq(events.id, id)).limit(1)
+      const [event] = await db.select().from(events).where(and(eq(events.id, id), eq(events.gameId, gameId))).limit(1)
       if (!event) return reply.status(404).send({ error: 'Event not found' })
       if (event.status !== 'published') {
         return reply.status(400).send({ error: 'Event is not open for registration' })
@@ -166,7 +155,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
       const [existing] = await db
         .select()
         .from(eventRegistrations)
-        .where(and(eq(eventRegistrations.eventId, id), eq(eventRegistrations.userId, sub)))
+        .where(and(eq(eventRegistrations.eventId, id), eq(eventRegistrations.userId, userId)))
         .limit(1)
 
       if (existing && existing.status !== 'cancelled') {
@@ -185,13 +174,10 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
           .from(eventRegistrations)
           .where(and(eq(eventRegistrations.eventId, id), eq(eventRegistrations.status, 'confirmed')))
         const confirmedCount = countResult[0]?.value ?? 0
-        if (confirmedCount >= event.maxPlayers) {
-          newStatus = 'waitlist'
-        }
+        if (confirmedCount >= event.maxPlayers) newStatus = 'waitlist'
       }
 
       if (existing) {
-        // Re-registering after cancellation: update the existing row
         const [updated] = await db
           .update(eventRegistrations)
           .set({ status: newStatus, characterId: result.data.characterId ?? null })
@@ -202,7 +188,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [registration] = await db.insert(eventRegistrations).values({
         eventId: id,
-        userId: sub,
+        userId,
         characterId: result.data.characterId ?? null,
         status: newStatus,
       }).returning()
@@ -213,18 +199,18 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get(
     '/events/:id/registrations',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { role, sub } = request.user
+      const { gameId, userId, role } = request.gameContext
       const { id } = request.params as { id: string }
 
-      const [event] = await db.select().from(events).where(eq(events.id, id)).limit(1)
+      const [event] = await db.select().from(events).where(and(eq(events.id, id), eq(events.gameId, gameId))).limit(1)
       if (!event) return reply.status(404).send({ error: 'Event not found' })
 
       const rows = (role === 'owner' || role === 'gm')
         ? await db.select().from(eventRegistrations).where(eq(eventRegistrations.eventId, id))
         : await db.select().from(eventRegistrations).where(
-            and(eq(eventRegistrations.eventId, id), eq(eventRegistrations.userId, sub)),
+            and(eq(eventRegistrations.eventId, id), eq(eventRegistrations.userId, userId)),
           )
 
       return reply.send(rows)
@@ -233,9 +219,9 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.patch(
     '/events/:id/registrations/:regId',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { role, sub } = request.user
+      const { gameId, userId, role } = request.gameContext
       const { id, regId } = request.params as { id: string; regId: string }
 
       const [reg] = await db
@@ -251,7 +237,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       const isOwnerOrGm = role === 'owner' || role === 'gm'
-      const isOwnReg = reg.userId === sub
+      const isOwnReg = reg.userId === userId
 
       if (!isOwnerOrGm && !isOwnReg) {
         return reply.status(403).send({ error: 'Forbidden' })
