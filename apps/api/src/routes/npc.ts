@@ -78,7 +78,7 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
         Object.entries(result.data).filter(([, v]) => v !== undefined),
       ) as Parameters<ReturnType<typeof db.update<typeof npcs>>['set']>[0]
 
-      const [updated] = await db.update(npcs).set(patch).where(eq(npcs.id, id)).returning()
+      const [updated] = await db.update(npcs).set(patch).where(and(eq(npcs.id, id), eq(npcs.gameId, request.gameContext.gameId))).returning()
       return reply.send(updated)
     },
   )
@@ -95,7 +95,7 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
       const [existing] = await db.select().from(npcs).where(and(eq(npcs.id, id), eq(npcs.gameId, request.gameContext.gameId))).limit(1)
       if (!existing) return reply.status(404).send({ error: 'NPC not found' })
 
-      await db.delete(npcs).where(eq(npcs.id, id))
+      await db.delete(npcs).where(and(eq(npcs.id, id), eq(npcs.gameId, request.gameContext.gameId)))
       return reply.status(204).send()
     },
   )

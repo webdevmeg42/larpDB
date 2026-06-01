@@ -113,7 +113,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Only draft events can be published' })
       }
 
-      const [updated] = await db.update(events).set({ status: 'published' }).where(eq(events.id, id)).returning()
+      const [updated] = await db.update(events).set({ status: 'published' }).where(and(eq(events.id, id), eq(events.gameId, gameId))).returning()
       return reply.send(updated)
     },
   )
@@ -134,7 +134,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Only published events can be archived' })
       }
 
-      const [updated] = await db.update(events).set({ status: 'archived' }).where(eq(events.id, id)).returning()
+      const [updated] = await db.update(events).set({ status: 'archived' }).where(and(eq(events.id, id), eq(events.gameId, gameId))).returning()
       return reply.send(updated)
     },
   )

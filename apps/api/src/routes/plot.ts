@@ -78,7 +78,7 @@ export const plotRoutes: FastifyPluginAsync = async (fastify) => {
         Object.entries(result.data).filter(([, v]) => v !== undefined),
       ) as Parameters<ReturnType<typeof db.update<typeof plots>>['set']>[0]
 
-      const [updated] = await db.update(plots).set(patch).where(eq(plots.id, id)).returning()
+      const [updated] = await db.update(plots).set(patch).where(and(eq(plots.id, id), eq(plots.gameId, request.gameContext.gameId))).returning()
       return reply.send(updated)
     },
   )
@@ -95,7 +95,7 @@ export const plotRoutes: FastifyPluginAsync = async (fastify) => {
       const [existing] = await db.select().from(plots).where(and(eq(plots.id, id), eq(plots.gameId, request.gameContext.gameId))).limit(1)
       if (!existing) return reply.status(404).send({ error: 'Plot not found' })
 
-      await db.delete(plots).where(eq(plots.id, id))
+      await db.delete(plots).where(and(eq(plots.id, id), eq(plots.gameId, request.gameContext.gameId)))
       return reply.status(204).send()
     },
   )
