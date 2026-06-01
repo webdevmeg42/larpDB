@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST="{\"app/(app)/admin/site-config/page.tsx -> ./_components/RulebookTab\":{\"id\":\"app/(app)/admin/site-config/page.tsx -> ./_components/RulebookTab\",\"files\":[\"static/chunks/_app-pages-browser_src_app_app_admin_site-config__components_RulebookTab_tsx.js\"]}}"
