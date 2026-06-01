@@ -1,5 +1,20 @@
 import { z } from 'zod'
 
+export const CreateGameInput = z.object({
+  name: z.string().min(1).max(200),
+  description: z.string().max(2000).optional(),
+  isPublic: z.boolean().optional().default(true),
+  joinMode: z.enum(['open', 'approval']).optional().default('open'),
+})
+
+export const UpdateMemberInput = z.object({
+  role: z.enum(['owner', 'gm', 'player']).optional(),
+  status: z.enum(['active', 'pending', 'banned']).optional(),
+})
+
+export type CreateGameInput = z.infer<typeof CreateGameInput>
+export type UpdateMemberInput = z.infer<typeof UpdateMemberInput>
+
 const RulebookChapterSchema = z.object({
   id: z.string(),
   title: z.string(),

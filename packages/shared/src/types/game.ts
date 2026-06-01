@@ -1,8 +1,24 @@
+export type GameMemberRole = 'owner' | 'gm' | 'player'
+export type GameMemberStatus = 'active' | 'pending' | 'banned'
+export type GameJoinMode = 'open' | 'approval'
+
 export interface Game {
   id: string
   name: string
   description: string | null
+  slug: string
+  isPublic: boolean
+  joinMode: GameJoinMode
   createdAt: string
+}
+
+export interface GameMember {
+  id: string
+  gameId: string
+  userId: string
+  role: GameMemberRole
+  status: GameMemberStatus
+  joinedAt: string
 }
 
 export interface RulebookChapter {
