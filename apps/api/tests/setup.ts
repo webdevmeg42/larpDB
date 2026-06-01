@@ -3,7 +3,7 @@ import { Pool } from 'pg'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import * as schema from '../src/db/schema.js'
 import {
-  users, game, siteConfig, characterSchemas, characters,
+  users, game, gameMembers, siteConfig, characterSchemas, characters,
   xpTransactions, events, eventRegistrations, npcs, plots, schemaTemplates,
   storeItems, purchases,
 } from '../src/db/schema.js'
@@ -30,6 +30,7 @@ beforeEach(async () => {
   await testDb.delete(characterSchemas)
   await testDb.delete(schemaTemplates)
   await testDb.delete(siteConfig)
+  await testDb.delete(gameMembers)
   await testDb.delete(users)
   await testDb.delete(game)
 })
