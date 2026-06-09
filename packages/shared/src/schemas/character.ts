@@ -33,6 +33,7 @@ export const CreateCharacterSchemaInput = z.object({
   name: z.string().min(1).max(200),
   fields: z.array(SchemaFieldSchema),
   templateSource: z.string().uuid().nullish(),
+  type: z.enum(['race', 'class']).default('race'),
 })
 
 export const UpdateCharacterSchemaInput = z.object({

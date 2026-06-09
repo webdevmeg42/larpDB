@@ -3,14 +3,20 @@ export interface ApiError extends Error {
   data: unknown
 }
 
-export function createApiClient(baseUrl: string, getToken: () => string | null) {
+export function createApiClient(
+  baseUrl: string,
+  getToken: () => string | null,
+  getGameId?: () => string | null,
+) {
   async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const token = getToken()
+    const gameId = getGameId?.()
     const res = await fetch(`${baseUrl}${path}`, {
       method,
       headers: {
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(gameId ? { 'X-Game-Id': gameId } : {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     })

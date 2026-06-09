@@ -249,7 +249,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
       const [updated] = await db
         .update(eventRegistrations)
         .set({ status: result.data.status })
-        .where(eq(eventRegistrations.id, regId))
+        .where(and(eq(eventRegistrations.id, regId), eq(eventRegistrations.eventId, id)))
         .returning()
 
       return reply.send(updated)

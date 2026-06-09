@@ -22,6 +22,20 @@
       "when": 1780335352819,
       "tag": "0002_solid_kat_farrell",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1781018641609,
+      "tag": "0003_steady_selene",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1749513600000,
+      "tag": "0004_performance_indexes",
+      "breakpoints": true
     }
   ]
 }

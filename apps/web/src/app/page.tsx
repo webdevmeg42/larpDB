@@ -2,9 +2,8 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, getGameId, setGameId } from '@/lib/auth'
 import { api } from '@/lib/api'
-import type { SiteConfig } from '@larpdb/shared'
 
 export default function RootPage() {
   const router = useRouter()
@@ -12,12 +11,17 @@ export default function RootPage() {
   useEffect(() => {
     async function redirect() {
       try {
-        await api.get<SiteConfig>('/config')
-      } catch (err: unknown) {
-        if ((err as { status?: number }).status === 404) {
-          router.replace('/setup')
-          return
+        if (!getGameId()) {
+          const games = await api.get<Array<{ id: string }>>('/games')
+          const first = games[0]
+          if (!first) {
+            router.replace('/setup')
+            return
+          }
+          setGameId(first.id)
         }
+      } catch {
+        // API unreachable — proceed anyway
       }
       const user = getCurrentUser()
       if (!user) {

@@ -37,6 +37,8 @@ export interface SchemaField {
   xpCost?: number
 }
 
+export type CharacterSchemaType = 'race' | 'class'
+
 export interface CharacterSchema {
   id: string
   name: string
@@ -44,6 +46,7 @@ export interface CharacterSchema {
   fields: SchemaField[]
   templateSource: string | null
   isActive: boolean
+  type: CharacterSchemaType
   createdAt: string
 }
 

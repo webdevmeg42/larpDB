@@ -8,21 +8,36 @@ import { CreateStoreItemInput, UpdateStoreItemInput, CreatePurchaseInput } from 
 export const storeRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/store/items',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
+      const { gameId } = request.gameContext
       const { eventId } = request.query as { eventId?: string }
-      const rows = eventId
-        ? await db.select().from(storeItems).where(eq(storeItems.eventId, eventId))
-        : await db.select().from(storeItems)
+      const baseConditions: SQL[] = [eq(events.gameId, gameId)]
+      if (eventId) baseConditions.push(eq(storeItems.eventId, eventId))
+      const rows = await db
+        .select({
+          id: storeItems.id,
+          eventId: storeItems.eventId,
+          name: storeItems.name,
+          description: storeItems.description,
+          price: storeItems.price,
+          quantityAvailable: storeItems.quantityAvailable,
+          isAvailable: storeItems.isAvailable,
+          createdAt: storeItems.createdAt,
+        })
+        .from(storeItems)
+        .innerJoin(events, eq(storeItems.eventId, events.id))
+        .where(and(...baseConditions))
       return reply.send(rows)
     },
   )
 
   fastify.post(
     '/store/items',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (request.user.role !== 'owner') {
+      const { gameId, role } = request.gameContext
+      if (role !== 'owner') {
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -30,6 +45,9 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
       if (!result.success) {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       }
+
+      const [event] = await db.select().from(events).where(and(eq(events.id, result.data.eventId), eq(events.gameId, gameId))).limit(1)
+      if (!event) return reply.status(404).send({ error: 'Event not found' })
 
       const [item] = await db.insert(storeItems).values({
         eventId: result.data.eventId,
@@ -46,15 +64,19 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.patch(
     '/store/items/:id',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (request.user.role !== 'owner') {
+      const { gameId, role } = request.gameContext
+      if (role !== 'owner') {
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
       const { id } = request.params as { id: string }
       const [existing] = await db.select().from(storeItems).where(eq(storeItems.id, id)).limit(1)
       if (!existing) return reply.status(404).send({ error: 'Store item not found' })
+
+      const [event] = await db.select().from(events).where(and(eq(events.id, existing.eventId), eq(events.gameId, gameId))).limit(1)
+      if (!event) return reply.status(404).send({ error: 'Store item not found' })
 
       const result = UpdateStoreItemInput.safeParse(request.body)
       if (!result.success) {
@@ -65,16 +87,17 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         Object.entries(result.data).filter(([, v]) => v !== undefined),
       ) as Parameters<ReturnType<typeof db.update<typeof storeItems>>['set']>[0]
 
-      const [updated] = await db.update(storeItems).set(patch).where(eq(storeItems.id, id)).returning()
+      const [updated] = await db.update(storeItems).set(patch).where(and(eq(storeItems.id, id), eq(storeItems.eventId, existing.eventId))).returning()
       return reply.send(updated)
     },
   )
 
   fastify.delete(
     '/store/items/:id',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (request.user.role !== 'owner') {
+      const { gameId, role } = request.gameContext
+      if (role !== 'owner') {
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -82,21 +105,25 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
       const [existing] = await db.select().from(storeItems).where(eq(storeItems.id, id)).limit(1)
       if (!existing) return reply.status(404).send({ error: 'Store item not found' })
 
+      const [event] = await db.select().from(events).where(and(eq(events.id, existing.eventId), eq(events.gameId, gameId))).limit(1)
+      if (!event) return reply.status(404).send({ error: 'Store item not found' })
+
       const [hasPurchase] = await db.select().from(purchases).where(eq(purchases.storeItemId, id)).limit(1)
       if (hasPurchase) {
         return reply.status(409).send({ error: 'Cannot delete item with existing purchases' })
       }
 
-      await db.delete(storeItems).where(eq(storeItems.id, id))
+      await db.delete(storeItems).where(and(eq(storeItems.id, id), eq(storeItems.eventId, existing.eventId)))
       return reply.status(204).send()
     },
   )
 
   fastify.get(
     '/store/purchases',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (request.user.role !== 'owner') {
+      const { gameId, role } = request.gameContext
+      if (role !== 'owner') {
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -106,7 +133,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         characterId?: string
       }
 
-      const conditions: SQL[] = []
+      const conditions: SQL[] = [eq(events.gameId, gameId)]
       if (eventId) conditions.push(eq(purchases.eventId, eventId))
       if (userId) conditions.push(eq(purchases.userId, userId))
       if (characterId) conditions.push(eq(purchases.characterId, characterId))
@@ -130,9 +157,9 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         .from(purchases)
         .leftJoin(users, eq(purchases.userId, users.id))
         .leftJoin(characters, eq(purchases.characterId, characters.id))
-        .leftJoin(events, eq(purchases.eventId, events.id))
+        .innerJoin(events, eq(purchases.eventId, events.id))
         .leftJoin(storeItems, eq(purchases.storeItemId, storeItems.id))
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .where(and(...conditions))
 
       return reply.send(rows)
     },
@@ -140,9 +167,10 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post(
     '/store/purchases',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (request.user.role !== 'owner') {
+      const { gameId, role } = request.gameContext
+      if (role !== 'owner') {
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -157,7 +185,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
       if (!item) return reply.status(404).send({ error: 'Store item not found' })
       if (!item.isAvailable) return reply.status(409).send({ error: 'Store item is not available' })
 
-      const [character] = await db.select().from(characters).where(eq(characters.id, characterId)).limit(1)
+      const [character] = await db.select().from(characters).where(and(eq(characters.id, characterId), eq(characters.gameId, gameId))).limit(1)
       if (!character) return reply.status(404).send({ error: 'Character not found' })
 
       const [registration] = await db
@@ -179,7 +207,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         })
       }
 
-      let purchase: typeof purchases.$inferSelect
+      let purchase: typeof purchases.$inferSelect | undefined
       try {
         ;[purchase] = await db.transaction(async (tx) => {
           if (item.quantityAvailable !== null) {
@@ -193,7 +221,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
             }
           }
 
-          const [config] = await tx.select({ currencyName: siteConfig.currencyName }).from(siteConfig).limit(1)
+          const [config] = await tx.select({ currencyName: siteConfig.currencyName }).from(siteConfig).where(eq(siteConfig.gameId, gameId)).limit(1)
           const currencyName = config?.currencyName ?? 'monies'
 
           return tx.insert(purchases).values({

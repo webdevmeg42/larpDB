@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/utils'
@@ -14,6 +14,8 @@ import type { SchemaTemplate, CharacterSchema } from '@larpdb/shared'
 export default function NewSchemaPage() {
   const { user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const schemaType = (searchParams.get('type') === 'class' ? 'class' : 'race') as 'race' | 'class'
   const [templates, setTemplates] = useState<SchemaTemplate[]>([])
   const [selected, setSelected] = useState<SchemaTemplate | null>(null)
   const [name, setName] = useState('')
@@ -37,6 +39,7 @@ export default function NewSchemaPage() {
         name: name.trim(),
         fields: selected ? selected.fields : [],
         templateSource: selected ? selected.id : null,
+        type: schemaType,
       })
       router.push(`/admin/schemas/${schema.id}`)
     } catch (err: unknown) {
@@ -48,8 +51,10 @@ export default function NewSchemaPage() {
 
   return (
     <div className="p-6 max-w-3xl">
-      <h1 className="text-2xl font-semibold mb-2">New Character Schema</h1>
-      <p className="text-muted-foreground mb-6">Start from a genre template or blank.</p>
+      <h1 className="text-2xl font-semibold mb-2">
+        New {schemaType === 'race' ? 'Race Build' : 'Class Build'}
+      </h1>
+      <p className="text-muted-foreground mb-6">Start from a genre template or build from scratch.</p>
 
       <div className="space-y-6">
         <div className="space-y-1">

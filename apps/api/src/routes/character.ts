@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { characters, characterSchemas, xpTransactions } from '../db/schema.js'
 import { CreateCharacterInput, UpdateCharacterInput, AwardXPInput, SpendXPInput } from '@larpdb/shared'
@@ -8,8 +8,10 @@ import { validateCharacterData } from '../lib/validateCharacterData.js'
 export const characterRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post(
     '/characters',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
+      const { gameId, userId } = request.gameContext
+
       const result = CreateCharacterInput.safeParse(request.body)
       if (!result.success) {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
@@ -18,7 +20,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       const [activeSchema] = await db
         .select()
         .from(characterSchemas)
-        .where(eq(characterSchemas.isActive, true))
+        .where(and(eq(characterSchemas.isActive, true), eq(characterSchemas.gameId, gameId)))
         .limit(1)
 
       if (!activeSchema) {
@@ -31,7 +33,8 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       const [character] = await db.insert(characters).values({
-        userId: request.user.sub,
+        gameId,
+        userId,
         schemaId: activeSchema.id,
         name: result.data.name,
         portraitUrl: result.data.portraitUrl ?? null,
@@ -44,26 +47,26 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get(
     '/characters',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { role, sub } = request.user
+      const { gameId, role, userId } = request.gameContext
       const rows = role === 'player'
-        ? await db.select().from(characters).where(eq(characters.userId, sub))
-        : await db.select().from(characters)
+        ? await db.select().from(characters).where(and(eq(characters.gameId, gameId), eq(characters.userId, userId)))
+        : await db.select().from(characters).where(eq(characters.gameId, gameId))
       return reply.send(rows)
     },
   )
 
   fastify.get(
     '/characters/:id',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
+      const { gameId, role, userId } = request.gameContext
       const { id } = request.params as { id: string }
-      const [character] = await db.select().from(characters).where(eq(characters.id, id)).limit(1)
+      const [character] = await db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
       if (!character) return reply.status(404).send({ error: 'Character not found' })
 
-      const { role, sub } = request.user
-      if (role === 'player' && character.userId !== sub) {
+      if (role === 'player' && character.userId !== userId) {
         return reply.status(403).send({ error: 'Forbidden' })
       }
 
@@ -73,14 +76,14 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.patch(
     '/characters/:id',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
+      const { gameId, role, userId } = request.gameContext
       const { id } = request.params as { id: string }
-      const [character] = await db.select().from(characters).where(eq(characters.id, id)).limit(1)
+      const [character] = await db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
       if (!character) return reply.status(404).send({ error: 'Character not found' })
 
-      const { role, sub } = request.user
-      if (role === 'player' && character.userId !== sub) {
+      if (role === 'player' && character.userId !== userId) {
         return reply.status(403).send({ error: 'Forbidden' })
       }
 
@@ -117,7 +120,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       const [updated] = await db
         .update(characters)
         .set(setData)
-        .where(eq(characters.id, id))
+        .where(and(eq(characters.id, id), eq(characters.gameId, gameId)))
         .returning()
 
       return reply.send(updated)
@@ -126,15 +129,15 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post(
     '/characters/:id/xp/award',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { role, sub } = request.user
+      const { gameId, role, userId } = request.gameContext
       if (role !== 'owner' && role !== 'gm') {
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
       const { id } = request.params as { id: string }
-      const [character] = await db.select().from(characters).where(eq(characters.id, id)).limit(1)
+      const [character] = await db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
       if (!character) return reply.status(404).send({ error: 'Character not found' })
 
       const result = AwardXPInput.safeParse(request.body)
@@ -142,15 +145,19 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
-      const [transaction] = await db.insert(xpTransactions).values({
-        characterId: id,
-        awardedBy: sub,
-        amount: result.data.amount,
-        reason: result.data.reason,
-        type: 'award',
-      }).returning()
-
-      await db.update(characters).set({ totalXp: character.totalXp + result.data.amount }).where(eq(characters.id, id))
+      const [transaction] = await db.transaction(async (tx) => {
+        const [t] = await tx.insert(xpTransactions).values({
+          characterId: id,
+          awardedBy: userId,
+          amount: result.data.amount,
+          reason: result.data.reason,
+          type: 'award',
+        }).returning()
+        await tx.update(characters)
+          .set({ totalXp: sql`${characters.totalXp} + ${result.data.amount}` })
+          .where(and(eq(characters.id, id), eq(characters.gameId, gameId)))
+        return [t]
+      })
 
       return reply.status(201).send(transaction)
     },
@@ -158,15 +165,15 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post(
     '/characters/:id/xp/spend',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { role, sub } = request.user
+      const { gameId, role, userId } = request.gameContext
 
       const { id } = request.params as { id: string }
-      const [character] = await db.select().from(characters).where(eq(characters.id, id)).limit(1)
+      const [character] = await db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
       if (!character) return reply.status(404).send({ error: 'Character not found' })
 
-      if (role === 'player' && character.userId !== sub) {
+      if (role === 'player' && character.userId !== userId) {
         return reply.status(403).send({ error: 'Forbidden' })
       }
 
@@ -179,15 +186,19 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Insufficient XP balance' })
       }
 
-      const [transaction] = await db.insert(xpTransactions).values({
-        characterId: id,
-        awardedBy: null,
-        amount: result.data.amount,
-        reason: result.data.reason,
-        type: 'spend',
-      }).returning()
-
-      await db.update(characters).set({ totalXp: character.totalXp - result.data.amount }).where(eq(characters.id, id))
+      const [transaction] = await db.transaction(async (tx) => {
+        const [t] = await tx.insert(xpTransactions).values({
+          characterId: id,
+          awardedBy: null,
+          amount: result.data.amount,
+          reason: result.data.reason,
+          type: 'spend',
+        }).returning()
+        await tx.update(characters)
+          .set({ totalXp: sql`${characters.totalXp} - ${result.data.amount}` })
+          .where(and(eq(characters.id, id), eq(characters.gameId, gameId)))
+        return [t]
+      })
 
       return reply.status(201).send(transaction)
     },
@@ -195,15 +206,15 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get(
     '/characters/:id/xp',
-    { preHandler: [fastify.authenticate] },
+    { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { role, sub } = request.user
+      const { gameId, role, userId } = request.gameContext
       const { id } = request.params as { id: string }
 
-      const [character] = await db.select().from(characters).where(eq(characters.id, id)).limit(1)
+      const [character] = await db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
       if (!character) return reply.status(404).send({ error: 'Character not found' })
 
-      if (role === 'player' && character.userId !== sub) {
+      if (role === 'player' && character.userId !== userId) {
         return reply.status(403).send({ error: 'Forbidden' })
       }
 

@@ -41,7 +41,7 @@ export default function CodexTab({ config, reload }: Props) {
 
   return (
     <div className="space-y-6">
-      <EventBasicsSection codex={codex} onSave={saveSection} />
+      <LarpDetailsSection codex={codex} onSave={saveSection} />
       <GameSettingSection codex={codex} onSave={saveSection} />
       <CharactersSection codex={codex} onSave={saveSection} />
       <LogisticsSection codex={codex} onSave={saveSection} />
@@ -85,7 +85,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function EventBasicsSection({ codex, onSave }: SectionProps) {
+function LarpDetailsSection({ codex, onSave }: SectionProps) {
   const [form, setForm] = useState({
     eventName: '',
     eventTagline: '',
@@ -113,7 +113,7 @@ function EventBasicsSection({ codex, onSave }: SectionProps) {
 
   return (
     <Card>
-      <CardHeader><CardTitle>Event Basics</CardTitle></CardHeader>
+      <CardHeader><CardTitle>LARP Details</CardTitle></CardHeader>
       <CardContent>
         <form
           onSubmit={e => void handleSubmit(e, pick(form))}

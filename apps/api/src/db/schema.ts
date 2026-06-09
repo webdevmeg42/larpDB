@@ -7,6 +7,7 @@ import {
   integer,
   jsonb,
   unique,
+  index,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import type { SchemaField, GameCodex } from '@larpdb/shared'
@@ -39,6 +40,7 @@ export const gameMembers = pgTable('game_members', {
   joinedAt: timestamp('joined_at').notNull().defaultNow(),
 }, (t) => ({
   uniqGameUser: unique().on(t.gameId, t.userId),
+  userIdIdx: index('game_members_user_id_idx').on(t.userId),
 }))
 
 export const siteConfig = pgTable('site_config', {
@@ -82,8 +84,12 @@ export const characterSchemas = pgTable('character_schemas', {
   fields: jsonb('fields').notNull().$type<SchemaField[]>(),
   templateSource: uuid('template_source').references(() => schemaTemplates.id),
   isActive: boolean('is_active').notNull().default(false),
+  type: text('type', { enum: ['race', 'class'] }).notNull().default('race'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+}, (t) => ({
+  gameIdIdx: index('character_schemas_game_id_idx').on(t.gameId),
+  gameIdActiveTypeIdx: index('character_schemas_game_id_active_type_idx').on(t.gameId, t.isActive, t.type),
+}))
 
 export const characters = pgTable('characters', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -97,7 +103,10 @@ export const characters = pgTable('characters', {
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-})
+}, (t) => ({
+  gameIdIdx: index('characters_game_id_idx').on(t.gameId),
+  gameIdUserIdIdx: index('characters_game_id_user_id_idx').on(t.gameId, t.userId),
+}))
 
 export const xpTransactions = pgTable('xp_transactions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -107,7 +116,9 @@ export const xpTransactions = pgTable('xp_transactions', {
   reason: text('reason').notNull(),
   type: text('type', { enum: ['award', 'spend'] }).notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+}, (t) => ({
+  characterIdIdx: index('xp_transactions_character_id_idx').on(t.characterId),
+}))
 
 export const events = pgTable('events', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -120,7 +131,10 @@ export const events = pgTable('events', {
   maxPlayers: integer('max_players'),
   status: text('status', { enum: ['draft', 'published', 'archived'] }).notNull().default('draft'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+}, (t) => ({
+  gameIdIdx: index('events_game_id_idx').on(t.gameId),
+  gameIdStatusIdx: index('events_game_id_status_idx').on(t.gameId, t.status),
+}))
 
 export const eventRegistrations = pgTable('event_registrations', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -129,7 +143,10 @@ export const eventRegistrations = pgTable('event_registrations', {
   characterId: uuid('character_id').references(() => characters.id),
   status: text('status', { enum: ['pending', 'confirmed', 'waitlist', 'cancelled'] }).notNull().default('pending'),
   registeredAt: timestamp('registered_at').notNull().defaultNow(),
-})
+}, (t) => ({
+  eventIdIdx: index('event_registrations_event_id_idx').on(t.eventId),
+  eventIdUserIdIdx: index('event_registrations_event_id_user_id_idx').on(t.eventId, t.userId),
+}))
 
 export const npcs = pgTable('npcs', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -140,7 +157,9 @@ export const npcs = pgTable('npcs', {
   notes: text('notes'),
   createdBy: uuid('created_by').notNull().references(() => users.id),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+}, (t) => ({
+  gameIdIdx: index('npcs_game_id_idx').on(t.gameId),
+}))
 
 export const plots = pgTable('plots', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -151,7 +170,9 @@ export const plots = pgTable('plots', {
   linkedEventIds: uuid('linked_event_ids').array().notNull().default(sql`'{}'`),
   createdBy: uuid('created_by').notNull().references(() => users.id),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+}, (t) => ({
+  gameIdIdx: index('plots_game_id_idx').on(t.gameId),
+}))
 
 export const storeItems = pgTable('store_items', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -162,7 +183,9 @@ export const storeItems = pgTable('store_items', {
   quantityAvailable: integer('quantity_available'),
   isAvailable: boolean('is_available').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+}, (t) => ({
+  eventIdIdx: index('store_items_event_id_idx').on(t.eventId),
+}))
 
 export const purchases = pgTable('purchases', {
   id: uuid('id').primaryKey().defaultRandom(),

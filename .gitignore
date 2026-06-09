@@ -5,6 +5,8 @@ dist/
 *.env
 .env
 pnpm-lock.yaml
-.claude* 
+.claude*
 .gitignore
 CLAUDE.md
+.next/
+tsconfig.tsbuildinfo

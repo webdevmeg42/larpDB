@@ -15,6 +15,7 @@ import type { SiteConfig } from '@larpdb/shared'
 import dynamic from 'next/dynamic'
 import CodexTab from './_components/CodexTab'
 import StoreTab from './_components/StoreTab'
+import BuildsTab from './_components/BuildsTab'
 
 const RulebookTab = dynamic(() => import('./_components/RulebookTab'), { ssr: false })
 
@@ -91,7 +92,7 @@ export default function SiteConfigPage() {
 
   return (
     <div className="p-6 max-w-3xl">
-      <h1 className="text-2xl font-semibold mb-6">Site Settings</h1>
+      <h1 className="text-2xl font-semibold mb-6">LARP Builder</h1>
 
       <Tabs defaultValue="branding">
         <TabsList className="mb-6">
@@ -99,6 +100,8 @@ export default function SiteConfigPage() {
           <TabsTrigger value="codex">The Codex</TabsTrigger>
           <TabsTrigger value="rulebook">Rulebook</TabsTrigger>
           <TabsTrigger value="store">The Store</TabsTrigger>
+          <TabsTrigger value="race-builds">Race Builds</TabsTrigger>
+          <TabsTrigger value="class-builds">Class Builds</TabsTrigger>
         </TabsList>
 
         <TabsContent value="branding">
@@ -218,6 +221,14 @@ export default function SiteConfigPage() {
 
         <TabsContent value="store">
           <StoreTab config={config} reload={reload} />
+        </TabsContent>
+
+        <TabsContent value="race-builds">
+          <BuildsTab type="race" />
+        </TabsContent>
+
+        <TabsContent value="class-builds">
+          <BuildsTab type="class" />
         </TabsContent>
       </Tabs>
     </div>

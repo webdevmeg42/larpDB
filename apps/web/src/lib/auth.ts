@@ -8,6 +8,7 @@ export interface JwtPayload {
 }
 
 const TOKEN_KEY = 'larpdb_token'
+const GAME_KEY = 'larpdb_game_id'
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null
@@ -20,6 +21,15 @@ export function setToken(token: string): void {
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY)
+}
+
+export function getGameId(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(GAME_KEY)
+}
+
+export function setGameId(id: string): void {
+  localStorage.setItem(GAME_KEY, id)
 }
 
 export function decodeToken(token: string): JwtPayload | null {
