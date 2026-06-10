@@ -1,5 +1,8 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import multipart from '@fastify/multipart'
+import fastifyStatic from '@fastify/static'
+import fs from 'fs'
 import { env } from './env.js'
 import jwtPlugin from './plugins/jwt.js'
 import gameContextPlugin from './plugins/gameContext.js'
@@ -14,6 +17,7 @@ import { npcRoutes } from './routes/npc.js'
 import { plotRoutes } from './routes/plot.js'
 import { userRoutes } from './routes/user.js'
 import { storeRoutes } from './routes/store.js'
+import { uploadRoutes, UPLOADS_DIR } from './routes/upload.js'
 import { seedBuiltinTemplates } from './db/seeds/templates.js'
 
 export function buildApp() {
@@ -22,6 +26,12 @@ export function buildApp() {
   })
 
   app.register(cors, { origin: true })
+  app.register(multipart, { limits: { fileSize: 100 * 1024 * 1024 } })
+  app.register(fastifyStatic, {
+    root: UPLOADS_DIR,
+    prefix: '/uploads/',
+    decorateReply: false,
+  })
   app.register(jwtPlugin)
   app.register(gameContextPlugin)
   app.register(authRoutes)
@@ -35,8 +45,10 @@ export function buildApp() {
   app.register(plotRoutes)
   app.register(userRoutes)
   app.register(storeRoutes)
+  app.register(uploadRoutes)
 
   app.addHook('onReady', async () => {
+    await fs.promises.mkdir(UPLOADS_DIR, { recursive: true })
     if (env.NODE_ENV !== 'test') {
       await seedBuiltinTemplates()
     }
