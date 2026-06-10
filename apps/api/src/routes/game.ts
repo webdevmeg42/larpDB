@@ -3,6 +3,7 @@ import { eq, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { game, gameMembers, siteConfig } from '../db/schema.js'
 import { CreateGameInput, UpdateSiteConfigInput } from '@larpdb/shared'
+import { buildPatch } from '../lib/roles.js'
 
 function generateSlug(name: string): string {
   return name
@@ -25,7 +26,6 @@ async function uniqueSlug(base: string): Promise<string> {
 }
 
 export const gameRoutes: FastifyPluginAsync = async (fastify) => {
-  // Public: list all public games
   fastify.get('/games', async (_request, reply) => {
     const rows = await db
       .select({
@@ -44,7 +44,6 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.send(rows)
   })
 
-  // Public: get single game by slug
   fastify.get('/games/:slug', async (request, reply) => {
     const { slug } = request.params as { slug: string }
     const [row] = await db.select().from(game).where(eq(game.slug, slug)).limit(1)
@@ -52,7 +51,6 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.send(row)
   })
 
-  // Authenticated: create a new game (caller becomes owner)
   fastify.post(
     '/games',
     { preHandler: [fastify.authenticate] },
@@ -90,7 +88,6 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
     },
   )
 
-  // Game-context: get this game's info
   fastify.get(
     '/game',
     { preHandler: [fastify.requireGameContext] },
@@ -101,17 +98,14 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
     },
   )
 
-  // Public: get config by X-Game-Id header (no auth required)
   fastify.get('/config', async (request, reply) => {
     const gameId = request.headers['x-game-id'] as string | undefined
     if (!gameId) return reply.status(400).send({ error: 'X-Game-Id header required' })
-
     const [configRow] = await db.select().from(siteConfig).where(eq(siteConfig.gameId, gameId)).limit(1)
     if (!configRow) return reply.status(404).send({ error: 'Site config not found' })
     return reply.send(configRow)
   })
 
-  // Game-context: update site config (owner only)
   fastify.patch(
     '/config',
     { preHandler: [fastify.requireGameContext] },
@@ -132,13 +126,9 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         .limit(1)
       if (!existing) return reply.status(404).send({ error: 'Site config not found' })
 
-      const patch = Object.fromEntries(
-        Object.entries({ ...result.data, updatedAt: new Date() }).filter(([, v]) => v !== undefined),
-      ) as Parameters<ReturnType<typeof db.update<typeof siteConfig>>['set']>[0]
-
       const [updated] = await db
         .update(siteConfig)
-        .set(patch)
+        .set({ ...buildPatch(result.data), updatedAt: new Date() })
         .where(eq(siteConfig.id, existing.id))
         .returning()
 

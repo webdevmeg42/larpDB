@@ -3,6 +3,9 @@ import { eq, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { game, gameMembers } from '../db/schema.js'
 import { UpdateMemberInput } from '@larpdb/shared'
+import { gmOrOwner, buildPatch } from '../lib/roles.js'
+
+const validStatuses = ['active', 'pending', 'banned'] as const
 
 export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post(
@@ -39,26 +42,13 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { gameId } = request.params as { gameId: string }
-      if (request.gameContext.gameId !== gameId) {
-        return reply.status(403).send({ error: 'Forbidden' })
-      }
+      if (request.gameContext.gameId !== gameId) return reply.status(403).send({ error: 'Forbidden' })
+      if (!gmOrOwner(request.gameContext.role)) return reply.status(403).send({ error: 'GM or owner role required' })
 
-      if (request.gameContext.role === 'player') {
-        return reply.status(403).send({ error: 'GM or owner role required' })
-      }
-      const statusFilter = (request.query as { status?: string }).status
-
-      const rows = statusFilter
-        ? await db
-            .select()
-            .from(gameMembers)
-            .where(
-              and(
-                eq(gameMembers.gameId, gameId),
-                eq(gameMembers.status, statusFilter as 'active' | 'pending' | 'banned'),
-              ),
-            )
-        : await db.select().from(gameMembers).where(eq(gameMembers.gameId, gameId))
+      const { status } = request.query as { status?: string }
+      const statusFilter = validStatuses.includes(status as never) ? (status as typeof validStatuses[number]) : undefined
+      const conditions = [eq(gameMembers.gameId, gameId), ...(statusFilter ? [eq(gameMembers.status, statusFilter)] : [])]
+      const rows = await db.select().from(gameMembers).where(and(...conditions))
 
       return reply.send(rows)
     },
@@ -69,13 +59,8 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { gameId, userId } = request.params as { gameId: string; userId: string }
-      if (request.gameContext.gameId !== gameId) {
-        return reply.status(403).send({ error: 'Forbidden' })
-      }
-
-      if (request.gameContext.role === 'player') {
-        return reply.status(403).send({ error: 'GM or owner role required' })
-      }
+      if (request.gameContext.gameId !== gameId) return reply.status(403).send({ error: 'Forbidden' })
+      if (!gmOrOwner(request.gameContext.role)) return reply.status(403).send({ error: 'GM or owner role required' })
 
       const result = UpdateMemberInput.safeParse(request.body)
       if (!result.success) {
@@ -91,10 +76,7 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [updated] = await db
         .update(gameMembers)
-        .set({
-          ...(result.data.role !== undefined ? { role: result.data.role } : {}),
-          ...(result.data.status !== undefined ? { status: result.data.status } : {}),
-        })
+        .set(buildPatch(result.data) as Parameters<ReturnType<typeof db.update<typeof gameMembers>>['set']>[0])
         .where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId)))
         .returning()
 

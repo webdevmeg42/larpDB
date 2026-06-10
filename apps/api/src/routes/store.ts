@@ -4,6 +4,7 @@ import type { SQL } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { storeItems, purchases, siteConfig, eventRegistrations, characters, users, events } from '../db/schema.js'
 import { CreateStoreItemInput, UpdateStoreItemInput, CreatePurchaseInput } from '@larpdb/shared'
+import { buildPatch } from '../lib/roles.js'
 
 export const storeRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
@@ -83,11 +84,10 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
-      const patch = Object.fromEntries(
-        Object.entries(result.data).filter(([, v]) => v !== undefined),
-      ) as Parameters<ReturnType<typeof db.update<typeof storeItems>>['set']>[0]
-
-      const [updated] = await db.update(storeItems).set(patch).where(and(eq(storeItems.id, id), eq(storeItems.eventId, existing.eventId))).returning()
+      const [updated] = await db.update(storeItems)
+        .set(buildPatch(result.data) as Parameters<ReturnType<typeof db.update<typeof storeItems>>['set']>[0])
+        .where(and(eq(storeItems.id, id), eq(storeItems.eventId, existing.eventId)))
+        .returning()
       return reply.send(updated)
     },
   )
