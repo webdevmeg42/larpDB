@@ -32,6 +32,10 @@ export function setGameId(id: string): void {
   localStorage.setItem(GAME_KEY, id)
 }
 
+export function clearGameId(): void {
+  localStorage.removeItem(GAME_KEY)
+}
+
 export function decodeToken(token: string): JwtPayload | null {
   try {
     const payload = token.split('.')[1]

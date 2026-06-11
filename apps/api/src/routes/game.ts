@@ -237,6 +237,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
           await tx.delete(eventRegistrations).where(inArray(eventRegistrations.eventId, eventIds))
         }
         if (charIds.length > 0) {
+          await tx.delete(purchases).where(inArray(purchases.characterId, charIds))
           await tx.delete(xpTransactions).where(inArray(xpTransactions.characterId, charIds))
         }
 

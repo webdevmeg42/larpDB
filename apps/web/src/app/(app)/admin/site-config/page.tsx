@@ -1,266 +1,170 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
-import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { api } from '@/lib/api'
-import { getErrorMessage } from '@/lib/utils'
+import { getErrorMessage, cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import type { SiteConfig } from '@larpdb/shared'
-import { useImageUpload } from '@/hooks/useImageUpload'
-import dynamic from 'next/dynamic'
-import CodexTab from './_components/CodexTab'
-import StoreTab from './_components/StoreTab'
-import BuildsTab from './_components/BuildsTab'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import type { MyGame } from '@larpdb/shared'
 
-const RulebookTab = dynamic(() => import('./_components/RulebookTab'), { ssr: false })
-
-type FormState = Partial<{
-  siteTitle: string
-  tagline: string | null
-  logoUrl: string | null
-  bannerUrl: string | null
-  colorPrimary: string
-  colorSecondary: string
-  colorBackground: string
-  colorText: string
-  colorAccent: string
-  fontHeading: string
-  fontBody: string
-  welcomeMessage: string | null
-  footerText: string | null
-  customCss: string | null
-}>
-
-export default function SiteConfigPage() {
+export default function LarpBuilderPage() {
   const { user } = useAuth()
-  const { config, reload } = useSiteConfig()
-
-  const [form, setForm] = useState<FormState>({})
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const router = useRouter()
+  const [games, setGames] = useState<MyGame[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  const logoUpload = useImageUpload((url) => set('logoUrl', url))
-  const bannerUpload = useImageUpload((url) => set('bannerUrl', url))
+  const [deleteTarget, setDeleteTarget] = useState<MyGame | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [rowError, setRowError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!config) return
-    setError(null)
-    setForm({
-      siteTitle: config.siteTitle,
-      tagline: config.tagline ?? null,
-      logoUrl: config.logoUrl ?? null,
-      bannerUrl: config.bannerUrl ?? null,
-      colorPrimary: config.colorPrimary,
-      colorSecondary: config.colorSecondary,
-      colorBackground: config.colorBackground,
-      colorText: config.colorText,
-      colorAccent: config.colorAccent,
-      fontHeading: config.fontHeading,
-      fontBody: config.fontBody,
-      welcomeMessage: config.welcomeMessage ?? null,
-      footerText: config.footerText ?? null,
-      customCss: config.customCss ?? null,
-    })
-  }, [config])
+    async function load() {
+      try {
+        const data = await api.get<MyGame[]>('/my-games')
+        setGames(data)
+      } catch (err) {
+        setError(getErrorMessage(err, 'Failed to load games'))
+      } finally {
+        setLoading(false)
+      }
+    }
+    void load()
+  }, [])
 
   if (user?.role !== 'owner') {
     return <div className="p-6 text-muted-foreground">Owner access required.</div>
   }
 
-  function set<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm(f => ({ ...f, [key]: value }))
+  async function handleStatusToggle(target: MyGame) {
+    const newStatus = target.status === 'active' ? 'disabled' : 'active'
+    setRowError(null)
+    try {
+      await api.patch<MyGame>(`/games/${target.id}/status`, { status: newStatus })
+      setGames(gs => gs.map(g => g.id === target.id ? { ...g, status: newStatus } : g))
+    } catch (err) {
+      setRowError(getErrorMessage(err, 'Failed to update status'))
+    }
   }
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-    setSaving(true)
-    setError(null)
+  async function handleDelete() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    setRowError(null)
     try {
-      await api.patch<SiteConfig>('/config', form)
-      reload()
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Save failed'))
+      await api.delete<void>(`/games/${deleteTarget.id}`)
+      setGames(gs => gs.filter(g => g.id !== deleteTarget.id))
+      setDeleteTarget(null)
+    } catch (err) {
+      setDeleteTarget(null)
+      setRowError(getErrorMessage(err, 'Failed to delete game'))
     } finally {
-      setSaving(false)
+      setDeleting(false)
     }
   }
 
   return (
     <div className="p-6 max-w-3xl">
-      <h1 className="text-2xl font-semibold mb-6">LARP Builder</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold">LARP Builder</h1>
+        <Button onClick={() => router.push('/admin/site-config/new')}>+ Build New LARP</Button>
+      </div>
 
-      <Tabs defaultValue="branding">
-        <TabsList className="mb-6">
-          <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="codex">The Codex</TabsTrigger>
-          <TabsTrigger value="rulebook">Rulebook</TabsTrigger>
-          <TabsTrigger value="store">The Store</TabsTrigger>
-          <TabsTrigger value="race-builds">Race Builds</TabsTrigger>
-          <TabsTrigger value="class-builds">Class Builds</TabsTrigger>
-        </TabsList>
+      {error && <p className="text-sm text-destructive mb-4">{error}</p>}
+      {rowError && <p className="text-sm text-destructive mb-4">{rowError}</p>}
 
-        <TabsContent value="branding">
-          <form onSubmit={handleSave} className="space-y-6">
-            <Card>
-              <CardHeader><CardTitle>Identity</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1">
-                  <Label>Site title</Label>
-                  <Input value={form.siteTitle ?? ''} onChange={e => set('siteTitle', e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Tagline</Label>
-                  <Input value={form.tagline ?? ''} onChange={e => set('tagline', e.target.value || null)} placeholder="Optional" />
-                </div>
-                <div className="space-y-1">
-                  <Label>Logo URL</Label>
-                  <div className="flex gap-2">
-                    <Input value={form.logoUrl ?? ''} onChange={e => set('logoUrl', e.target.value || null)} placeholder="https://…" />
-                    <Button type="button" variant="outline" onClick={logoUpload.trigger} disabled={logoUpload.uploading}>
-                      {logoUpload.uploading ? 'Uploading…' : 'Upload'}
-                    </Button>
-                    <input
-                      ref={logoUpload.inputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) logoUpload.handleFile(f); e.target.value = '' }}
-                    />
-                  </div>
-                  {logoUpload.error && <p className="text-sm text-destructive">{logoUpload.error}</p>}
-                </div>
-                <div className="space-y-1">
-                  <Label>Banner URL</Label>
-                  <div className="flex gap-2">
-                    <Input value={form.bannerUrl ?? ''} onChange={e => set('bannerUrl', e.target.value || null)} placeholder="https://…" />
-                    <Button type="button" variant="outline" onClick={bannerUpload.trigger} disabled={bannerUpload.uploading}>
-                      {bannerUpload.uploading ? 'Uploading…' : 'Upload'}
-                    </Button>
-                    <input
-                      ref={bannerUpload.inputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) bannerUpload.handleFile(f); e.target.value = '' }}
-                    />
-                  </div>
-                  {bannerUpload.error && <p className="text-sm text-destructive">{bannerUpload.error}</p>}
-                </div>
-              </CardContent>
-            </Card>
+      {loading ? (
+        <p className="text-muted-foreground">Loading…</p>
+      ) : games.length === 0 ? (
+        <p className="text-muted-foreground">No games yet. Build your first LARP!</p>
+      ) : (
+        <div className="rounded-lg border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-xs uppercase tracking-wide text-muted-foreground">
+                <th className="px-4 py-3 text-left font-medium">Game</th>
+                <th className="px-4 py-3 text-left font-medium">Status</th>
+                <th className="px-4 py-3 text-left font-medium">Role</th>
+                <th className="px-4 py-3 text-left font-medium">Members</th>
+                <th className="px-4 py-3 text-right font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {games.map(g => (
+                <tr
+                  key={g.id}
+                  className={cn('border-b last:border-0', g.status === 'disabled' && 'opacity-60')}
+                >
+                  <td className="px-4 py-3">
+                    <div className="font-medium">{g.name}</div>
+                    {g.description && (
+                      <div className="text-xs text-muted-foreground">{g.description}</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant={g.status === 'active' ? 'default' : 'secondary'}>
+                      {g.status}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant={g.role === 'owner' ? 'default' : 'outline'}>
+                      {g.role}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{g.memberCount}</td>
+                  <td className="px-4 py-3 text-right">
+                    {g.role === 'owner' ? (
+                      <div className="flex items-center justify-end gap-3">
+                        <Link
+                          href={`/admin/site-config/${g.id}`}
+                          className="text-primary hover:underline text-xs"
+                        >
+                          Edit
+                        </Link>
+                        <span className="text-muted-foreground">|</span>
+                        <button
+                          onClick={() => void handleStatusToggle(g)}
+                          className="text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          {g.status === 'active' ? 'Disable' : 'Enable'}
+                        </button>
+                        <span className="text-muted-foreground">|</span>
+                        <button
+                          onClick={() => setDeleteTarget(g)}
+                          className="text-xs text-destructive hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-            <Card>
-              <CardHeader><CardTitle>Colors</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-2 gap-4">
-                {(
-                  [
-                    ['colorPrimary', 'Primary'],
-                    ['colorSecondary', 'Secondary'],
-                    ['colorBackground', 'Background'],
-                    ['colorText', 'Text'],
-                    ['colorAccent', 'Accent'],
-                  ] as const
-                ).map(([key, label]) => (
-                  <div key={key} className="space-y-1">
-                    <Label>{label}</Label>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="color"
-                        value={form[key] ?? '#000000'}
-                        onChange={e => set(key, e.target.value)}
-                        className="h-10 w-14 cursor-pointer rounded border"
-                      />
-                      <Input
-                        value={form[key] ?? ''}
-                        onChange={e => set(key, e.target.value)}
-                        placeholder="#000000"
-                        className="font-mono"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle>Typography</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1">
-                  <Label>Heading font (Google Fonts name)</Label>
-                  <Input value={form.fontHeading ?? ''} onChange={e => set('fontHeading', e.target.value)} placeholder="Cinzel" />
-                </div>
-                <div className="space-y-1">
-                  <Label>Body font (Google Fonts name)</Label>
-                  <Input value={form.fontBody ?? ''} onChange={e => set('fontBody', e.target.value)} placeholder="Inter" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle>Content</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1">
-                  <Label>Welcome message</Label>
-                  <Textarea
-                    value={form.welcomeMessage ?? ''}
-                    onChange={e => set('welcomeMessage', e.target.value || null)}
-                    rows={4}
-                    placeholder="Displayed on the player dashboard"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>Footer text</Label>
-                  <Input value={form.footerText ?? ''} onChange={e => set('footerText', e.target.value || null)} />
-                </div>
-                <div className="space-y-1">
-                  <Label>Custom CSS</Label>
-                  <Textarea
-                    value={form.customCss ?? ''}
-                    onChange={e => set('customCss', e.target.value || null)}
-                    rows={6}
-                    className="font-mono text-xs"
-                    placeholder="/* custom styles */"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" disabled={saving || logoUpload.uploading || bannerUpload.uploading}>
-              {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
-            </Button>
-          </form>
-        </TabsContent>
-
-        <TabsContent value="codex">
-          <CodexTab config={config} reload={reload} />
-        </TabsContent>
-
-        <TabsContent value="rulebook">
-          <RulebookTab config={config} reload={reload} />
-        </TabsContent>
-
-        <TabsContent value="store">
-          <StoreTab config={config} reload={reload} />
-        </TabsContent>
-
-        <TabsContent value="race-builds">
-          <BuildsTab type="race" />
-        </TabsContent>
-
-        <TabsContent value="class-builds">
-          <BuildsTab type="class" />
-        </TabsContent>
-      </Tabs>
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
+        <DialogTitle>Delete {deleteTarget?.name}?</DialogTitle>
+        <DialogDescription>
+          This permanently deletes the LARP and all its data — members, characters, events, and
+          everything else. This cannot be undone.
+        </DialogDescription>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={() => void handleDelete()} disabled={deleting}>
+            {deleting ? 'Deleting…' : 'Delete'}
+          </Button>
+        </div>
+      </Dialog>
     </div>
   )
 }

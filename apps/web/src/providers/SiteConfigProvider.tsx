@@ -3,7 +3,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import type { SiteConfig } from '@larpdb/shared'
 import { api } from '@/lib/api'
-import { getGameId, setGameId } from '@/lib/auth'
+import { getGameId, setGameId, clearGameId } from '@/lib/auth'
+import type { ApiError } from '@larpdb/shared'
 
 interface SiteConfigContextValue {
   config: SiteConfig | null
@@ -32,7 +33,8 @@ export function SiteConfigProvider({ children }: { children: React.ReactNode }) 
         }
         const cfg = await api.get<SiteConfig>('/config')
         setConfig(cfg)
-      } catch {
+      } catch (err) {
+        if ((err as ApiError).status === 404) clearGameId()
         setConfig(null)
       } finally {
         setLoading(false)
