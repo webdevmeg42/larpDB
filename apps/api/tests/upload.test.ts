@@ -110,4 +110,34 @@ describe('POST /upload', () => {
     expect(url).toMatch(/^\/uploads\/.+\.png$/)
     await app.close()
   })
+
+  it('returns 403 for non-owner member', async () => {
+    const { app, token: ownerToken, gameId } = await createOwnerWithGame()
+
+    const regRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: `player-${Date.now()}@example.com`, password: 'password123', displayName: 'Player' },
+    })
+    const { token: playerToken, user } = regRes.json()
+
+    await app.inject({
+      method: 'POST', url: '/game-members',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { userId: user.id, role: 'player' },
+    })
+
+    const boundary = 'testboundary'
+    const body = buildMultipartBody(boundary, 'logo.png', 'image/png', Buffer.from('fakepngdata'))
+    const res = await app.inject({
+      method: 'POST', url: '/upload',
+      headers: {
+        authorization: `Bearer ${playerToken}`,
+        'x-game-id': gameId,
+        'content-type': `multipart/form-data; boundary=${boundary}`,
+      },
+      payload: body,
+    })
+    expect(res.statusCode).toBe(403)
+    await app.close()
+  })
 })

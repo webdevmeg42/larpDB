@@ -133,7 +133,7 @@ export default function SiteConfigPage() {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) logoUpload.handleFile(f) }}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) logoUpload.handleFile(f); e.target.value = '' }}
                     />
                   </div>
                   {logoUpload.error && <p className="text-sm text-destructive">{logoUpload.error}</p>}
@@ -150,7 +150,7 @@ export default function SiteConfigPage() {
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) bannerUpload.handleFile(f) }}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) bannerUpload.handleFile(f); e.target.value = '' }}
                     />
                   </div>
                   {bannerUpload.error && <p className="text-sm text-destructive">{bannerUpload.error}</p>}

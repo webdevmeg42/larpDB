@@ -50,7 +50,7 @@ export function useImageUpload(onSuccess: (url: string) => void) {
 
       const { url } = await res.json() as { url: string }
       if (!url) throw new Error('Upload failed: no URL returned')
-      onSuccess(url)
+      onSuccess(`${API_URL}${url}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed, please try again')
     } finally {

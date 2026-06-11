@@ -10,3 +10,4 @@ pnpm-lock.yaml
 CLAUDE.md
 .next/
 tsconfig.tsbuildinfo
+apps/api/uploads/
