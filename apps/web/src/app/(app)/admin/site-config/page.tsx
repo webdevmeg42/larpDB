@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { SiteConfig } from '@larpdb/shared'
+import { useImageUpload } from '@/hooks/useImageUpload'
 import dynamic from 'next/dynamic'
 import CodexTab from './_components/CodexTab'
 import StoreTab from './_components/StoreTab'
@@ -44,6 +45,9 @@ export default function SiteConfigPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const logoUpload = useImageUpload((url) => set('logoUrl', url))
+  const bannerUpload = useImageUpload((url) => set('bannerUrl', url))
 
   useEffect(() => {
     if (!config) return
@@ -119,11 +123,37 @@ export default function SiteConfigPage() {
                 </div>
                 <div className="space-y-1">
                   <Label>Logo URL</Label>
-                  <Input value={form.logoUrl ?? ''} onChange={e => set('logoUrl', e.target.value || null)} placeholder="https://…" />
+                  <div className="flex gap-2">
+                    <Input value={form.logoUrl ?? ''} onChange={e => set('logoUrl', e.target.value || null)} placeholder="https://…" />
+                    <Button type="button" variant="outline" onClick={logoUpload.trigger} disabled={logoUpload.uploading}>
+                      {logoUpload.uploading ? 'Uploading…' : 'Upload'}
+                    </Button>
+                    <input
+                      ref={logoUpload.inputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) logoUpload.handleFile(f) }}
+                    />
+                  </div>
+                  {logoUpload.error && <p className="text-sm text-destructive">{logoUpload.error}</p>}
                 </div>
                 <div className="space-y-1">
                   <Label>Banner URL</Label>
-                  <Input value={form.bannerUrl ?? ''} onChange={e => set('bannerUrl', e.target.value || null)} placeholder="https://…" />
+                  <div className="flex gap-2">
+                    <Input value={form.bannerUrl ?? ''} onChange={e => set('bannerUrl', e.target.value || null)} placeholder="https://…" />
+                    <Button type="button" variant="outline" onClick={bannerUpload.trigger} disabled={bannerUpload.uploading}>
+                      {bannerUpload.uploading ? 'Uploading…' : 'Upload'}
+                    </Button>
+                    <input
+                      ref={bannerUpload.inputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) bannerUpload.handleFile(f) }}
+                    />
+                  </div>
+                  {bannerUpload.error && <p className="text-sm text-destructive">{bannerUpload.error}</p>}
                 </div>
               </CardContent>
             </Card>
@@ -205,7 +235,7 @@ export default function SiteConfigPage() {
             </Card>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || logoUpload.uploading || bannerUpload.uploading}>
               {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
             </Button>
           </form>
