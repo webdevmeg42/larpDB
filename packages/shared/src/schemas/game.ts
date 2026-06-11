@@ -12,8 +12,13 @@ export const UpdateMemberInput = z.object({
   status: z.enum(['active', 'pending', 'banned']).optional(),
 })
 
+export const UpdateGameStatusInput = z.object({
+  status: z.enum(['active', 'disabled']),
+})
+
 export type CreateGameInput = z.infer<typeof CreateGameInput>
 export type UpdateMemberInput = z.infer<typeof UpdateMemberInput>
+export type UpdateGameStatusInput = z.infer<typeof UpdateGameStatusInput>
 
 const RulebookChapterSchema = z.object({
   id: z.string(),

@@ -1,8 +1,23 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq, count } from 'drizzle-orm'
+import { eq, count, and, or, inArray } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../db/index.js'
-import { game, gameMembers, siteConfig } from '../db/schema.js'
-import { CreateGameInput, UpdateSiteConfigInput } from '@larpdb/shared'
+import {
+  game,
+  gameMembers,
+  siteConfig,
+  schemaTemplates,
+  characterSchemas,
+  characters,
+  xpTransactions,
+  events,
+  eventRegistrations,
+  storeItems,
+  purchases,
+  npcs,
+  plots,
+} from '../db/schema.js'
+import { CreateGameInput, UpdateSiteConfigInput, UpdateGameStatusInput } from '@larpdb/shared'
 import { buildPatch } from '../lib/roles.js'
 
 function generateSlug(name: string): string {
@@ -39,7 +54,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       })
       .from(game)
       .leftJoin(gameMembers, eq(gameMembers.gameId, game.id))
-      .where(eq(game.isPublic, true))
+      .where(and(eq(game.isPublic, true), eq(game.status, 'active')))
       .groupBy(game.id)
     return reply.send(rows)
   })
@@ -50,6 +65,56 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
     if (!row) return reply.status(404).send({ error: 'Game not found' })
     return reply.send(row)
   })
+
+  fastify.get(
+    '/my-games',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const userId = request.user.sub
+      const myMembership = alias(gameMembers, 'my_membership')
+      const allMemberships = alias(gameMembers, 'all_memberships')
+
+      const rows = await db
+        .select({
+          id: game.id,
+          name: game.name,
+          description: game.description,
+          slug: game.slug,
+          isPublic: game.isPublic,
+          joinMode: game.joinMode,
+          status: game.status,
+          createdAt: game.createdAt,
+          memberCount: count(allMemberships.id),
+          role: myMembership.role,
+        })
+        .from(game)
+        .innerJoin(
+          myMembership,
+          and(
+            eq(myMembership.gameId, game.id),
+            eq(myMembership.userId, userId),
+            eq(myMembership.status, 'active'),
+          ),
+        )
+        .leftJoin(
+          allMemberships,
+          and(
+            eq(allMemberships.gameId, game.id),
+            eq(allMemberships.status, 'active'),
+          ),
+        )
+        .where(
+          or(
+            eq(game.status, 'active'),
+            and(eq(game.status, 'disabled'), eq(myMembership.role, 'owner')),
+          ),
+        )
+        .groupBy(game.id, myMembership.role)
+        .orderBy(game.createdAt)
+
+      return reply.send(rows)
+    },
+  )
 
   fastify.post(
     '/games',
@@ -85,6 +150,108 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       })
 
       return reply.status(201).send(newGame)
+    },
+  )
+
+  fastify.patch(
+    '/games/:id/status',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+      const userId = request.user.sub
+
+      const [member] = await db
+        .select()
+        .from(gameMembers)
+        .where(
+          and(
+            eq(gameMembers.gameId, id),
+            eq(gameMembers.userId, userId),
+            eq(gameMembers.status, 'active'),
+          ),
+        )
+        .limit(1)
+
+      if (!member || member.role !== 'owner') {
+        return reply.status(403).send({ error: 'Owner role required' })
+      }
+
+      const result = UpdateGameStatusInput.safeParse(request.body)
+      if (!result.success) {
+        return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
+      }
+
+      const [updated] = await db
+        .update(game)
+        .set({ status: result.data.status })
+        .where(eq(game.id, id))
+        .returning()
+
+      if (!updated) return reply.status(404).send({ error: 'Game not found' })
+      return reply.send(updated)
+    },
+  )
+
+  fastify.delete(
+    '/games/:id',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+      const userId = request.user.sub
+
+      const [member] = await db
+        .select()
+        .from(gameMembers)
+        .where(
+          and(
+            eq(gameMembers.gameId, id),
+            eq(gameMembers.userId, userId),
+            eq(gameMembers.status, 'active'),
+          ),
+        )
+        .limit(1)
+
+      if (!member || member.role !== 'owner') {
+        return reply.status(403).send({ error: 'Owner role required' })
+      }
+
+      const [existing] = await db.select({ id: game.id }).from(game).where(eq(game.id, id)).limit(1)
+      if (!existing) return reply.status(404).send({ error: 'Game not found' })
+
+      await db.transaction(async (tx) => {
+        const gameEvents = await tx
+          .select({ id: events.id })
+          .from(events)
+          .where(eq(events.gameId, id))
+        const eventIds = gameEvents.map(e => e.id)
+
+        const gameChars = await tx
+          .select({ id: characters.id })
+          .from(characters)
+          .where(eq(characters.gameId, id))
+        const charIds = gameChars.map(c => c.id)
+
+        if (eventIds.length > 0) {
+          await tx.delete(purchases).where(inArray(purchases.eventId, eventIds))
+          await tx.delete(storeItems).where(inArray(storeItems.eventId, eventIds))
+          await tx.delete(eventRegistrations).where(inArray(eventRegistrations.eventId, eventIds))
+        }
+        if (charIds.length > 0) {
+          await tx.delete(xpTransactions).where(inArray(xpTransactions.characterId, charIds))
+        }
+
+        await tx.delete(characters).where(eq(characters.gameId, id))
+        await tx.delete(events).where(eq(events.gameId, id))
+        await tx.delete(npcs).where(eq(npcs.gameId, id))
+        await tx.delete(plots).where(eq(plots.gameId, id))
+        await tx.delete(characterSchemas).where(eq(characterSchemas.gameId, id))
+        await tx.delete(schemaTemplates).where(eq(schemaTemplates.gameId, id))
+        await tx.delete(siteConfig).where(eq(siteConfig.gameId, id))
+        await tx.delete(gameMembers).where(eq(gameMembers.gameId, id))
+        await tx.delete(game).where(eq(game.id, id))
+      })
+
+      return reply.status(204).send()
     },
   )
 

@@ -1,6 +1,7 @@
 export type GameMemberRole = 'owner' | 'gm' | 'player'
 export type GameMemberStatus = 'active' | 'pending' | 'banned'
 export type GameJoinMode = 'open' | 'approval'
+export type GameStatus = 'active' | 'disabled'
 
 export interface Game {
   id: string
@@ -9,7 +10,13 @@ export interface Game {
   slug: string
   isPublic: boolean
   joinMode: GameJoinMode
+  status: GameStatus
   createdAt: string
+}
+
+export interface MyGame extends Game {
+  memberCount: number
+  role: GameMemberRole
 }
 
 export interface GameMember {

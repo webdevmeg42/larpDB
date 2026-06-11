@@ -28,6 +28,7 @@ export const game = pgTable('game', {
   slug: text('slug').notNull().unique(),
   isPublic: boolean('is_public').notNull().default(true),
   joinMode: text('join_mode', { enum: ['open', 'approval'] }).notNull().default('open'),
+  status: text('status', { enum: ['active', 'disabled'] }).notNull().default('active'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 

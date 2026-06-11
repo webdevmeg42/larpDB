@@ -189,3 +189,136 @@ describe('PATCH /config', () => {
     await app.close()
   })
 })
+
+describe('GET /my-games', () => {
+  it('returns games the user is a member of', async () => {
+    const { app, token } = await createAndLogin(`my-games-owner-${Date.now()}@example.com`)
+    const res = await app.inject({
+      method: 'GET',
+      url: '/my-games',
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as Array<{ role: string; memberCount: number; status: string }>
+    expect(body.length).toBeGreaterThan(0)
+    expect(body[0].role).toBe('owner')
+    expect(body[0].memberCount).toBeGreaterThan(0)
+    expect(body[0].status).toBe('active')
+    await app.close()
+  })
+
+  it('returns 401 without auth', async () => {
+    const app = buildApp()
+    await app.ready()
+    const res = await app.inject({ method: 'GET', url: '/my-games' })
+    expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+})
+
+describe('PATCH /games/:id/status', () => {
+  it('disables a game as owner', async () => {
+    const { app, token, gameId } = await createAndLogin(`status-owner-${Date.now()}@example.com`)
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { status: 'disabled' },
+    })
+    expect(res.statusCode).toBe(200)
+    expect((res.json() as { status: string }).status).toBe('disabled')
+    await app.close()
+  })
+
+  it('returns 403 for non-member', async () => {
+    const { app, gameId } = await createAndLogin(`status-owner2-${Date.now()}@example.com`)
+    const reg2 = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: { email: `status-player-${Date.now()}@example.com`, password: 'password123', displayName: 'Player' },
+    })
+    const { token: playerToken } = reg2.json() as { token: string }
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${playerToken}` },
+      payload: { status: 'disabled' },
+    })
+    expect(res.statusCode).toBe(403)
+    await app.close()
+  })
+
+  it('returns 401 without auth', async () => {
+    const { app, gameId } = await createAndLogin(`status-unauth-${Date.now()}@example.com`)
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/games/${gameId}/status`,
+      payload: { status: 'disabled' },
+    })
+    expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+})
+
+describe('DELETE /games/:id', () => {
+  it('deletes a game as owner', async () => {
+    const { app, token, gameId } = await createAndLogin(`delete-owner-${Date.now()}@example.com`)
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/games/${gameId}`,
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(res.statusCode).toBe(204)
+    await app.close()
+  })
+
+  it('returns 403 for non-member', async () => {
+    const { app, gameId } = await createAndLogin(`delete-owner2-${Date.now()}@example.com`)
+    const reg2 = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: { email: `delete-player-${Date.now()}@example.com`, password: 'password123', displayName: 'Player' },
+    })
+    const { token: playerToken } = reg2.json() as { token: string }
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/games/${gameId}`,
+      headers: { authorization: `Bearer ${playerToken}` },
+    })
+    expect(res.statusCode).toBe(403)
+    await app.close()
+  })
+
+  it('returns 401 without auth', async () => {
+    const { app, gameId } = await createAndLogin(`delete-unauth-${Date.now()}@example.com`)
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/games/${gameId}`,
+    })
+    expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+})
+
+describe('GET /games hides disabled games', () => {
+  it('excludes disabled games from public list', async () => {
+    const { app, token, gameId } = await createAndLogin(`hidden-owner-${Date.now()}@example.com`)
+    // Verify game appears in public list before disabling
+    const beforeRes = await app.inject({ method: 'GET', url: '/games' })
+    const before = beforeRes.json() as Array<{ id: string }>
+    expect(before.some(g => g.id === gameId)).toBe(true)
+
+    // Disable the game
+    await app.inject({
+      method: 'PATCH',
+      url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { status: 'disabled' },
+    })
+
+    const afterRes = await app.inject({ method: 'GET', url: '/games' })
+    const after = afterRes.json() as Array<{ id: string }>
+    expect(after.some(g => g.id === gameId)).toBe(false)
+    await app.close()
+  })
+})
