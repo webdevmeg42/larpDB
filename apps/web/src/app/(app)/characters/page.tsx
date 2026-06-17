@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { api } from '@/lib/api'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,6 +13,8 @@ import { Plus } from 'lucide-react'
 
 export default function CharactersPage() {
   const { user } = useAuth()
+  const { game } = useSiteConfig()
+  const larpInactive = game?.status === 'inactive'
   const [characters, setCharacters] = useState<Character[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -30,10 +33,22 @@ export default function CharactersPage() {
     <div className="p-6 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">My Characters</h1>
-        <Link href="/characters/new" className={buttonVariants()}>
-          <Plus className="h-4 w-4 mr-2" />
-          New character
-        </Link>
+        {larpInactive ? (
+          <div className="text-right">
+            <span className={buttonVariants({ className: 'opacity-50 pointer-events-none' })}>
+              <Plus className="h-4 w-4 mr-2" />
+              New character
+            </span>
+            <p className="text-xs text-muted-foreground mt-1">
+              Character creation is disabled while this LARP is inactive.
+            </p>
+          </div>
+        ) : (
+          <Link href="/characters/new" className={buttonVariants()}>
+            <Plus className="h-4 w-4 mr-2" />
+            New character
+          </Link>
+        )}
       </div>
       {loading ? (
         <p className="text-muted-foreground">Loading…</p>

@@ -106,7 +106,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         .where(
           or(
             eq(game.status, 'active'),
-            and(eq(game.status, 'disabled'), eq(myMembership.role, 'owner')),
+            and(eq(game.status, 'inactive'), eq(myMembership.role, 'owner')),
           ),
         )
         .groupBy(game.id, myMembership.role)
@@ -134,6 +134,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         slug,
         isPublic: result.data.isPublic ?? true,
         joinMode: result.data.joinMode ?? 'open',
+        status: 'inactive',
       }).returning()
       if (!newGame) throw new Error('Failed to create game')
 

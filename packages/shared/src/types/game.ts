@@ -1,7 +1,7 @@
 export type GameMemberRole = 'owner' | 'gm' | 'player'
 export type GameMemberStatus = 'active' | 'pending' | 'banned'
 export type GameJoinMode = 'open' | 'approval'
-export type GameStatus = 'active' | 'disabled'
+export type GameStatus = 'active' | 'inactive'
 
 export interface Game {
   id: string
@@ -35,7 +35,25 @@ export interface RulebookChapter {
   order: number
 }
 
+export type LevelingSystemType =
+  | 'fibonacci'
+  | 'linear'
+  | 'flat'
+  | 'doubling'
+  | 'triangular'
+  | 'percentage'
+
+export interface Faction {
+  name: string
+  description: string
+}
+
 export interface GameCodex {
+  levelingSystem?: LevelingSystemType
+  maxLevel?: number
+  baseLevel?: number
+  linearIncrement?: number
+  flatCost?: number
   eventName?: string
   eventTagline?: string
   eventAbout?: string
@@ -47,7 +65,7 @@ export interface GameCodex {
   genre?: string
   tone?: string
   worldLore?: string
-  factions?: string
+  factions?: Faction[]
   safetyMechanics?: string
   contentWarnings?: string
   registrationInfo?: string

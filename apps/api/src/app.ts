@@ -18,6 +18,8 @@ import { plotRoutes } from './routes/plot.js'
 import { userRoutes } from './routes/user.js'
 import { storeRoutes } from './routes/store.js'
 import { uploadRoutes, UPLOADS_DIR } from './routes/upload.js'
+import { subscriptionRoutes } from './routes/subscription.js'
+import { postRoutes } from './routes/post.js'
 import { seedBuiltinTemplates } from './db/seeds/templates.js'
 
 export function buildApp() {
@@ -46,6 +48,8 @@ export function buildApp() {
   app.register(userRoutes)
   app.register(storeRoutes)
   app.register(uploadRoutes)
+  app.register(subscriptionRoutes)
+  app.register(postRoutes)
 
   app.addHook('onReady', async () => {
     await fs.promises.mkdir(UPLOADS_DIR, { recursive: true })

@@ -22,6 +22,7 @@ const [newGame] = await db.insert(game).values({
   name: 'My LARP',
   slug: 'my-larp',
   isPublic: true,
+  status: 'active',
 }).returning()
 
 if (!newGame) throw new Error('Failed to create game')

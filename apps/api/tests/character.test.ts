@@ -25,6 +25,13 @@ async function createAndLogin(email = 'owner@test.com') {
   })
   const { id: gameId } = gameRes.json()
 
+  await app.inject({
+    method: 'PATCH',
+    url: `/games/${gameId}/status`,
+    headers: { authorization: `Bearer ${token}` },
+    payload: { status: 'active' },
+  })
+
   return { app, token, gameId }
 }
 
@@ -146,6 +153,51 @@ describe('POST /characters', () => {
     expect(res.statusCode).toBe(404)
     await app.close()
   })
+
+  it('returns 403 for every role when the LARP is inactive', async () => {
+    const { app, ownerToken, playerToken, gameId } = await setupWithActiveSchema()
+
+    const gmRegRes = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: { email: 'gm-postblock@test.com', password: 'password123', displayName: 'GM' },
+    })
+    const { token: gmToken, user: gmUser } = gmRegRes.json()
+    await app.inject({
+      method: 'POST',
+      url: `/games/${gameId}/join`,
+      headers: { authorization: `Bearer ${gmToken}` },
+    })
+    await app.inject({
+      method: 'PATCH',
+      url: `/games/${gameId}/members/${gmUser.id}`,
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { role: 'gm' },
+    })
+
+    await app.inject({
+      method: 'PATCH',
+      url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { status: 'inactive' },
+    })
+
+    for (const token of [ownerToken, gmToken, playerToken]) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/characters',
+        headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+        payload: {
+          name: 'Blocked',
+          data: { '11111111-1111-1111-1111-111111111111': 'Ranger' },
+        },
+      })
+      expect(res.statusCode).toBe(403)
+      expect(res.json().error).toBe('LARP is not currently active')
+    }
+
+    await app.close()
+  })
 })
 
 describe('GET /characters', () => {
@@ -250,6 +302,130 @@ describe('PATCH /characters/:id', () => {
     })
 
     expect(res.statusCode).toBe(403)
+    await app.close()
+  })
+
+  it('blocks a player from editing their own character while the LARP is inactive', async () => {
+    const { app, ownerToken, playerToken, gameId } = await setupWithActiveSchema()
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/characters',
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
+      payload: { name: 'Elara', data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
+    })
+    const char = createRes.json()
+
+    await app.inject({
+      method: 'PATCH',
+      url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { status: 'inactive' },
+    })
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/characters/${char.id}`,
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
+      payload: { name: 'Should Not Update' },
+    })
+
+    expect(res.statusCode).toBe(403)
+    expect(res.json().error).toBe('Character editing is disabled while this LARP is inactive')
+    await app.close()
+  })
+
+  it('allows gm and owner to edit characters while the LARP is inactive', async () => {
+    const { app, ownerToken, playerToken, gameId } = await setupWithActiveSchema()
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/characters',
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
+      payload: { name: 'Elara', data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
+    })
+    const char = createRes.json()
+
+    const gmRegRes = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: { email: 'gm-patch@test.com', password: 'password123', displayName: 'GM' },
+    })
+    const { token: gmToken, user: gmUser } = gmRegRes.json()
+    await app.inject({
+      method: 'POST',
+      url: `/games/${gameId}/join`,
+      headers: { authorization: `Bearer ${gmToken}` },
+    })
+    await app.inject({
+      method: 'PATCH',
+      url: `/games/${gameId}/members/${gmUser.id}`,
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { role: 'gm' },
+    })
+
+    await app.inject({
+      method: 'PATCH',
+      url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { status: 'inactive' },
+    })
+
+    const gmRes = await app.inject({
+      method: 'PATCH',
+      url: `/characters/${char.id}`,
+      headers: { authorization: `Bearer ${gmToken}`, 'x-game-id': gameId },
+      payload: { name: 'GM Edited' },
+    })
+    expect(gmRes.statusCode).toBe(200)
+    expect(gmRes.json().name).toBe('GM Edited')
+
+    const ownerRes = await app.inject({
+      method: 'PATCH',
+      url: `/characters/${char.id}`,
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { name: 'Owner Edited' },
+    })
+    expect(ownerRes.statusCode).toBe(200)
+    expect(ownerRes.json().name).toBe('Owner Edited')
+
+    await app.close()
+  })
+
+  it('allows GET /characters and GET /characters/:id regardless of LARP status', async () => {
+    const { app, ownerToken, playerToken, gameId } = await setupWithActiveSchema()
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/characters',
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
+      payload: { name: 'Elara', data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
+    })
+    const char = createRes.json()
+
+    await app.inject({
+      method: 'PATCH',
+      url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { status: 'inactive' },
+    })
+
+    const listRes = await app.inject({
+      method: 'GET',
+      url: '/characters',
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
+    })
+    expect(listRes.statusCode).toBe(200)
+    expect(listRes.json().length).toBe(1)
+
+    const detailRes = await app.inject({
+      method: 'GET',
+      url: `/characters/${char.id}`,
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
+    })
+    expect(detailRes.statusCode).toBe(200)
+    expect(detailRes.json().name).toBe('Elara')
+
     await app.close()
   })
 })

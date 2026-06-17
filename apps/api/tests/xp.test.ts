@@ -24,6 +24,13 @@ async function createAndLogin(email = 'owner@test.com') {
   })
   const { id: gameId } = gameRes.json()
 
+  await app.inject({
+    method: 'PATCH',
+    url: `/games/${gameId}/status`,
+    headers: { authorization: `Bearer ${token}` },
+    payload: { status: 'active' },
+  })
+
   return { app, token, gameId }
 }
 

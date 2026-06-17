@@ -35,9 +35,15 @@ export default function NewSchemaPage() {
     setCreating(true)
     setError(null)
     try {
+      const rawFields = selected ? selected.fields : []
+      const fields = rawFields.filter(f => {
+        if (f.type === 'statblock' && f.label === 'Core Stats') return false
+        if (schemaType === 'race' && f.type === 'number' && f.label.toLowerCase() === 'level') return false
+        return true
+      })
       const schema = await api.post<CharacterSchema>('/character-schemas', {
         name: name.trim(),
-        fields: selected ? selected.fields : [],
+        fields,
         templateSource: selected ? selected.id : null,
         type: schemaType,
       })
@@ -49,20 +55,26 @@ export default function NewSchemaPage() {
     }
   }
 
+  const isRace = schemaType === 'race'
+
   return (
     <div className="p-6 max-w-3xl">
       <h1 className="text-2xl font-semibold mb-2">
-        New {schemaType === 'race' ? 'Race Build' : 'Class Build'}
+        New {isRace ? 'Race' : 'Class'}
       </h1>
-      <p className="text-muted-foreground mb-6">Start from a genre template or build from scratch.</p>
+      <p className="text-muted-foreground mb-6">
+        {isRace
+          ? 'Define the appearance options, traits, and backstory for a creature type players can choose — like Human, Elf, or Dwarf.'
+          : 'Define the stat blocks, abilities, and skills for a character archetype players can build — like Wizard, Warrior, or Bard.'}
+      </p>
 
       <div className="space-y-6">
         <div className="space-y-1">
-          <Label>Schema name</Label>
+          <Label>{isRace ? 'Race name' : 'Class name'}</Label>
           <Input
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder="e.g. Fantasy Adventure v1"
+            placeholder={isRace ? 'e.g. Elf' : 'e.g. Wizard'}
             className="max-w-sm"
           />
         </div>

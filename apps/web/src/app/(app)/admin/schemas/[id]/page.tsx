@@ -54,6 +54,7 @@ export default function SchemaBuilderPage({ params }: { params: { id: string } }
         schemaId={schema.id}
         initialName={schema.name}
         initialFields={schema.fields}
+        schemaType={schema.type}
         onSave={handleSave}
         onActivate={handleActivate}
         isActive={schema.isActive}

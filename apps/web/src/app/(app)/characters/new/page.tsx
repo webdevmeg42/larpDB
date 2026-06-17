@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { api } from '@/lib/api'
 import { CharacterForm } from '@/components/character/CharacterForm'
 import { Button } from '@/components/ui/button'
@@ -12,6 +13,7 @@ import type { CharacterSchema, Character } from '@larpdb/shared'
 
 export default function NewCharacterPage() {
   const { user } = useAuth()
+  const { game } = useSiteConfig()
   const router = useRouter()
   const [schema, setSchema] = useState<CharacterSchema | null>(null)
   const [loading, setLoading] = useState(true)
@@ -33,6 +35,15 @@ export default function NewCharacterPage() {
   }, [user])
 
   if (!user) return null
+  if (game?.status === 'inactive') {
+    return (
+      <div className="p-6 max-w-lg">
+        <p className="text-muted-foreground">
+          This LARP is currently inactive. Characters cannot be created until it&apos;s reactivated.
+        </p>
+      </div>
+    )
+  }
   if (loading) return <div className="p-6 text-muted-foreground">Loading…</div>
   if (fetchError) return <div className="p-6 text-sm text-destructive">{fetchError}</div>
   if (!schema) {

@@ -270,11 +270,11 @@ export default function BuilderPage() {
         </TabsContent>
 
         <TabsContent value="race-builds">
-          <BuildsTab type="race" />
+          <BuildsTab type="race" hasLevelingSystem={!!config?.codex?.levelingSystem} />
         </TabsContent>
 
         <TabsContent value="class-builds">
-          <BuildsTab type="class" />
+          <BuildsTab type="class" hasLevelingSystem={!!config?.codex?.levelingSystem} />
         </TabsContent>
       </Tabs>
     </div>

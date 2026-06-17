@@ -7,6 +7,36 @@ export type SchemaFieldType =
   | 'toggle'
   | 'statblock'
   | 'section'
+  | 'equipment'
+  | 'personality'
+  | 'features'
+  | 'influences'
+  | 'appearance'
+  | 'hitpoints'
+  | 'attacks'
+  | 'spells'
+
+export interface HitPointEntry {
+  level: number
+  hp: number
+}
+
+export interface AttackEntry {
+  kind: 'new' | 'upgrade'
+  level: number
+  name: string
+  attackName?: string
+  hitPoints: number
+}
+
+export interface SpellEntry {
+  kind: 'new' | 'upgrade'
+  level: number
+  name: string
+  spellName?: string
+  hitPoints: number
+  effects: string
+}
 
 export interface SchemaFieldOption {
   value: string
@@ -28,6 +58,7 @@ export interface SchemaField {
   type: SchemaFieldType
   required: boolean
   order: number
+  locked?: boolean
   min?: number
   max?: number
   xpCostPerPoint?: number
@@ -35,6 +66,18 @@ export interface SchemaField {
   maxSelections?: number
   stats?: StatBlockStat[]
   xpCost?: number
+  equipmentSlots?: number
+  treasureSlots?: number
+  personalityTraitSlots?: number
+  idealSlots?: number
+  bondSlots?: number
+  flawSlots?: number
+  featureSlots?: number
+  influenceSlots?: number
+  languageSlots?: number
+  hitPointEntries?: HitPointEntry[]
+  attackEntries?: AttackEntry[]
+  spellEntries?: SpellEntry[]
 }
 
 export type CharacterSchemaType = 'race' | 'class'

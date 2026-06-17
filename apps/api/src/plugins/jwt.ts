@@ -7,6 +7,7 @@ export type GameContext = {
   userId: string
   gameId: string
   role: 'owner' | 'gm' | 'player'
+  gameStatus: 'active' | 'inactive'
 }
 
 declare module '@fastify/jwt' {

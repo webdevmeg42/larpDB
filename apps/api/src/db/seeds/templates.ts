@@ -1,3 +1,4 @@
+import { eq, and } from 'drizzle-orm'
 import { db } from '../index.js'
 import { schemaTemplates } from '../schema.js'
 import type { SchemaField } from '@larpdb/shared'
@@ -6,17 +7,15 @@ const BUILTIN_TEMPLATES: Array<{ name: string; genre: string; description: strin
   {
     name: 'Fantasy Adventure',
     genre: 'Fantasy',
-    description: 'Classic high-fantasy character sheet with race, class, core stats, and backstory.',
+    description: 'Classic high-fantasy sheet with core stats and backstory.',
     fields: [
-      { id: '11111111-0001-0001-0001-000000000001', label: 'Character Class', type: 'text', required: true, order: 0 },
-      { id: '11111111-0001-0001-0001-000000000002', label: 'Race', type: 'text', required: true, order: 1 },
-      { id: '11111111-0001-0001-0001-000000000003', label: 'Level', type: 'number', required: true, order: 2, min: 1, max: 20 },
+      { id: '11111111-0001-0001-0001-000000000003', label: 'Level', type: 'number', required: true, order: 0, min: 1, max: 20 },
       {
         id: '11111111-0001-0001-0001-000000000004',
         label: 'Core Stats',
         type: 'statblock',
         required: false,
-        order: 3,
+        order: 1,
         stats: [
           { key: 'str', label: 'Strength', min: 1, max: 20 },
           { key: 'dex', label: 'Dexterity', min: 1, max: 20 },
@@ -26,7 +25,31 @@ const BUILTIN_TEMPLATES: Array<{ name: string; genre: string; description: strin
           { key: 'cha', label: 'Charisma', min: 1, max: 20 },
         ],
       },
-      { id: '11111111-0001-0001-0001-000000000005', label: 'Backstory', type: 'longtext', required: false, order: 4 },
+      {
+        id: '11111111-0001-0001-0001-000000000006',
+        label: 'Skills',
+        type: 'statblock',
+        required: false,
+        order: 2,
+        stats: [
+          { key: 'acrobatics', label: 'Acrobatics', min: 0 },
+          { key: 'animal_hunting', label: 'Animal Hunting', min: 0 },
+          { key: 'arcana', label: 'Arcana', min: 0 },
+          { key: 'athletics', label: 'Athletics', min: 0 },
+          { key: 'deception', label: 'Deception', min: 0 },
+          { key: 'history', label: 'History', min: 0 },
+          { key: 'insight', label: 'Insight', min: 0 },
+          { key: 'intimidation', label: 'Intimidation', min: 0 },
+          { key: 'investigation', label: 'Investigation', min: 0 },
+          { key: 'medicine', label: 'Medicine', min: 0 },
+          { key: 'nature', label: 'Nature', min: 0 },
+          { key: 'perception', label: 'Perception', min: 0 },
+          { key: 'religion', label: 'Religion', min: 0 },
+          { key: 'sleight_of_hand', label: 'Sleight of Hand', min: 0 },
+          { key: 'stealth', label: 'Stealth', min: 0 },
+          { key: 'survival', label: 'Survival', min: 0 },
+        ],
+      },
     ],
   },
   {
@@ -50,7 +73,6 @@ const BUILTIN_TEMPLATES: Array<{ name: string; genre: string; description: strin
           { key: 'piloting', label: 'Piloting', min: 1, max: 10 },
         ],
       },
-      { id: '22222222-0002-0002-0002-000000000005', label: 'Background', type: 'longtext', required: false, order: 4 },
     ],
   },
   {
@@ -87,7 +109,6 @@ const BUILTIN_TEMPLATES: Array<{ name: string; genre: string; description: strin
           { key: 'charisma', label: 'Charisma', min: 1, max: 10 },
         ],
       },
-      { id: '33333333-0003-0003-0003-000000000005', label: 'History', type: 'longtext', required: false, order: 4 },
     ],
   },
   {
@@ -110,7 +131,6 @@ const BUILTIN_TEMPLATES: Array<{ name: string; genre: string; description: strin
           { key: 'willpower', label: 'Willpower', min: 1, max: 10 },
         ],
       },
-      { id: '44444444-0004-0004-0004-000000000004', label: 'Dark Secret', type: 'longtext', required: false, order: 3 },
     ],
   },
   {
@@ -146,16 +166,24 @@ const BUILTIN_TEMPLATES: Array<{ name: string; genre: string; description: strin
           { key: 'cunning', label: 'Cunning', min: 1, max: 10 },
         ],
       },
-      { id: '55555555-0005-0005-0005-000000000004', label: 'Survival Story', type: 'longtext', required: false, order: 3 },
     ],
   },
 ]
 
 export async function seedBuiltinTemplates() {
-  const existing = await db.select().from(schemaTemplates)
-  if (existing.length > 0) return
+  for (const template of BUILTIN_TEMPLATES) {
+    const [existing] = await db
+      .select({ id: schemaTemplates.id })
+      .from(schemaTemplates)
+      .where(and(eq(schemaTemplates.name, template.name), eq(schemaTemplates.isBuiltin, true)))
 
-  await db.insert(schemaTemplates).values(
-    BUILTIN_TEMPLATES.map((t) => ({ ...t, isBuiltin: true })),
-  )
+    if (existing) {
+      await db
+        .update(schemaTemplates)
+        .set({ fields: template.fields, description: template.description })
+        .where(eq(schemaTemplates.id, existing.id))
+    } else {
+      await db.insert(schemaTemplates).values({ ...template, isBuiltin: true })
+    }
+  }
 }

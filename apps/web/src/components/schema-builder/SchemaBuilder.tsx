@@ -8,9 +8,60 @@ import { FieldEditor } from './FieldEditor'
 import { SchemaPreview } from './SchemaPreview'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import type { SchemaField, SchemaFieldType } from '@larpdb/shared'
+import type { SchemaField, SchemaFieldType, CharacterSchemaType } from '@larpdb/shared'
 import { getErrorMessage } from '@/lib/utils'
+
+const RACE_LOCKED_FIELDS: SchemaField[] = [
+  {
+    id: 'aaaaaaaa-0000-0000-0000-000000000001',
+    type: 'text',
+    label: 'Character Name',
+    required: true,
+    order: 0,
+    locked: true,
+  },
+  {
+    id: 'aaaaaaaa-0000-0000-0000-000000000002',
+    type: 'longtext',
+    label: 'Allies and Organizations',
+    required: false,
+    order: 1,
+    locked: true,
+  },
+]
+
+const CLASS_LOCKED_FIELDS: SchemaField[] = [
+  {
+    id: 'bbbbbbbb-0000-0000-0000-000000000001',
+    type: 'statblock',
+    label: 'Core Stats',
+    required: true,
+    order: 0,
+    locked: true,
+    stats: [
+      { key: 'str', label: 'Strength', min: 1, max: 20 },
+      { key: 'dex', label: 'Dexterity', min: 1, max: 20 },
+      { key: 'con', label: 'Constitution', min: 1, max: 20 },
+      { key: 'int', label: 'Intelligence', min: 1, max: 20 },
+      { key: 'wis', label: 'Wisdom', min: 1, max: 20 },
+      { key: 'cha', label: 'Charisma', min: 1, max: 20 },
+    ],
+  },
+]
+
+function getLockedDefaults(schemaType: CharacterSchemaType | undefined): SchemaField[] {
+  if (schemaType === 'race') return RACE_LOCKED_FIELDS
+  if (schemaType === 'class') return CLASS_LOCKED_FIELDS
+  return []
+}
+
+function initLockedFields(schemaType: CharacterSchemaType | undefined, initialFields: SchemaField[]): SchemaField[] {
+  const defaults = getLockedDefaults(schemaType)
+  return defaults.map(def => {
+    const stored = initialFields.find(f => f.id === def.id)
+    return stored ? { ...stored, locked: true } : def
+  })
+}
 
 function makeDefaultField(type: SchemaFieldType, order: number): SchemaField {
   const base = { id: uuidv4(), label: '', type, required: false, order }
@@ -22,6 +73,22 @@ function makeDefaultField(type: SchemaFieldType, order: number): SchemaField {
       return { ...base } as SchemaField
     case 'statblock':
       return { ...base, stats: [] } as SchemaField
+    case 'equipment':
+      return { ...base, equipmentSlots: 3, treasureSlots: 3 } as SchemaField
+    case 'personality':
+      return { ...base, personalityTraitSlots: 2, idealSlots: 1, bondSlots: 1, flawSlots: 1 } as SchemaField
+    case 'features':
+      return { ...base, featureSlots: 3 } as SchemaField
+    case 'influences':
+      return { ...base, influenceSlots: 2, languageSlots: 3 } as SchemaField
+    case 'appearance':
+      return { ...base } as SchemaField
+    case 'hitpoints':
+      return { ...base, hitPointEntries: [] } as SchemaField
+    case 'attacks':
+      return { ...base, attackEntries: [] } as SchemaField
+    case 'spells':
+      return { ...base, spellEntries: [] } as SchemaField
     default:
       return base as SchemaField
   }
@@ -31,6 +98,7 @@ interface SchemaBuilderProps {
   schemaId: string
   initialName: string
   initialFields: SchemaField[]
+  schemaType?: CharacterSchemaType
   onSave: (name: string, fields: SchemaField[]) => Promise<void>
   onActivate: () => Promise<void>
   isActive: boolean
@@ -41,17 +109,28 @@ export function SchemaBuilder({
   schemaId: _schemaId,
   initialName,
   initialFields,
+  schemaType,
   onSave,
   onActivate,
   isActive,
   isSaving,
 }: SchemaBuilderProps) {
   const [name, setName] = useState(initialName)
-  const [fields, setFields] = useState<SchemaField[]>(initialFields)
+  const [lockedFields, setLockedFields] = useState<SchemaField[]>(() => initLockedFields(schemaType, initialFields))
+  const [fields, setFields] = useState<SchemaField[]>(() => {
+    const lockedDefs = getLockedDefaults(schemaType)
+    return initialFields.filter(f => {
+      if (f.locked) return false
+      return !lockedDefs.some(def => def.type === f.type && def.label === f.label)
+    })
+  })
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
 
-  const selectedField = fields.find(f => f.id === selectedId) ?? null
+  const selectedField =
+    lockedFields.find(f => f.id === selectedId) ??
+    fields.find(f => f.id === selectedId) ??
+    null
 
   const addField = useCallback((type: SchemaFieldType) => {
     const field = makeDefaultField(type, fields.length)
@@ -60,7 +139,11 @@ export function SchemaBuilder({
   }, [fields.length])
 
   const updateField = useCallback((updated: SchemaField) => {
-    setFields(prev => prev.map(f => f.id === updated.id ? updated : f))
+    if (updated.locked) {
+      setLockedFields(prev => prev.map(f => f.id === updated.id ? { ...updated, locked: true } : f))
+    } else {
+      setFields(prev => prev.map(f => f.id === updated.id ? updated : f))
+    }
   }, [])
 
   const deleteField = useCallback((id: string) => {
@@ -69,13 +152,17 @@ export function SchemaBuilder({
   }, [])
 
   const reorderFields = useCallback((reordered: SchemaField[]) => {
-    setFields(reordered.map((f, i) => ({ ...f, order: i } as SchemaField)))
-  }, [])
+    setFields(reordered.map((f, i) => ({ ...f, order: lockedFields.length + i } as SchemaField)))
+  }, [lockedFields.length])
 
   async function handleSave() {
     setSaveError(null)
     try {
-      await onSave(name, fields.map((f, i) => ({ ...f, order: i } as SchemaField)))
+      const allFields: SchemaField[] = [
+        ...lockedFields.map((f, i) => ({ ...f, order: i })),
+        ...fields.map((f, i) => ({ ...f, order: lockedFields.length + i })),
+      ] as SchemaField[]
+      await onSave(name, allFields)
     } catch (err: unknown) {
       setSaveError(getErrorMessage(err, 'Save failed'))
     }
@@ -83,14 +170,20 @@ export function SchemaBuilder({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-4 border-b px-6 py-3">
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b px-6 py-3 shrink-0">
+        {schemaType && (
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-muted text-muted-foreground uppercase tracking-wide shrink-0">
+            {schemaType === 'race' ? 'Race' : 'Class'}
+          </span>
+        )}
         <Input
           value={name}
           onChange={e => setName(e.target.value)}
           className="max-w-xs font-medium"
           placeholder="Schema name"
         />
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex items-center gap-2">
           {saveError && <span className="text-sm text-destructive">{saveError}</span>}
           {!isActive && (
             <Button variant="outline" onClick={() => void onActivate()} disabled={isSaving}>
@@ -103,33 +196,52 @@ export function SchemaBuilder({
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-44 shrink-0 border-r p-3 overflow-y-auto">
-          <FieldPalette onAdd={addField} />
+      <div className="flex flex-1 overflow-hidden min-w-0">
+        {/* Palette */}
+        <div className="w-40 shrink-0 border-r p-3 overflow-y-auto">
+          <FieldPalette onAdd={addField} {...(schemaType !== undefined ? { schemaType } : {})} />
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          <Tabs defaultValue="fields">
-            <TabsList className="mb-4">
-              <TabsTrigger value="fields">Fields ({fields.length})</TabsTrigger>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
-            </TabsList>
-            <TabsContent value="fields">
+        {/* Center: field list (top) + live preview (bottom) */}
+        <div className="flex-1 flex flex-col overflow-hidden border-r min-w-0">
+          {/* Field list */}
+          <div className="shrink-0 flex flex-col" style={{ maxHeight: '45%' }}>
+            <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30 shrink-0">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fields</p>
+              {(lockedFields.length + fields.length) > 0 && (
+                <span className="text-xs text-muted-foreground">({lockedFields.length + fields.length})</span>
+              )}
+            </div>
+            <div className="overflow-y-auto p-3">
               <FieldList
                 fields={fields}
+                lockedFields={lockedFields}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 onReorder={reorderFields}
                 onDelete={deleteField}
               />
-            </TabsContent>
-            <TabsContent value="preview">
-              <SchemaPreview fields={fields} />
-            </TabsContent>
-          </Tabs>
+            </div>
+          </div>
+
+          {/* Live preview */}
+          <div className="flex-1 flex flex-col overflow-hidden border-t bg-muted/10">
+            <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30 shrink-0">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Player preview</p>
+              <span className="text-xs text-muted-foreground">— interactive</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <SchemaPreview
+                fields={[...lockedFields, ...fields]}
+                schemaName={name}
+                {...(schemaType !== undefined ? { schemaType } : {})}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="w-72 shrink-0 border-l overflow-y-auto">
+        {/* Field editor */}
+        <div className="w-72 shrink-0 overflow-y-auto">
           {selectedField ? (
             <FieldEditor field={selectedField} onChange={updateField} />
           ) : (

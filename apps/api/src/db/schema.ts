@@ -28,7 +28,7 @@ export const game = pgTable('game', {
   slug: text('slug').notNull().unique(),
   isPublic: boolean('is_public').notNull().default(true),
   joinMode: text('join_mode', { enum: ['open', 'approval'] }).notNull().default('open'),
-  status: text('status', { enum: ['active', 'disabled'] }).notNull().default('active'),
+  status: text('status', { enum: ['active', 'inactive'] }).notNull().default('inactive'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
@@ -199,3 +199,47 @@ export const purchases = pgTable('purchases', {
   currencyName: text('currency_name').notNull(),
   purchasedAt: timestamp('purchased_at').notNull().defaultNow(),
 })
+
+export const larpSubscriptions = pgTable('larp_subscriptions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  gameId: uuid('game_id').notNull().references(() => game.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  uniqGameUser: unique().on(t.gameId, t.userId),
+  gameIdIdx: index('larp_subscriptions_game_id_idx').on(t.gameId),
+  userIdIdx: index('larp_subscriptions_user_id_idx').on(t.userId),
+}))
+
+export const posts = pgTable('posts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  gameId: uuid('game_id').notNull().references(() => game.id, { onDelete: 'cascade' }),
+  authorId: uuid('author_id').notNull().references(() => users.id),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (t) => ({
+  gameIdIdx: index('posts_game_id_idx').on(t.gameId),
+  gameIdCreatedAtIdx: index('posts_game_id_created_at_idx').on(t.gameId, t.createdAt),
+}))
+
+export const comments = pgTable('comments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
+  authorId: uuid('author_id').notNull().references(() => users.id),
+  body: text('body').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  postIdIdx: index('comments_post_id_idx').on(t.postId),
+}))
+
+export const postLikes = pgTable('post_likes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  postId: uuid('post_id').notNull().references(() => posts.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  uniqPostUser: unique().on(t.postId, t.userId),
+  postIdIdx: index('post_likes_post_id_idx').on(t.postId),
+}))

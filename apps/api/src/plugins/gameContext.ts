@@ -2,7 +2,7 @@ import fp from 'fastify-plugin'
 import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify'
 import { eq, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { gameMembers } from '../db/schema.js'
+import { gameMembers, game } from '../db/schema.js'
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -24,9 +24,10 @@ const gameContextPlugin: FastifyPluginAsync = async (fastify) => {
     }
 
     const userId = request.user.sub
-    const [member] = await db
-      .select()
+    const [row] = await db
+      .select({ role: gameMembers.role, gameStatus: game.status })
       .from(gameMembers)
+      .innerJoin(game, eq(game.id, gameMembers.gameId))
       .where(
         and(
           eq(gameMembers.gameId, gameId),
@@ -36,11 +37,11 @@ const gameContextPlugin: FastifyPluginAsync = async (fastify) => {
       )
       .limit(1)
 
-    if (!member) {
+    if (!row) {
       return reply.status(403).send({ error: 'Not a member of this game' })
     }
 
-    request.gameContext = { userId, gameId, role: member.role }
+    request.gameContext = { userId, gameId, role: row.role, gameStatus: row.gameStatus }
   })
 }
 

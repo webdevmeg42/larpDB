@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { eq, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { game, gameMembers } from '../db/schema.js'
+import { game, gameMembers, larpSubscriptions } from '../db/schema.js'
 import { UpdateMemberInput } from '@larpdb/shared'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 
@@ -32,6 +32,13 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         role: 'player',
         status,
       }).returning()
+
+      if (status === 'active') {
+        await db
+          .insert(larpSubscriptions)
+          .values({ gameId, userId })
+          .onConflictDoNothing()
+      }
 
       return reply.status(201).send(member)
     },

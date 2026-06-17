@@ -14,6 +14,7 @@ import {
   LogOut,
   UserRound,
   BookOpen,
+  PenSquare,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -33,6 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Users', href: '/admin/users', icon: Users, roles: ['owner'] },
   { label: 'NPCs', href: '/npcs', icon: Swords, roles: ['owner', 'gm'] },
   { label: 'Plots', href: '/plots', icon: Map, roles: ['owner', 'gm'] },
+  { label: 'New Post', href: '/admin/posts/new', icon: PenSquare, roles: ['owner', 'gm'] },
 ]
 
 export function Sidebar() {

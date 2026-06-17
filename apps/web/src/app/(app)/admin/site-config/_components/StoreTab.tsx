@@ -80,7 +80,7 @@ export default function StoreTab({ config, reload }: Props) {
         <CardContent>
           <form onSubmit={e => void saveCurrency(e)} className="flex gap-3 items-end">
             <div className="space-y-1 flex-1">
-              <Label>Currency name</Label>
+              <Label>Name of in-game currency</Label>
               <Input
                 value={currencyName}
                 onChange={e => setCurrencyName(e.target.value)}

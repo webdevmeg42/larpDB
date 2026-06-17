@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { api } from '@/lib/api'
 import { CharacterSheet } from '@/components/character/CharacterSheet'
 import { CharacterForm } from '@/components/character/CharacterForm'
@@ -17,6 +18,8 @@ import { ArrowLeft } from 'lucide-react'
 
 export default function CharacterDetailPage() {
   const { user } = useAuth()
+  const { game } = useSiteConfig()
+  const canEdit = !(game?.status === 'inactive' && user?.role === 'player')
   const params = useParams()
   const id = typeof params.id === 'string' ? params.id : ''
 
@@ -140,9 +143,15 @@ export default function CharacterDetailPage() {
         </div>
         {character.isActive && <Badge>Active</Badge>}
         {mode === 'view' && (
-          <Button onClick={enterEdit} variant="outline" size="sm">
-            Edit
-          </Button>
+          canEdit ? (
+            <Button onClick={enterEdit} variant="outline" size="sm">
+              Edit
+            </Button>
+          ) : (
+            <span className="text-xs text-muted-foreground max-w-[160px] text-right">
+              Editing is disabled while this LARP is inactive.
+            </span>
+          )
         )}
       </div>
 

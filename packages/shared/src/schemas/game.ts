@@ -13,12 +13,17 @@ export const UpdateMemberInput = z.object({
 })
 
 export const UpdateGameStatusInput = z.object({
-  status: z.enum(['active', 'disabled']),
+  status: z.enum(['active', 'inactive']),
 })
 
 export type CreateGameInput = z.infer<typeof CreateGameInput>
 export type UpdateMemberInput = z.infer<typeof UpdateMemberInput>
 export type UpdateGameStatusInput = z.infer<typeof UpdateGameStatusInput>
+
+const FactionSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+})
 
 const RulebookChapterSchema = z.object({
   id: z.string(),
@@ -28,6 +33,11 @@ const RulebookChapterSchema = z.object({
 })
 
 export const GameCodexSchema = z.object({
+  levelingSystem: z.enum(['fibonacci', 'linear', 'flat', 'doubling', 'triangular', 'percentage']).optional(),
+  maxLevel: z.number().int().min(1).max(100).optional(),
+  baseLevel: z.number().int().min(1).max(100).optional(),
+  linearIncrement: z.number().int().min(1).optional(),
+  flatCost: z.number().int().min(1).optional(),
   eventName: z.string().optional(),
   eventTagline: z.string().optional(),
   eventAbout: z.string().optional(),
@@ -39,7 +49,7 @@ export const GameCodexSchema = z.object({
   genre: z.string().optional(),
   tone: z.string().optional(),
   worldLore: z.string().optional(),
-  factions: z.string().optional(),
+  factions: z.array(FactionSchema).optional(),
   safetyMechanics: z.string().optional(),
   contentWarnings: z.string().optional(),
   registrationInfo: z.string().optional(),

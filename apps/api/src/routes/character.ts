@@ -11,7 +11,11 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
     '/characters',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { gameId, userId } = request.gameContext
+      const { gameId, userId, gameStatus } = request.gameContext
+
+      if (gameStatus !== 'active') {
+        return reply.status(403).send({ error: 'LARP is not currently active' })
+      }
 
       const result = CreateCharacterInput.safeParse(request.body)
       if (!result.success) {
@@ -75,11 +79,14 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
     '/characters/:id',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { gameId, role, userId } = request.gameContext
+      const { gameId, role, userId, gameStatus } = request.gameContext
       const { id } = request.params as { id: string }
       const [character] = await db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
       if (!character) return reply.status(404).send({ error: 'Character not found' })
       if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
+      if (role === 'player' && gameStatus !== 'active') {
+        return reply.status(403).send({ error: 'Character editing is disabled while this LARP is inactive' })
+      }
 
       const result = UpdateCharacterInput.safeParse(request.body)
       if (!result.success) {

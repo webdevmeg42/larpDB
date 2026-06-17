@@ -8,19 +8,23 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { CharacterSchema, CharacterSchemaType } from '@larpdb/shared'
-import { Plus, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react'
 
 interface BuildsTabProps {
   type: CharacterSchemaType
+  hasLevelingSystem: boolean
 }
 
-export default function BuildsTab({ type }: BuildsTabProps) {
+export default function BuildsTab({ type, hasLevelingSystem }: BuildsTabProps) {
   const [schemas, setSchemas] = useState<CharacterSchema[]>([])
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
-  const label = type === 'race' ? 'race build' : 'class build'
-  const labelPlural = type === 'race' ? 'race builds' : 'class builds'
+  const label = type === 'race' ? 'race' : 'class'
+  const labelPlural = type === 'race' ? 'races' : 'classes'
+  const description = type === 'race'
+    ? 'Define the creature types players can choose — their appearance options, distinctive traits, and backstory lore. Examples: Human, Elf, Dwarf, Fairy.'
+    : 'Define the character archetypes players can build — their stat blocks, abilities, and skills. Examples: Wizard, Bard, Warrior, Sorcerer.'
 
   useEffect(() => {
     api.get<CharacterSchema[]>('/character-schemas')
@@ -104,15 +108,31 @@ export default function BuildsTab({ type }: BuildsTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {loading ? 'Loading…' : groups.length === 0
-            ? `No ${labelPlural} yet.`
-            : `${groups.length} ${groups.length === 1 ? label : labelPlural}`}
-        </p>
+      {!hasLevelingSystem && (
+        <div className="flex items-start gap-2.5 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <p className="text-sm">
+            No leveling system selected. Go to{' '}
+            <strong>The Codex → Leveling System</strong> to configure one before creating {labelPlural}.
+          </p>
+        </div>
+      )}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm text-muted-foreground max-w-lg">{description}</p>
+          {!loading && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {groups.length === 0
+                ? `No ${labelPlural} yet.`
+                : `${groups.length} ${groups.length === 1 ? label : labelPlural}`}
+            </p>
+          )}
+        </div>
         <Link
-          href={`/admin/schemas/new?type=${type}`}
-          className={buttonVariants({ size: 'sm' })}
+          href={hasLevelingSystem ? `/admin/schemas/new?type=${type}` : '#'}
+          className={buttonVariants({ size: 'sm', variant: hasLevelingSystem ? 'default' : 'outline' })}
+          aria-disabled={!hasLevelingSystem}
+          onClick={e => { if (!hasLevelingSystem) e.preventDefault() }}
         >
           <Plus className="h-4 w-4 mr-2" />
           New {label}

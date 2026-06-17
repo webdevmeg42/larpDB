@@ -18,6 +18,13 @@ async function createAndLogin(email = 'owner@example.com') {
   })
   const { id: gameId } = gameRes.json()
 
+  await app.inject({
+    method: 'PATCH',
+    url: `/games/${gameId}/status`,
+    headers: { authorization: `Bearer ${token}` },
+    payload: { status: 'active' },
+  })
+
   return { app, token, gameId }
 }
 
@@ -43,6 +50,7 @@ describe('POST /games', () => {
     expect(body.name).toBe('My LARP Game')
     expect(body.slug).toBe('my-larp-game')
     expect(body.joinMode).toBe('open')
+    expect(body.status).toBe('inactive')
     await app.close()
   })
 
@@ -217,16 +225,16 @@ describe('GET /my-games', () => {
 })
 
 describe('PATCH /games/:id/status', () => {
-  it('disables a game as owner', async () => {
+  it('deactivates a game as owner', async () => {
     const { app, token, gameId } = await createAndLogin(`status-owner-${Date.now()}@example.com`)
     const res = await app.inject({
       method: 'PATCH',
       url: `/games/${gameId}/status`,
       headers: { authorization: `Bearer ${token}` },
-      payload: { status: 'disabled' },
+      payload: { status: 'inactive' },
     })
     expect(res.statusCode).toBe(200)
-    expect((res.json() as { status: string }).status).toBe('disabled')
+    expect((res.json() as { status: string }).status).toBe('inactive')
     await app.close()
   })
 
@@ -242,7 +250,7 @@ describe('PATCH /games/:id/status', () => {
       method: 'PATCH',
       url: `/games/${gameId}/status`,
       headers: { authorization: `Bearer ${playerToken}` },
-      payload: { status: 'disabled' },
+      payload: { status: 'inactive' },
     })
     expect(res.statusCode).toBe(403)
     await app.close()
@@ -253,7 +261,7 @@ describe('PATCH /games/:id/status', () => {
     const res = await app.inject({
       method: 'PATCH',
       url: `/games/${gameId}/status`,
-      payload: { status: 'disabled' },
+      payload: { status: 'inactive' },
     })
     expect(res.statusCode).toBe(401)
     await app.close()
@@ -300,20 +308,20 @@ describe('DELETE /games/:id', () => {
   })
 })
 
-describe('GET /games hides disabled games', () => {
-  it('excludes disabled games from public list', async () => {
+describe('GET /games hides inactive games', () => {
+  it('excludes inactive games from public list', async () => {
     const { app, token, gameId } = await createAndLogin(`hidden-owner-${Date.now()}@example.com`)
-    // Verify game appears in public list before disabling
+    // Verify game appears in public list before deactivating
     const beforeRes = await app.inject({ method: 'GET', url: '/games' })
     const before = beforeRes.json() as Array<{ id: string }>
     expect(before.some(g => g.id === gameId)).toBe(true)
 
-    // Disable the game
+    // Deactivate the game
     await app.inject({
       method: 'PATCH',
       url: `/games/${gameId}/status`,
       headers: { authorization: `Bearer ${token}` },
-      payload: { status: 'disabled' },
+      payload: { status: 'inactive' },
     })
 
     const afterRes = await app.inject({ method: 'GET', url: '/games' })

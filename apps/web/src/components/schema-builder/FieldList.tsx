@@ -17,10 +17,39 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2 } from 'lucide-react'
+import { GripVertical, Lock, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import type { SchemaField } from '@larpdb/shared'
+
+function LockedFieldItem({
+  field,
+  isSelected,
+  onSelect,
+}: {
+  field: SchemaField
+  isSelected: boolean
+  onSelect: () => void
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 rounded-md border bg-muted/40 p-2 cursor-pointer transition-colors',
+        isSelected ? 'ring-2 ring-primary border-primary' : 'hover:bg-muted/60',
+      )}
+      onClick={onSelect}
+    >
+      <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <span className="flex-1 text-sm font-medium truncate text-muted-foreground">
+        {field.label}
+      </span>
+      <Badge variant="outline" className="text-xs shrink-0">{field.type}</Badge>
+      {field.required && (
+        <span className="text-xs text-destructive shrink-0">*</span>
+      )}
+    </div>
+  )
+}
 
 function SortableFieldItem({
   field,
@@ -79,13 +108,14 @@ function SortableFieldItem({
 
 interface FieldListProps {
   fields: SchemaField[]
+  lockedFields?: SchemaField[]
   selectedId: string | null
   onSelect: (id: string) => void
   onReorder: (fields: SchemaField[]) => void
   onDelete: (id: string) => void
 }
 
-export function FieldList({ fields, selectedId, onSelect, onReorder, onDelete }: FieldListProps) {
+export function FieldList({ fields, lockedFields = [], selectedId, onSelect, onReorder, onDelete }: FieldListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -102,29 +132,46 @@ export function FieldList({ fields, selectedId, onSelect, onReorder, onDelete }:
     }
   }
 
-  if (fields.length === 0) {
+  if (lockedFields.length === 0 && fields.length === 0) {
     return (
       <div className="flex items-center justify-center h-32 rounded-md border-2 border-dashed text-muted-foreground text-sm">
-        Add fields from the palette →
+        ← Add fields from the palette
       </div>
     )
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-1">
-          {fields.map(field => (
-            <SortableFieldItem
-              key={field.id}
-              field={field}
-              isSelected={selectedId === field.id}
-              onSelect={() => onSelect(field.id)}
-              onDelete={() => onDelete(field.id)}
-            />
-          ))}
+    <div className="space-y-1">
+      {lockedFields.map(field => (
+        <LockedFieldItem
+          key={field.id}
+          field={field}
+          isSelected={selectedId === field.id}
+          onSelect={() => onSelect(field.id)}
+        />
+      ))}
+
+      {fields.length === 0 && lockedFields.length > 0 ? (
+        <div className="flex items-center justify-center h-16 rounded-md border-2 border-dashed text-muted-foreground text-xs mt-1">
+          ← Add more fields from the palette
         </div>
-      </SortableContext>
-    </DndContext>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-1">
+              {fields.map(field => (
+                <SortableFieldItem
+                  key={field.id}
+                  field={field}
+                  isSelected={selectedId === field.id}
+                  onSelect={() => onSelect(field.id)}
+                  onDelete={() => onDelete(field.id)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
+    </div>
   )
 }

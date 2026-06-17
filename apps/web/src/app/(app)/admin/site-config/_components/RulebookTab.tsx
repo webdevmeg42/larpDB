@@ -294,16 +294,20 @@ export default function RulebookTab({ config, reload }: Props) {
             </div>
 
             {/* Editor area */}
-            <div style={{
-              flex: 1,
-              minHeight: '300px',
-              border: '1px solid #e2e8f0',
-              borderRadius: '4px',
-              padding: '10px',
-              fontSize: '13px',
-              lineHeight: '1.6',
-              color: '#374151',
-            }}>
+            <div
+              style={{
+                flex: 1,
+                minHeight: '300px',
+                border: '1px solid #e2e8f0',
+                borderRadius: '4px',
+                padding: '10px',
+                fontSize: '13px',
+                lineHeight: '1.6',
+                color: '#374151',
+                cursor: 'text',
+              }}
+              onClick={(e) => { if (e.target === e.currentTarget) editor?.commands.focus('end') }}
+            >
               <EditorContent editor={editor} />
             </div>
 

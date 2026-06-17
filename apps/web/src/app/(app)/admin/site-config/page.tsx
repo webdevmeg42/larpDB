@@ -40,7 +40,7 @@ export default function LarpBuilderPage() {
   }
 
   async function handleStatusToggle(target: MyGame) {
-    const newStatus = target.status === 'active' ? 'disabled' : 'active'
+    const newStatus = target.status === 'active' ? 'inactive' : 'active'
     setRowError(null)
     try {
       await api.patch<MyGame>(`/games/${target.id}/status`, { status: newStatus })
@@ -96,7 +96,7 @@ export default function LarpBuilderPage() {
               {games.map(g => (
                 <tr
                   key={g.id}
-                  className={cn('border-b last:border-0', g.status === 'disabled' && 'opacity-60')}
+                  className={cn('border-b last:border-0', g.status === 'inactive' && 'opacity-60')}
                 >
                   <td className="px-4 py-3">
                     <div className="font-medium">{g.name}</div>
