@@ -22,8 +22,8 @@ export default function BrowsePage() {
   const [search, setSearch] = useState('')
 
   useEffect(() => {
-    api.get<BrowseGame[]>('/games')
-      .then(setGames)
+    api.get<{ items: BrowseGame[] }>('/games')
+      .then(r => setGames(r.items))
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])

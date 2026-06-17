@@ -67,15 +67,16 @@ describe('POST /games', () => {
 })
 
 describe('GET /games', () => {
-  it('lists public games', async () => {
+  it('lists public games with pagination envelope', async () => {
     const { app } = await createAndLogin()
 
     const res = await app.inject({ method: 'GET', url: '/games' })
 
     expect(res.statusCode).toBe(200)
-    const body = res.json()
-    expect(body.length).toBeGreaterThan(0)
-    expect(body[0].slug).toBeDefined()
+    const body = res.json() as { items: Array<{ slug: string }>; total: number; limit: number; offset: number }
+    expect(body.items.length).toBeGreaterThan(0)
+    expect(body.items[0].slug).toBeDefined()
+    expect(body.total).toBeGreaterThan(0)
     await app.close()
   })
 })
@@ -313,8 +314,8 @@ describe('GET /games hides inactive games', () => {
     const { app, token, gameId } = await createAndLogin(`hidden-owner-${Date.now()}@example.com`)
     // Verify game appears in public list before deactivating
     const beforeRes = await app.inject({ method: 'GET', url: '/games' })
-    const before = beforeRes.json() as Array<{ id: string }>
-    expect(before.some(g => g.id === gameId)).toBe(true)
+    const before = beforeRes.json() as { items: Array<{ id: string }> }
+    expect(before.items.some(g => g.id === gameId)).toBe(true)
 
     // Deactivate the game
     await app.inject({
@@ -325,8 +326,8 @@ describe('GET /games hides inactive games', () => {
     })
 
     const afterRes = await app.inject({ method: 'GET', url: '/games' })
-    const after = afterRes.json() as Array<{ id: string }>
-    expect(after.some(g => g.id === gameId)).toBe(false)
+    const after = afterRes.json() as { items: Array<{ id: string }> }
+    expect(after.items.some(g => g.id === gameId)).toBe(false)
     await app.close()
   })
 })

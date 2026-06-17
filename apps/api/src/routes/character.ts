@@ -159,7 +159,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId, role, userId } = request.gameContext
 
       const { id } = request.params as { id: string }
-      const [character] = await db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
+      const [character] = await db.select({ userId: characters.userId }).from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
       if (!character) return reply.status(404).send({ error: 'Character not found' })
       if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
 
@@ -168,23 +168,39 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
-      if (character.totalXp < result.data.amount) {
-        return reply.status(400).send({ error: 'Insufficient XP balance' })
-      }
+      let transaction: typeof xpTransactions.$inferSelect | undefined
+      try {
+        ;[transaction] = await db.transaction(async (tx) => {
+          // Lock the character row to prevent concurrent XP spend race
+          const [locked] = await tx
+            .select({ totalXp: characters.totalXp })
+            .from(characters)
+            .where(and(eq(characters.id, id), eq(characters.gameId, gameId)))
+            .for('update')
+            .limit(1)
 
-      const [transaction] = await db.transaction(async (tx) => {
-        const [t] = await tx.insert(xpTransactions).values({
-          characterId: id,
-          awardedBy: null,
-          amount: result.data.amount,
-          reason: result.data.reason,
-          type: 'spend',
-        }).returning()
-        await tx.update(characters)
-          .set({ totalXp: sql`${characters.totalXp} - ${result.data.amount}` })
-          .where(and(eq(characters.id, id), eq(characters.gameId, gameId)))
-        return [t]
-      })
+          if (!locked || locked.totalXp < result.data.amount) {
+            throw Object.assign(new Error('Insufficient XP balance'), { statusCode: 400 })
+          }
+
+          const [t] = await tx.insert(xpTransactions).values({
+            characterId: id,
+            awardedBy: null,
+            amount: result.data.amount,
+            reason: result.data.reason,
+            type: 'spend',
+          }).returning()
+          await tx.update(characters)
+            .set({ totalXp: sql`${characters.totalXp} - ${result.data.amount}` })
+            .where(and(eq(characters.id, id), eq(characters.gameId, gameId)))
+          return [t]
+        })
+      } catch (err: unknown) {
+        if ((err as { statusCode?: number }).statusCode === 400) {
+          return reply.status(400).send({ error: 'Insufficient XP balance' })
+        }
+        throw err
+      }
 
       return reply.status(201).send(transaction)
     },

@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq, and, or, sql } from 'drizzle-orm'
+import { eq, and, or, sql, inArray } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { storeItems, purchases, siteConfig, eventRegistrations, characters, users, events } from '../db/schema.js'
@@ -73,11 +73,13 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       const { id } = request.params as { id: string }
-      const [existing] = await db.select().from(storeItems).where(eq(storeItems.id, id)).limit(1)
+      const [existing] = await db
+        .select({ id: storeItems.id, eventId: storeItems.eventId })
+        .from(storeItems)
+        .innerJoin(events, and(eq(events.id, storeItems.eventId), eq(events.gameId, gameId)))
+        .where(eq(storeItems.id, id))
+        .limit(1)
       if (!existing) return reply.status(404).send({ error: 'Store item not found' })
-
-      const [event] = await db.select().from(events).where(and(eq(events.id, existing.eventId), eq(events.gameId, gameId))).limit(1)
-      if (!event) return reply.status(404).send({ error: 'Store item not found' })
 
       const result = UpdateStoreItemInput.safeParse(request.body)
       if (!result.success) {
@@ -86,7 +88,10 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [updated] = await db.update(storeItems)
         .set(buildPatch(result.data) as Parameters<ReturnType<typeof db.update<typeof storeItems>>['set']>[0])
-        .where(and(eq(storeItems.id, id), eq(storeItems.eventId, existing.eventId)))
+        .where(and(
+          eq(storeItems.id, id),
+          inArray(storeItems.eventId, db.select({ id: events.id }).from(events).where(eq(events.gameId, gameId))),
+        ))
         .returning()
       return reply.send(updated)
     },
@@ -102,18 +107,23 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       const { id } = request.params as { id: string }
-      const [existing] = await db.select().from(storeItems).where(eq(storeItems.id, id)).limit(1)
+      const [existing] = await db
+        .select({ id: storeItems.id })
+        .from(storeItems)
+        .innerJoin(events, and(eq(events.id, storeItems.eventId), eq(events.gameId, gameId)))
+        .where(eq(storeItems.id, id))
+        .limit(1)
       if (!existing) return reply.status(404).send({ error: 'Store item not found' })
 
-      const [event] = await db.select().from(events).where(and(eq(events.id, existing.eventId), eq(events.gameId, gameId))).limit(1)
-      if (!event) return reply.status(404).send({ error: 'Store item not found' })
-
-      const [hasPurchase] = await db.select().from(purchases).where(eq(purchases.storeItemId, id)).limit(1)
+      const [hasPurchase] = await db.select({ id: purchases.id }).from(purchases).where(eq(purchases.storeItemId, id)).limit(1)
       if (hasPurchase) {
         return reply.status(409).send({ error: 'Cannot delete item with existing purchases' })
       }
 
-      await db.delete(storeItems).where(and(eq(storeItems.id, id), eq(storeItems.eventId, existing.eventId)))
+      await db.delete(storeItems).where(and(
+        eq(storeItems.id, id),
+        inArray(storeItems.eventId, db.select({ id: events.id }).from(events).where(eq(events.gameId, gameId))),
+      ))
       return reply.status(204).send()
     },
   )
@@ -181,7 +191,18 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
 
       const { storeItemId, characterId, quantity = 1 } = result.data
 
-      const [item] = await db.select().from(storeItems).where(eq(storeItems.id, storeItemId)).limit(1)
+      const [item] = await db
+        .select({
+          id: storeItems.id,
+          eventId: storeItems.eventId,
+          isAvailable: storeItems.isAvailable,
+          quantityAvailable: storeItems.quantityAvailable,
+          price: storeItems.price,
+        })
+        .from(storeItems)
+        .innerJoin(events, and(eq(events.id, storeItems.eventId), eq(events.gameId, gameId)))
+        .where(eq(storeItems.id, storeItemId))
+        .limit(1)
       if (!item) return reply.status(404).send({ error: 'Store item not found' })
       if (!item.isAvailable) return reply.status(409).send({ error: 'Store item is not available' })
 
@@ -210,6 +231,9 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
       let purchase: typeof purchases.$inferSelect | undefined
       try {
         ;[purchase] = await db.transaction(async (tx) => {
+          // Lock the store item row to prevent concurrent oversell
+          await tx.select({ id: storeItems.id }).from(storeItems).where(eq(storeItems.id, storeItemId)).for('update').limit(1)
+
           if (item.quantityAvailable !== null) {
             const [soldResult] = await tx
               .select({ total: sql<number>`COALESCE(SUM(${purchases.quantity}), 0)::int` })

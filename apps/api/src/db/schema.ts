@@ -65,7 +65,9 @@ export const siteConfig = pgTable('site_config', {
   codex: jsonb('codex').$type<GameCodex>(),
   currencyName: text('currency_name').notNull().default('monies'),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-})
+}, (t) => ({
+  gameIdUnique: unique('site_config_game_id_unique').on(t.gameId),
+}))
 
 export const schemaTemplates = pgTable('schema_templates', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -198,7 +200,10 @@ export const purchases = pgTable('purchases', {
   unitPrice: integer('unit_price').notNull(),
   currencyName: text('currency_name').notNull(),
   purchasedAt: timestamp('purchased_at').notNull().defaultNow(),
-})
+}, (t) => ({
+  eventIdIdx: index('purchases_event_id_idx').on(t.eventId),
+  storeItemIdIdx: index('purchases_store_item_id_idx').on(t.storeItemId),
+}))
 
 export const larpSubscriptions = pgTable('larp_subscriptions', {
   id: uuid('id').primaryKey().defaultRandom(),

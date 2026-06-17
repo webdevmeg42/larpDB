@@ -34,15 +34,23 @@ async function uniqueSlug(base: string): Promise<string> {
   let attempt = 0
   while (true) {
     const candidate = attempt === 0 ? base : `${base}-${attempt}`
-    const [existing] = await db.select().from(game).where(eq(game.slug, candidate)).limit(1)
+    const [existing] = await db.select({ id: game.id }).from(game).where(eq(game.slug, candidate)).limit(1)
     if (!existing) return candidate
     attempt++
   }
 }
 
 export const gameRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.get('/games', async (_request, reply) => {
-    const rows = await db
+  fastify.get('/games', async (request, reply) => {
+    const { limit = '100', offset = '0' } = request.query as { limit?: string; offset?: string }
+    const limitN = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200)
+    const offsetN = Math.max(parseInt(offset, 10) || 0, 0)
+
+    const filter = and(eq(game.isPublic, true), eq(game.status, 'active'))
+
+    const [{ total }] = await db.select({ total: count() }).from(game).where(filter)
+
+    const items = await db
       .select({
         id: game.id,
         name: game.name,
@@ -53,10 +61,13 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         memberCount: count(gameMembers.id),
       })
       .from(game)
-      .leftJoin(gameMembers, eq(gameMembers.gameId, game.id))
-      .where(and(eq(game.isPublic, true), eq(game.status, 'active')))
+      .leftJoin(gameMembers, and(eq(gameMembers.gameId, game.id), eq(gameMembers.status, 'active')))
+      .where(filter)
       .groupBy(game.id)
-    return reply.send(rows)
+      .limit(limitN)
+      .offset(offsetN)
+
+    return reply.send({ items, total, limit: limitN, offset: offsetN })
   })
 
   fastify.get('/games/:slug', async (request, reply) => {
@@ -125,30 +136,43 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
+      const userId = request.user.sub
       const baseSlug = generateSlug(result.data.name)
-      const slug = await uniqueSlug(baseSlug)
 
-      const [newGame] = await db.insert(game).values({
-        name: result.data.name,
-        description: result.data.description ?? null,
-        slug,
-        isPublic: result.data.isPublic ?? true,
-        joinMode: result.data.joinMode ?? 'open',
-        status: 'inactive',
-      }).returning()
+      let newGame: typeof game.$inferSelect | undefined
+      for (let attempt = 0; attempt < 5 && !newGame; attempt++) {
+        const slug = attempt === 0 ? await uniqueSlug(baseSlug) : `${baseSlug}-${attempt}`
+        try {
+          newGame = await db.transaction(async (tx) => {
+            const [created] = await tx.insert(game).values({
+              name: result.data.name,
+              description: result.data.description ?? null,
+              slug,
+              isPublic: result.data.isPublic ?? true,
+              joinMode: result.data.joinMode ?? 'open',
+              status: 'inactive',
+            }).returning()
+            if (!created) throw new Error('Failed to create game')
+
+            await tx.insert(gameMembers).values({
+              gameId: created.id,
+              userId,
+              role: 'owner',
+              status: 'active',
+            })
+
+            await tx.insert(siteConfig).values({
+              gameId: created.id,
+              siteTitle: created.name,
+            })
+
+            return created
+          })
+        } catch (err: unknown) {
+          if ((err as { code?: string }).code !== '23505' || attempt >= 4) throw err
+        }
+      }
       if (!newGame) throw new Error('Failed to create game')
-
-      await db.insert(gameMembers).values({
-        gameId: newGame.id,
-        userId: request.user.sub,
-        role: 'owner',
-        status: 'active',
-      })
-
-      await db.insert(siteConfig).values({
-        gameId: newGame.id,
-        siteTitle: newGame.name,
-      })
 
       return reply.status(201).send(newGame)
     },
@@ -220,6 +244,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       if (!existing) return reply.status(404).send({ error: 'Game not found' })
 
       await db.transaction(async (tx) => {
+        // larp_subscriptions, posts, comments, and post_likes are handled by DB-level CASCADE on game_id FK
         const gameEvents = await tx
           .select({ id: events.id })
           .from(events)
@@ -270,6 +295,8 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/config', async (request, reply) => {
     const gameId = request.headers['x-game-id'] as string | undefined
     if (!gameId) return reply.status(400).send({ error: 'X-Game-Id header required' })
+    const [gameRow] = await db.select({ id: game.id }).from(game).where(and(eq(game.id, gameId), eq(game.isPublic, true))).limit(1)
+    if (!gameRow) return reply.status(404).send({ error: 'Site config not found' })
     const [configRow] = await db.select().from(siteConfig).where(eq(siteConfig.gameId, gameId)).limit(1)
     if (!configRow) return reply.status(404).send({ error: 'Site config not found' })
     return reply.send(configRow)
