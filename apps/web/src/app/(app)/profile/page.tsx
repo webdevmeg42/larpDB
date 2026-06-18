@@ -27,6 +27,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -45,7 +46,9 @@ export default function ProfilePage() {
       setDisplayName(p.displayName)
       setEmail(p.email)
       setPhone(p.phone ?? '')
-    }).catch(() => {})
+    }).catch(() => {
+      setLoadError('Failed to load profile. Please refresh the page.')
+    })
   }, [])
 
   async function handleSave(e: React.FormEvent) {
@@ -55,9 +58,9 @@ export default function ProfilePage() {
     setSaveSuccess(false)
     try {
       const res = await api.patch<{ user: ProfileUser; token: string }>('/profile', {
-        displayName: displayName || undefined,
-        email: email || undefined,
-        phone: phone || undefined,
+        displayName,
+        email,
+        phone: phone || null,
       })
       setProfile(res.user)
       updateToken(res.token)
@@ -115,6 +118,10 @@ export default function ProfilePage() {
     } finally {
       setPasswordSaving(false)
     }
+  }
+
+  if (loadError) {
+    return <div className="p-6 text-sm text-destructive">{loadError}</div>
   }
 
   if (!profile) {
