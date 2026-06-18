@@ -11,11 +11,10 @@ import { UpdateProfileInput, ChangePasswordInput } from '@larpdb/shared'
 import { UPLOADS_DIR } from './upload.js'
 
 const ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
 ])
 const MIME_TO_EXT: Record<string, string> = {
-  'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif',
-  'image/webp': 'webp', 'image/svg+xml': 'svg',
+  'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
 }
 
 export const profileRoutes: FastifyPluginAsync = async (fastify) => {
@@ -90,10 +89,13 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
 
       await pipeline(data.file, fs.createWriteStream(filepath))
 
-      if (data.file.truncated) {
-        await fs.promises.unlink(filepath)
-        return reply.status(413).send({ error: 'File must be under 100MB' })
-      }
+      // Read current avatar before overwriting
+      const [current] = await db
+        .select({ id: users.id, avatarUrl: users.avatarUrl })
+        .from(users)
+        .where(eq(users.id, request.user.sub))
+        .limit(1)
+      if (!current) return reply.status(404).send({ error: 'User not found' })
 
       const avatarUrl = `/uploads/${filename}`
       const [updated] = await db
@@ -102,6 +104,13 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(users.id, request.user.sub))
         .returning()
       if (!updated) return reply.status(404).send({ error: 'User not found' })
+
+      // Delete old avatar file if it was a local upload
+      if (current.avatarUrl?.startsWith('/uploads/')) {
+        const oldFilename = path.basename(current.avatarUrl)
+        const oldPath = path.join(UPLOADS_DIR, oldFilename)
+        await fs.promises.unlink(oldPath).catch(() => {})
+      }
 
       const { passwordHash: _, ...safeUser } = updated
       return reply.send(safeUser)

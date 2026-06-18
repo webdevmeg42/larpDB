@@ -3,6 +3,7 @@ import { buildApp } from '../src/app.js'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { randomUUID } from 'crypto'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const UPLOADS_DIR = path.join(__dirname, '..', 'uploads')
@@ -13,7 +14,7 @@ function buildMultipartBody(boundary: string, filename: string, mimetype: string
   return Buffer.concat([Buffer.from(header), content, Buffer.from(footer)])
 }
 
-async function createUser(email = `profile-test-${Date.now()}@example.com`) {
+async function createUser(email = `profile-test-${randomUUID()}@example.com`) {
   const app = buildApp()
   await app.ready()
   const res = await app.inject({
