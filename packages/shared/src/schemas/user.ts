@@ -3,7 +3,7 @@ import { z } from 'zod'
 export const UpdateProfileInput = z.object({
   displayName: z.string().min(1).max(100).optional(),
   email: z.string().email().optional(),
-  phone: z.string().max(30).nullable().optional(),
+  phone: z.string().min(1).max(30).nullable().optional(),
 }).refine(
   d => d.displayName !== undefined || d.email !== undefined || d.phone !== undefined,
   { message: 'At least one field required' },
