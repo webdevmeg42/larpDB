@@ -35,8 +35,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router])
 
   const updateToken = useCallback((token: string) => {
-    setToken(token)
     const payload = decodeToken(token)
+    if (!payload) {
+      clearToken()
+      setUser(null)
+      return
+    }
+    setToken(token)
     setUser(payload)
   }, [])
 
