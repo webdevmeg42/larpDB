@@ -11,6 +11,7 @@ interface AuthContextValue {
   user: JwtPayload | null
   login: (input: LoginInput) => Promise<void>
   logout: () => void
+  updateToken: (token: string) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -33,8 +34,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/login')
   }, [router])
 
+  const updateToken = useCallback((token: string) => {
+    setToken(token)
+    const payload = decodeToken(token)
+    setUser(payload)
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, updateToken }}>
       {children}
     </AuthContext.Provider>
   )

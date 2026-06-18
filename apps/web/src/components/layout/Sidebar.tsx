@@ -13,6 +13,7 @@ import {
   Map,
   LogOut,
   UserRound,
+  UserCircle,
   BookOpen,
   PenSquare,
   type LucideIcon,
@@ -28,6 +29,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['owner', 'gm', 'player'] },
   { label: 'My Characters', href: '/characters', icon: UserRound, roles: ['owner', 'gm', 'player'] },
+  { label: 'My Profile', href: '/profile', icon: UserCircle, roles: ['owner', 'gm', 'player'] },
   { label: 'Events', href: '/events', icon: Calendar, roles: ['owner', 'gm', 'player'] },
   { label: 'Rulebook', href: '/rulebook', icon: BookOpen, roles: ['owner', 'gm', 'player'] },
   { label: 'LARP Builder', href: '/admin/site-config', icon: Settings, roles: ['owner'] },
