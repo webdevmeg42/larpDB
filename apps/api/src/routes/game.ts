@@ -263,7 +263,6 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
           await tx.delete(eventRegistrations).where(inArray(eventRegistrations.eventId, eventIds))
         }
         if (charIds.length > 0) {
-          await tx.delete(purchases).where(inArray(purchases.characterId, charIds))
           await tx.delete(xpTransactions).where(inArray(xpTransactions.characterId, charIds))
         }
 
@@ -315,20 +314,266 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
-      const [existing] = await db
-        .select()
-        .from(siteConfig)
-        .where(eq(siteConfig.gameId, request.gameContext.gameId))
-        .limit(1)
-      if (!existing) return reply.status(404).send({ error: 'Site config not found' })
+      const updated = await db.transaction(async (tx) => {
+        const [cfg] = await tx
+          .update(siteConfig)
+          .set({ ...buildPatch(result.data), updatedAt: new Date() })
+          .where(eq(siteConfig.gameId, request.gameContext.gameId))
+          .returning()
+        if (!cfg) return null
 
-      const [updated] = await db
-        .update(siteConfig)
-        .set({ ...buildPatch(result.data), updatedAt: new Date() })
-        .where(eq(siteConfig.id, existing.id))
-        .returning()
+        if (result.data.siteTitle !== undefined) {
+          await tx
+            .update(game)
+            .set({ name: result.data.siteTitle })
+            .where(eq(game.id, request.gameContext.gameId))
+        }
 
+        return cfg
+      })
+
+      if (!updated) return reply.status(404).send({ error: 'Site config not found' })
       return reply.send(updated)
+    },
+  )
+
+  fastify.get<{ Params: { slug: string } }>(
+    '/games/:slug/public',
+    async (request, reply) => {
+      const { slug } = request.params
+      const [row] = await db
+        .select({
+          id: game.id,
+          name: game.name,
+          slug: game.slug,
+          joinMode: game.joinMode,
+          status: game.status,
+          siteTitle: siteConfig.siteTitle,
+          tagline: siteConfig.tagline,
+          logoUrl: siteConfig.logoUrl,
+          bannerUrl: siteConfig.bannerUrl,
+          welcomeMessage: siteConfig.welcomeMessage,
+          showDirectory: siteConfig.showDirectory,
+          codex: siteConfig.codex,
+        })
+        .from(game)
+        .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .limit(1)
+
+      if (!row) return reply.status(404).send({ error: 'LARP not found' })
+
+      const codexData = row.codex ?? {}
+      const socialKeys = [
+        'socialFacebook', 'socialInstagram', 'socialSnapchat', 'socialTikTok',
+        'socialBluesky', 'socialSubstack', 'socialTwitter', 'socialDiscord',
+      ] as const
+
+      const socials: Record<string, string | undefined> = {}
+      for (const key of socialKeys) {
+        const val = (codexData as Record<string, unknown>)[key]
+        if (typeof val === 'string' && val) socials[key] = val
+      }
+
+      const additionalWebsites = Array.isArray((codexData as Record<string, unknown>).additionalWebsites)
+        ? (codexData as Record<string, unknown>).additionalWebsites
+        : undefined
+
+      return reply.send({
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        joinMode: row.joinMode,
+        status: row.status,
+        siteTitle: row.siteTitle ?? row.name,
+        tagline: row.tagline ?? null,
+        logoUrl: row.logoUrl ?? null,
+        bannerUrl: row.bannerUrl ?? null,
+        welcomeMessage: row.welcomeMessage ?? null,
+        showDirectory: row.showDirectory ?? false,
+        ...socials,
+        ...(additionalWebsites ? { additionalWebsites } : {}),
+      })
+    },
+  )
+
+  fastify.get<{ Params: { slug: string } }>(
+    '/games/:slug/codex',
+    async (request, reply) => {
+      const { slug } = request.params
+      const [row] = await db
+        .select({ codex: siteConfig.codex })
+        .from(game)
+        .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .limit(1)
+
+      if (!row) return reply.status(404).send({ error: 'LARP not found' })
+
+      return reply.send(row.codex ?? {})
+    },
+  )
+
+  fastify.get<{ Params: { slug: string } }>(
+    '/games/:slug/rulebook',
+    async (request, reply) => {
+      const { slug } = request.params
+      const [row] = await db
+        .select({ codex: siteConfig.codex })
+        .from(game)
+        .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .limit(1)
+
+      if (!row) return reply.status(404).send({ error: 'LARP not found' })
+
+      const codex = row.codex ?? {}
+      return reply.send({
+        rulebookLink: (codex as Record<string, unknown>).rulebookLink ?? null,
+        chapters: (codex as Record<string, unknown>).rulebook
+          ? ((codex as Record<string, unknown>).rulebook as { chapters: unknown[] }).chapters
+          : [],
+      })
+    },
+  )
+
+  fastify.get<{ Params: { slug: string } }>(
+    '/games/:slug/store',
+    async (request, reply) => {
+      const { slug } = request.params
+      const [gameRow] = await db
+        .select({ id: game.id, currencyName: siteConfig.currencyName })
+        .from(game)
+        .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .limit(1)
+
+      if (!gameRow) return reply.status(404).send({ error: 'LARP not found' })
+
+      const eventRows = await db
+        .select({
+          eventId: events.id,
+          eventTitle: events.title,
+          startAt: events.startAt,
+          itemId: storeItems.id,
+          itemName: storeItems.name,
+          itemDescription: storeItems.description,
+          itemPrice: storeItems.price,
+          itemIsAvailable: storeItems.isAvailable,
+        })
+        .from(events)
+        .innerJoin(storeItems, eq(storeItems.eventId, events.id))
+        .where(and(eq(events.gameId, gameRow.id), eq(events.status, 'published')))
+        .orderBy(events.startAt)
+
+      const eventMap = new Map<string, {
+        id: string
+        title: string
+        startDate: string | null
+        items: { id: string; name: string; description: string | null; price: number; isAvailable: boolean }[]
+      }>()
+
+      for (const r of eventRows) {
+        if (!eventMap.has(r.eventId)) {
+          eventMap.set(r.eventId, {
+            id: r.eventId,
+            title: r.eventTitle,
+            startDate: r.startAt ? r.startAt.toISOString() : null,
+            items: [],
+          })
+        }
+        eventMap.get(r.eventId)!.items.push({
+          id: r.itemId,
+          name: r.itemName,
+          description: r.itemDescription ?? null,
+          price: r.itemPrice,
+          isAvailable: r.itemIsAvailable,
+        })
+      }
+
+      return reply.send({
+        currencyName: gameRow.currencyName ?? 'monies',
+        events: [...eventMap.values()].filter(e => e.items.length > 0),
+      })
+    },
+  )
+
+  fastify.get<{ Params: { slug: string } }>(
+    '/games/:slug/schemas/race',
+    async (request, reply) => {
+      const { slug } = request.params
+      const [gameRow] = await db
+        .select({ id: game.id })
+        .from(game)
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .limit(1)
+
+      if (!gameRow) return reply.status(404).send({ error: 'LARP not found' })
+
+      const schemas = await db
+        .select({ id: characterSchemas.id, name: characterSchemas.name, fields: characterSchemas.fields })
+        .from(characterSchemas)
+        .where(and(
+          eq(characterSchemas.gameId, gameRow.id),
+          eq(characterSchemas.isActive, true),
+          eq(characterSchemas.type, 'race'),
+        ))
+
+      return reply.send(schemas)
+    },
+  )
+
+  fastify.get<{ Params: { slug: string } }>(
+    '/games/:slug/schemas/class',
+    async (request, reply) => {
+      const { slug } = request.params
+      const [gameRow] = await db
+        .select({ id: game.id })
+        .from(game)
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .limit(1)
+
+      if (!gameRow) return reply.status(404).send({ error: 'LARP not found' })
+
+      const schemas = await db
+        .select({ id: characterSchemas.id, name: characterSchemas.name, fields: characterSchemas.fields })
+        .from(characterSchemas)
+        .where(and(
+          eq(characterSchemas.gameId, gameRow.id),
+          eq(characterSchemas.isActive, true),
+          eq(characterSchemas.type, 'class'),
+        ))
+
+      return reply.send(schemas)
+    },
+  )
+
+  fastify.get<{ Params: { slug: string } }>(
+    '/games/:slug/membership',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const { slug } = request.params
+      const userId = request.user.sub
+
+      const [gameRow] = await db
+        .select({ id: game.id })
+        .from(game)
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .limit(1)
+
+      if (!gameRow) return reply.status(404).send({ error: 'LARP not found' })
+
+      const [member] = await db
+        .select({ id: gameMembers.id })
+        .from(gameMembers)
+        .where(and(
+          eq(gameMembers.gameId, gameRow.id),
+          eq(gameMembers.userId, userId),
+          eq(gameMembers.status, 'active'),
+        ))
+        .limit(1)
+
+      return reply.send({ isMember: !!member })
     },
   )
 }
