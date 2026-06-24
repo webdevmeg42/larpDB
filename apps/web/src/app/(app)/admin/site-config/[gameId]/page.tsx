@@ -28,6 +28,7 @@ type FormState = Partial<{
   tagline: string | null
   logoUrl: string | null
   bannerUrl: string | null
+  showDirectory: boolean
   colorPrimary: string
   colorSecondary: string
   colorBackground: string
@@ -67,6 +68,7 @@ export default function BuilderPage() {
       tagline: config.tagline ?? null,
       logoUrl: config.logoUrl ?? null,
       bannerUrl: config.bannerUrl ?? null,
+      showDirectory: config.showDirectory ?? false,
       colorPrimary: config.colorPrimary,
       colorSecondary: config.colorSecondary,
       colorBackground: config.colorBackground,
@@ -176,6 +178,24 @@ export default function BuilderPage() {
                     />
                   </div>
                   {bannerUpload.error && <p className="text-sm text-destructive">{bannerUpload.error}</p>}
+                </div>
+                <div className="pt-4 border-t space-y-2">
+                  <Label className="text-sm font-medium">Landing Page</Label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      id="show-directory"
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={form.showDirectory ?? false}
+                      onChange={e => set('showDirectory', e.target.checked)}
+                    />
+                    <label htmlFor="show-directory" className="text-sm">
+                      Show Directory to the public
+                    </label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    When on, visitors who haven't joined can see links to the Codex, Rulebook, Store, and Builds pages. When off, only members see the directory.
+                  </p>
                 </div>
               </CardContent>
             </Card>
