@@ -358,7 +358,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         })
         .from(game)
         .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
         .limit(1)
 
       if (!row) return reply.status(404).send({ error: 'LARP not found' })
@@ -405,7 +405,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         .select({ codex: siteConfig.codex })
         .from(game)
         .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
         .limit(1)
 
       if (!row) return reply.status(404).send({ error: 'LARP not found' })
@@ -422,7 +422,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         .select({ codex: siteConfig.codex })
         .from(game)
         .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
         .limit(1)
 
       if (!row) return reply.status(404).send({ error: 'LARP not found' })
@@ -445,7 +445,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         .select({ id: game.id, currencyName: siteConfig.currencyName })
         .from(game)
         .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
         .limit(1)
 
       if (!gameRow) return reply.status(404).send({ error: 'LARP not found' })
@@ -505,7 +505,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const [gameRow] = await db
         .select({ id: game.id })
         .from(game)
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
         .limit(1)
 
       if (!gameRow) return reply.status(404).send({ error: 'LARP not found' })
@@ -530,7 +530,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const [gameRow] = await db
         .select({ id: game.id })
         .from(game)
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
         .limit(1)
 
       if (!gameRow) return reply.status(404).send({ error: 'LARP not found' })
@@ -558,7 +558,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const [gameRow] = await db
         .select({ id: game.id })
         .from(game)
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true)))
+        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
         .limit(1)
 
       if (!gameRow) return reply.status(404).send({ error: 'LARP not found' })
