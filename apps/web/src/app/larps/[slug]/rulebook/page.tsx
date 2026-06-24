@@ -63,6 +63,16 @@ export default function PublicRulebookPage() {
     )
   }
 
+  if (data.chapters.length === 0) {
+    return (
+      <LarpPublicShell larpName={larpName} larpSlug={params.slug} title="Rulebook" subtitle="Game mechanics">
+        <div className="rounded-lg border p-8 text-center text-muted-foreground text-sm">
+          No rulebook chapters have been added yet.
+        </div>
+      </LarpPublicShell>
+    )
+  }
+
   const activeChapter = data.chapters.find(c => c.id === activeId) ?? data.chapters[0]
 
   return (
