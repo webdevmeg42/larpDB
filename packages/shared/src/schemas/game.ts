@@ -97,6 +97,7 @@ export const UpdateSiteConfigInput = z.object({
   customCss: z.string().max(10000).nullable().optional(),
   codex: GameCodexSchema.nullable().optional(),
   currencyName: z.string().min(1).max(100).optional(),
+  showDirectory: z.boolean().optional(),
 })
 
 export type UpdateSiteConfigInput = z.infer<typeof UpdateSiteConfigInput>

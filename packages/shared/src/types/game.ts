@@ -115,5 +115,6 @@ export interface SiteConfig {
   customCss: string | null
   codex: GameCodex | null
   currencyName: string
+  showDirectory: boolean
   updatedAt: string
 }

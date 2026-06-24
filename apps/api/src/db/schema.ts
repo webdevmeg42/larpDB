@@ -65,6 +65,7 @@ export const siteConfig = pgTable('site_config', {
   customCss: text('custom_css'),
   codex: jsonb('codex').$type<GameCodex>(),
   currencyName: text('currency_name').notNull().default('monies'),
+  showDirectory: boolean('show_directory').notNull().default(false),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({
   gameIdUnique: unique('site_config_game_id_unique').on(t.gameId),
