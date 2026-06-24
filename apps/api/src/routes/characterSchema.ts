@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { and, eq, ne } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { characterSchemas } from '../db/schema.js'
 import type { SchemaField } from '@larpdb/shared'
@@ -99,14 +99,14 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
 
       const { gameId } = request.gameContext
       const { id } = request.params as { id: string }
-      const [target] = await db.select().from(characterSchemas).where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId))).limit(1)
-      if (!target) return reply.status(404).send({ error: 'Schema not found' })
 
-      const [activated] = await db.transaction(async (tx) => {
-        await tx.update(characterSchemas).set({ isActive: false }).where(and(ne(characterSchemas.id, id), eq(characterSchemas.gameId, gameId), eq(characterSchemas.type, target.type)))
-        return tx.update(characterSchemas).set({ isActive: true }).where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId))).returning()
-      })
+      const [activated] = await db
+        .update(characterSchemas)
+        .set({ isActive: true })
+        .where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId)))
+        .returning()
 
+      if (!activated) return reply.status(404).send({ error: 'Schema not found' })
       return reply.send(activated)
     },
   )
@@ -121,10 +121,14 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
 
       const { gameId } = request.gameContext
       const { id } = request.params as { id: string }
-      const [target] = await db.select().from(characterSchemas).where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId))).limit(1)
-      if (!target) return reply.status(404).send({ error: 'Schema not found' })
 
-      const [deactivated] = await db.update(characterSchemas).set({ isActive: false }).where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId))).returning()
+      const [deactivated] = await db
+        .update(characterSchemas)
+        .set({ isActive: false })
+        .where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId)))
+        .returning()
+
+      if (!deactivated) return reply.status(404).send({ error: 'Schema not found' })
       return reply.send(deactivated)
     },
   )

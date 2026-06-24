@@ -30,6 +30,9 @@ const RACE_LOCKED_FIELDS: SchemaField[] = [
   },
 ]
 
+const DEFAULT_LEVEL_ENTRIES = [{ level: 1, value: 0 }, { level: 2, value: 0 }, { level: 3, value: 0 }]
+const DEFAULT_HP_ENTRIES = [{ level: 1, hp: 5 }, { level: 2, hp: 10 }, { level: 3, hp: 15 }]
+
 const CLASS_LOCKED_FIELDS: SchemaField[] = [
   {
     id: 'bbbbbbbb-0000-0000-0000-000000000001',
@@ -39,13 +42,22 @@ const CLASS_LOCKED_FIELDS: SchemaField[] = [
     order: 0,
     locked: true,
     stats: [
-      { key: 'str', label: 'Strength', min: 1, max: 20 },
-      { key: 'dex', label: 'Dexterity', min: 1, max: 20 },
-      { key: 'con', label: 'Constitution', min: 1, max: 20 },
-      { key: 'int', label: 'Intelligence', min: 1, max: 20 },
-      { key: 'wis', label: 'Wisdom', min: 1, max: 20 },
-      { key: 'cha', label: 'Charisma', min: 1, max: 20 },
+      { key: 'str', label: 'Strength', min: 1, max: 20, levelEntries: DEFAULT_LEVEL_ENTRIES },
+      { key: 'dex', label: 'Dexterity', min: 1, max: 20, levelEntries: DEFAULT_LEVEL_ENTRIES },
+      { key: 'con', label: 'Constitution', min: 1, max: 20, levelEntries: DEFAULT_LEVEL_ENTRIES },
+      { key: 'int', label: 'Intelligence', min: 1, max: 20, levelEntries: DEFAULT_LEVEL_ENTRIES },
+      { key: 'wis', label: 'Wisdom', min: 1, max: 20, levelEntries: DEFAULT_LEVEL_ENTRIES },
+      { key: 'cha', label: 'Charisma', min: 1, max: 20, levelEntries: DEFAULT_LEVEL_ENTRIES },
     ],
+  },
+  {
+    id: 'bbbbbbbb-0000-0000-0000-000000000002',
+    type: 'hitpoints',
+    label: 'Health Points',
+    required: true,
+    order: 1,
+    locked: true,
+    hitPointEntries: DEFAULT_HP_ENTRIES,
   },
 ]
 
@@ -59,7 +71,23 @@ function initLockedFields(schemaType: CharacterSchemaType | undefined, initialFi
   const defaults = getLockedDefaults(schemaType)
   return defaults.map(def => {
     const stored = initialFields.find(f => f.id === def.id)
-    return stored ? { ...stored, locked: true } : def
+    if (!stored) return def
+    const base = { ...stored, locked: true }
+    // Backfill pre-populated level entries for schemas saved before this requirement
+    if (def.type === 'hitpoints' && !(stored.hitPointEntries?.length)) {
+      return { ...base, hitPointEntries: def.hitPointEntries ?? [] } as SchemaField
+    }
+    if (def.type === 'statblock' && def.stats) {
+      const mergedStats = def.stats.map(defaultStat => {
+        const storedStat = stored.stats?.find(s => s.key === defaultStat.key) ?? defaultStat
+        if (!(storedStat.levelEntries?.length)) {
+          return { ...storedStat, levelEntries: defaultStat.levelEntries ?? [] }
+        }
+        return storedStat
+      })
+      return { ...base, stats: mergedStats } as SchemaField
+    }
+    return base as SchemaField
   })
 }
 
@@ -84,11 +112,19 @@ function makeDefaultField(type: SchemaFieldType, order: number): SchemaField {
     case 'appearance':
       return { ...base } as SchemaField
     case 'hitpoints':
-      return { ...base, hitPointEntries: [] } as SchemaField
+      return { ...base, hitPointEntries: [...DEFAULT_HP_ENTRIES] } as SchemaField
     case 'attacks':
-      return { ...base, attackEntries: [] } as SchemaField
+      return { ...base, attackEntries: [
+        { kind: 'new', level: 1, name: '', hitPoints: 5 },
+        { kind: 'new', level: 2, name: '', hitPoints: 5 },
+        { kind: 'new', level: 3, name: '', hitPoints: 5 },
+      ] } as SchemaField
     case 'spells':
-      return { ...base, spellEntries: [] } as SchemaField
+      return { ...base, spellEntries: [
+        { kind: 'new', level: 1, name: '', hitPoints: 5, effects: '' },
+        { kind: 'new', level: 2, name: '', hitPoints: 5, effects: '' },
+        { kind: 'new', level: 3, name: '', hitPoints: 5, effects: '' },
+      ] } as SchemaField
     default:
       return base as SchemaField
   }
@@ -106,7 +142,7 @@ interface SchemaBuilderProps {
 }
 
 export function SchemaBuilder({
-  schemaId: _schemaId,
+  schemaId,
   initialName,
   initialFields,
   schemaType,
@@ -121,7 +157,10 @@ export function SchemaBuilder({
     const lockedDefs = getLockedDefaults(schemaType)
     return initialFields.filter(f => {
       if (f.locked) return false
-      return !lockedDefs.some(def => def.type === f.type && def.label === f.label)
+      if (lockedDefs.some(def => def.type === f.type && def.label === f.label)) return false
+      // Level is system-managed; owners should not define it in any schema
+      if (f.type === 'number' && f.label.toLowerCase() === 'level') return false
+      return true
     })
   })
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -162,6 +201,34 @@ export function SchemaBuilder({
         ...lockedFields.map((f, i) => ({ ...f, order: i })),
         ...fields.map((f, i) => ({ ...f, order: lockedFields.length + i })),
       ] as SchemaField[]
+
+      if (schemaType === 'class') {
+        for (const field of allFields) {
+          if (field.type === 'hitpoints' && (field.hitPointEntries ?? []).length < 3) {
+            setSaveError(`"${field.label}" requires at least 3 levels defined.`)
+            return
+          }
+          if (field.type === 'statblock') {
+            const statsWithEntries = (field.stats ?? []).filter(s => (s.levelEntries ?? []).length > 0)
+            if (statsWithEntries.length > 0) {
+              const under = statsWithEntries.find(s => (s.levelEntries ?? []).length < 3)
+              if (under) {
+                setSaveError(`"${field.label}" — ${under.label} requires at least 3 levels defined.`)
+                return
+              }
+            }
+          }
+          if (field.type === 'attacks' && (field.attackEntries ?? []).length < 3) {
+            setSaveError(`"${field.label}" requires at least 3 entries defined.`)
+            return
+          }
+          if (field.type === 'spells' && (field.spellEntries ?? []).length < 3) {
+            setSaveError(`"${field.label}" requires at least 3 entries defined.`)
+            return
+          }
+        }
+      }
+
       await onSave(name, allFields)
     } catch (err: unknown) {
       setSaveError(getErrorMessage(err, 'Save failed'))
@@ -185,7 +252,7 @@ export function SchemaBuilder({
         />
         <div className="ml-auto flex items-center gap-2">
           {saveError && <span className="text-sm text-destructive">{saveError}</span>}
-          {!isActive && (
+          {!isActive && !!schemaId && (
             <Button variant="outline" onClick={() => void onActivate()} disabled={isSaving}>
               Activate
             </Button>
@@ -243,7 +310,7 @@ export function SchemaBuilder({
         {/* Field editor */}
         <div className="w-72 shrink-0 overflow-y-auto">
           {selectedField ? (
-            <FieldEditor field={selectedField} onChange={updateField} />
+            <FieldEditor field={selectedField} onChange={updateField} schemaType={schemaType} />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground p-4 text-center">
               Select a field to edit its properties

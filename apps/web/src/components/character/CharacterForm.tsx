@@ -193,6 +193,134 @@ function FormField({
         </div>
       )
     }
+    case 'appearance': {
+      const data = (typeof value === 'object' && value !== null && !Array.isArray(value))
+        ? value as Record<string, string>
+        : {}
+      const physicalFields = [
+        { key: 'age', label: 'Age' },
+        { key: 'height', label: 'Height' },
+        { key: 'weight', label: 'Weight' },
+        { key: 'eyes', label: 'Eyes' },
+        { key: 'skin', label: 'Skin' },
+        { key: 'hair', label: 'Hair' },
+      ]
+      return (
+        <div className="space-y-3">
+          <Label>
+            {field.label || 'Character Appearance'}
+            {field.required && <span className="text-destructive ml-1">*</span>}
+          </Label>
+          <div className="grid grid-cols-3 gap-3">
+            {physicalFields.map(({ key, label }) => (
+              <div key={key} className="space-y-1">
+                <Label className="text-xs">{label}</Label>
+                <Input
+                  value={data[key] ?? ''}
+                  onChange={e => onFieldChange({ ...data, [key]: e.target.value })}
+                  placeholder={label}
+                  className="text-sm"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Character Appearance</Label>
+            <Textarea
+              value={data.characterAppearance ?? ''}
+              onChange={e => onFieldChange({ ...data, characterAppearance: e.target.value })}
+              rows={3}
+              placeholder="Describe your character's appearance…"
+            />
+          </div>
+        </div>
+      )
+    }
+    case 'hitpoints': {
+      const entries = [...(field.hitPointEntries ?? [])].sort((a, b) => a.level - b.level)
+      return (
+        <div className="space-y-2">
+          <Label>{field.label || 'Health Points'}</Label>
+          {entries.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">No levels defined yet.</p>
+          ) : (
+            <table className="w-full text-sm border rounded overflow-hidden">
+              <thead>
+                <tr className="bg-muted/50 text-xs text-muted-foreground uppercase tracking-wide">
+                  <th className="px-3 py-1.5 text-left font-medium">Level</th>
+                  <th className="px-3 py-1.5 text-left font-medium">HP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((e, i) => (
+                  <tr key={i} className="border-t">
+                    <td className="px-3 py-1.5 font-mono">{e.level}</td>
+                    <td className="px-3 py-1.5 font-mono">{e.hp}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )
+    }
+    case 'attacks': {
+      const entries = [...(field.attackEntries ?? [])].sort((a, b) => a.level - b.level)
+      return (
+        <div className="space-y-2">
+          <Label>{field.label || 'Attacks'}</Label>
+          {entries.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">No attacks defined yet.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {entries.map((e, i) => (
+                <div key={i} className="rounded border px-3 py-2 flex items-center gap-2 text-sm">
+                  <span className={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${e.kind === 'new' ? 'bg-primary/10 text-primary' : 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'}`}>
+                    {e.kind === 'new' ? 'NEW' : 'UPGRADE'}
+                  </span>
+                  <span className="text-xs text-muted-foreground shrink-0">Lv {e.level}</span>
+                  <span className="flex-1 font-medium">
+                    {e.kind === 'new' ? e.name : (e.attackName ?? e.name)}
+                  </span>
+                  <span className="text-xs text-muted-foreground shrink-0">{e.hitPoints} HP</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    }
+    case 'spells': {
+      const entries = [...(field.spellEntries ?? [])].sort((a, b) => a.level - b.level)
+      return (
+        <div className="space-y-2">
+          <Label>{field.label || 'Spells'}</Label>
+          {entries.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">No spells defined yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {entries.map((e, i) => (
+                <div key={i} className="rounded border px-3 py-2 space-y-1 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium shrink-0 ${e.kind === 'new' ? 'bg-primary/10 text-primary' : 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'}`}>
+                      {e.kind === 'new' ? 'NEW' : 'UPGRADE'}
+                    </span>
+                    <span className="text-xs text-muted-foreground shrink-0">Lv {e.level}</span>
+                    <span className="flex-1 font-medium">
+                      {e.kind === 'new' ? e.name : (e.spellName ?? e.name)}
+                    </span>
+                    <span className="text-xs text-muted-foreground shrink-0">{e.hitPoints} HP</span>
+                  </div>
+                  {e.effects && (
+                    <p className="text-xs text-muted-foreground pl-1">{e.effects}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    }
     default:
       return null
   }

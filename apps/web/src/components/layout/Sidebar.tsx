@@ -16,6 +16,7 @@ import {
   UserCircle,
   BookOpen,
   PenSquare,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -32,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'My Profile', href: '/profile', icon: UserCircle, roles: ['owner', 'gm', 'player'] },
   { label: 'Events', href: '/events', icon: Calendar, roles: ['owner', 'gm', 'player'] },
   { label: 'Rulebook', href: '/rulebook', icon: BookOpen, roles: ['owner', 'gm', 'player'] },
+  { label: 'Admin', href: '/admin/community', icon: ShieldCheck, roles: ['owner', 'gm'] },
   { label: 'LARP Builder', href: '/admin/site-config', icon: Settings, roles: ['owner'] },
   { label: 'Users', href: '/admin/users', icon: Users, roles: ['owner'] },
   { label: 'NPCs', href: '/npcs', icon: Swords, roles: ['owner', 'gm'] },

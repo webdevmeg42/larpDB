@@ -44,12 +44,18 @@ export interface SchemaFieldOption {
   xpCost?: number
 }
 
+export interface StatLevelEntry {
+  level: number
+  value: number
+}
+
 export interface StatBlockStat {
   key: string
   label: string
   min?: number
   max?: number
   xpCostPerPoint?: number
+  levelEntries?: StatLevelEntry[]
 }
 
 export interface SchemaField {
@@ -59,6 +65,7 @@ export interface SchemaField {
   required: boolean
   order: number
   locked?: boolean
+  gmOnly?: boolean
   min?: number
   max?: number
   xpCostPerPoint?: number
@@ -102,13 +109,37 @@ export interface SchemaTemplate {
   isBuiltin: boolean
 }
 
+export interface GmCondition {
+  type: 'poisoned' | 'cursed' | 'diseased' | 'blinded' | 'deafened' | 'paralyzed' | 'stunned' | 'charmed' | 'frightened' | 'custom'
+  flavorText?: string
+  duration?: string
+}
+
+export interface GmData {
+  milestones?: string[]
+  currency?: number
+  consumables?: { name: string; count: number }[]
+  inventory?: { name: string; description?: string }[]
+  craftingMaterials?: { name: string; count: number }[]
+  currentHp?: number
+  maxHpOverride?: number
+  deathCount?: number
+  statusFlag?: 'alive' | 'unconscious' | 'stable' | 'dead'
+  exhaustionLevel?: number
+  conditions?: GmCondition[]
+  customCondition?: string
+  customConditionDuration?: string
+}
+
 export interface Character {
   id: string
   userId: string
   schemaId: string
+  classSchemaId: string | null
   name: string
   portraitUrl: string | null
   data: Record<string, unknown>
+  gmData: GmData | null
   totalXp: number
   isActive: boolean
   createdAt: string

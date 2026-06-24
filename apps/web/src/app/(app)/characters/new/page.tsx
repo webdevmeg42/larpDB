@@ -3,110 +3,290 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { api } from '@/lib/api'
+import { setGameId } from '@/lib/auth'
 import { CharacterForm } from '@/components/character/CharacterForm'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import type { CharacterSchema, Character } from '@larpdb/shared'
+import { fieldHasXpCost } from '@/lib/xpCost'
+import type { CharacterSchema, Character, SchemaField } from '@larpdb/shared'
+
+interface MyGame {
+  id: string
+  name: string
+  status: string
+  role: string
+}
+
+// The locked "Character Name" field ID defined in SchemaBuilder
+const CHARACTER_NAME_FIELD_ID = 'aaaaaaaa-0000-0000-0000-000000000001'
+
+type Step = 'larp' | 'race' | 'class' | 'form'
 
 export default function NewCharacterPage() {
   const { user } = useAuth()
-  const { game } = useSiteConfig()
   const router = useRouter()
-  const [schema, setSchema] = useState<CharacterSchema | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [name, setName] = useState('')
-  const [values, setValues] = useState<Record<string, unknown>>({})
+
+  const [step, setStep] = useState<Step>('larp')
+
+  const [games, setGames] = useState<MyGame[]>([])
+  const [gamesLoading, setGamesLoading] = useState(true)
+  const [selectedGameId, setSelectedGameId] = useState('')
+
+  const [raceSchemas, setRaceSchemas] = useState<CharacterSchema[]>([])
+  const [classSchemas, setClassSchemas] = useState<CharacterSchema[]>([])
+  const [schemasLoading, setSchemasLoading] = useState(false)
+  const [schemasError, setSchemasError] = useState<string | null>(null)
+
+  const [selectedRace, setSelectedRace] = useState<CharacterSchema | null>(null)
+  const [selectedClass, setSelectedClass] = useState<CharacterSchema | null>(null)
+
+  const [formValues, setFormValues] = useState<Record<string, unknown>>({})
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
-    api.get<CharacterSchema[]>('/character-schemas')
-      .then(schemas => {
-        const active = schemas.find(s => s.isActive)
-        setSchema(active ?? null)
+    api.get<MyGame[]>('/my-games')
+      .then(all => {
+        const available = all.filter(
+          g => g.status === 'active' || g.role === 'owner' || g.role === 'gm',
+        )
+        setGames(available)
+        if (available.length === 1 && available[0]) setSelectedGameId(available[0].id)
       })
-      .catch(() => setFetchError('Failed to load schema. Please refresh.'))
-      .finally(() => setLoading(false))
+      .catch(() => {})
+      .finally(() => setGamesLoading(false))
   }, [user])
 
-  if (!user) return null
-  if (game?.status === 'inactive') {
-    return (
-      <div className="p-6 max-w-lg">
-        <p className="text-muted-foreground">
-          This LARP is currently inactive. Characters cannot be created until it&apos;s reactivated.
-        </p>
-      </div>
-    )
-  }
-  if (loading) return <div className="p-6 text-muted-foreground">Loading…</div>
-  if (fetchError) return <div className="p-6 text-sm text-destructive">{fetchError}</div>
-  if (!schema) {
-    return (
-      <div className="p-6 max-w-lg">
-        <p className="text-muted-foreground">
-          No character schema has been activated yet. Ask your GM to set one up.
-        </p>
-      </div>
-    )
+  function handleLarpContinue() {
+    if (!selectedGameId) return
+    setSchemasLoading(true)
+    setSchemasError(null)
+    setGameId(selectedGameId)
+    api.get<CharacterSchema[]>('/character-schemas')
+      .then(schemas => {
+        setRaceSchemas(schemas.filter(s => s.isActive && s.type === 'race'))
+        setClassSchemas(schemas.filter(s => s.isActive && s.type === 'class'))
+        setStep('race')
+      })
+      .catch(() => setSchemasError('Failed to load schemas. Please try again.'))
+      .finally(() => setSchemasLoading(false))
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!name.trim()) {
-      setError('Character name is required.')
-      return
-    }
+  async function handleSubmit() {
+    if (!selectedGameId) return
     setSubmitting(true)
-    setError(null)
+    setSubmitError(null)
     try {
-      const character = await api.post<Character>('/characters', { name: name.trim(), data: values })
+      setGameId(selectedGameId)
+      const name = (typeof formValues[CHARACTER_NAME_FIELD_ID] === 'string'
+        ? (formValues[CHARACTER_NAME_FIELD_ID] as string).trim()
+        : '') || 'Unnamed Character'
+      const character = await api.post<Character>('/characters', {
+        name,
+        data: formValues,
+        raceSchemaId: selectedRace?.id,
+        classSchemaId: selectedClass?.id,
+      })
       router.push(`/characters/${character.id}`)
-    } catch {
-      setError('Failed to create character. Please try again.')
-    } finally {
+    } catch (err) {
+      setSubmitError((err as Error).message ?? 'Failed to create character. Please try again.')
       setSubmitting(false)
     }
   }
 
+  if (!user) return null
+  if (gamesLoading) return <div className="p-6 text-muted-foreground">Loading…</div>
+
+  if (games.length === 0) {
+    return (
+      <div className="p-6 max-w-lg">
+        <h1 className="text-2xl font-semibold mb-4">New Character</h1>
+        <p className="text-muted-foreground">
+          You are not a member of any active LARPs. Join a LARP before creating a character.
+        </p>
+      </div>
+    )
+  }
+
+  const stepOrder: Step[] = ['larp', 'race', 'class', 'form']
+  const stepLabels: Record<Step, string> = { larp: 'LARP', race: 'Race', class: 'Class', form: 'Character' }
+  const currentIndex = stepOrder.indexOf(step)
+
+  const allCombinedFields = [
+    ...(selectedRace?.fields ?? []),
+    ...(selectedClass?.fields ?? []),
+  ]
+
+  function isXpGated(field: SchemaField): boolean {
+    return field.type === 'statblock' || fieldHasXpCost(field)
+  }
+
+  function isAutoComputed(field: SchemaField): boolean {
+    return (
+      field.type === 'hitpoints' ||
+      field.type === 'attacks' ||
+      field.type === 'spells' ||
+      (field.type === 'statblock' && (field.stats ?? []).some(s => (s.levelEntries ?? []).length > 0))
+    )
+  }
+
+  function isGmOnly(field: SchemaField): boolean {
+    return (
+      (field.type === 'number' && field.label.toLowerCase() === 'level') ||
+      field.gmOnly === true
+    )
+  }
+
+  const combinedFields = allCombinedFields.filter(f => !isXpGated(f) && !isGmOnly(f) && !isAutoComputed(f))
+
   return (
     <div className="p-6 max-w-lg">
-      <h1 className="text-2xl font-semibold mb-6">New Character</h1>
-      <form onSubmit={e => void handleSubmit(e)} className="space-y-6">
-        <div className="space-y-1">
-          <Label htmlFor="name">
-            Character name <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="name"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="Enter character name…"
-          />
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 mb-6">
+        {stepOrder.map((s, i) => (
+          <div key={s} className="flex items-center gap-2">
+            <span className={`text-sm font-medium ${i === currentIndex ? 'text-foreground' : 'text-muted-foreground'}`}>
+              {stepLabels[s]}
+            </span>
+            {i < stepOrder.length - 1 && <span className="text-muted-foreground text-xs">›</span>}
+          </div>
+        ))}
+      </div>
+
+      {/* Step 1: Select LARP */}
+      {step === 'larp' && (
+        <div className="space-y-6">
+          <h1 className="text-2xl font-semibold">New Character</h1>
+          <div className="space-y-1.5">
+            <Label htmlFor="larp">Select a LARP</Label>
+            <select
+              id="larp"
+              value={selectedGameId}
+              onChange={e => setSelectedGameId(e.target.value)}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {games.length > 1 && <option value="">Choose a LARP…</option>}
+              {games.map(g => (
+                <option key={g.id} value={g.id}>
+                  {g.name}{g.status !== 'active' ? ' (inactive)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+          {schemasError && <p className="text-sm text-destructive">{schemasError}</p>}
+          <div className="flex gap-2">
+            <Button onClick={handleLarpContinue} disabled={!selectedGameId || schemasLoading}>
+              {schemasLoading ? 'Loading…' : 'Continue'}
+            </Button>
+            <Button variant="outline" onClick={() => router.push('/characters')}>Cancel</Button>
+          </div>
         </div>
-        {schema.fields.length > 0 && (
-          <CharacterForm
-            fields={schema.fields}
-            values={values}
-            onChange={setValues}
-            mode="create"
-          />
-        )}
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <div className="flex gap-2">
-          <Button type="submit" disabled={submitting}>
-            {submitting ? 'Creating…' : 'Create character'}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => router.push('/characters')}>
-            Cancel
-          </Button>
+      )}
+
+      {/* Step 2: Select Race */}
+      {step === 'race' && (
+        <div className="space-y-6">
+          <h1 className="text-2xl font-semibold">Select Race</h1>
+          {raceSchemas.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No races are available for this LARP yet. Ask your GM to set them up.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {raceSchemas.map(schema => (
+                <button
+                  key={schema.id}
+                  type="button"
+                  onClick={() => setSelectedRace(schema)}
+                  className={`rounded-lg border p-4 text-left transition-colors hover:bg-muted/50 ${
+                    selectedRace?.id === schema.id ? 'ring-2 ring-primary border-primary' : ''
+                  }`}
+                >
+                  <p className="font-medium text-sm">{schema.name}</p>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setStep('class')}
+              disabled={raceSchemas.length > 0 && !selectedRace}
+            >
+              Continue
+            </Button>
+            <Button variant="outline" onClick={() => setStep('larp')}>Back</Button>
+          </div>
         </div>
-      </form>
+      )}
+
+      {/* Step 3: Select Class */}
+      {step === 'class' && (
+        <div className="space-y-6">
+          <h1 className="text-2xl font-semibold">Select Class</h1>
+          {classSchemas.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No classes are available for this LARP yet. Ask your GM to set them up.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {classSchemas.map(schema => (
+                <button
+                  key={schema.id}
+                  type="button"
+                  onClick={() => setSelectedClass(schema)}
+                  className={`rounded-lg border p-4 text-left transition-colors hover:bg-muted/50 ${
+                    selectedClass?.id === schema.id ? 'ring-2 ring-primary border-primary' : ''
+                  }`}
+                >
+                  <p className="font-medium text-sm">{schema.name}</p>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setStep('form')}
+              disabled={classSchemas.length > 0 && !selectedClass}
+            >
+              Continue
+            </Button>
+            <Button variant="outline" onClick={() => setStep('race')}>Back</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 4: Character form */}
+      {step === 'form' && (
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-semibold">Create Character</h1>
+            {(selectedRace || selectedClass) && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {[selectedRace?.name, selectedClass?.name].filter(Boolean).join(' · ')}
+              </p>
+            )}
+          </div>
+          {combinedFields.length > 0 ? (
+            <CharacterForm
+              fields={combinedFields}
+              values={formValues}
+              onChange={setFormValues}
+              mode="create"
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">No fields defined for this race/class combination.</p>
+          )}
+          {submitError && <p className="text-sm text-destructive">{submitError}</p>}
+          <div className="flex gap-2">
+            <Button onClick={() => void handleSubmit()} disabled={submitting}>
+              {submitting ? 'Creating…' : 'Create Character'}
+            </Button>
+            <Button variant="outline" onClick={() => setStep('class')}>Back</Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

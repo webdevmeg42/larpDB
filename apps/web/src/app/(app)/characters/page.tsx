@@ -17,13 +17,12 @@ export default function CharactersPage() {
   const larpInactive = game?.status === 'inactive'
   const [characters, setCharacters] = useState<Character[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
     api.get<Character[]>('/characters')
       .then(setCharacters)
-      .catch(() => setError('Failed to load characters.'))
+      .catch(() => setCharacters([]))
       .finally(() => setLoading(false))
   }, [user])
 
@@ -52,10 +51,10 @@ export default function CharactersPage() {
       </div>
       {loading ? (
         <p className="text-muted-foreground">Loading…</p>
-      ) : error ? (
-        <p className="text-sm text-destructive">{error}</p>
       ) : characters.length === 0 ? (
-        <p className="text-muted-foreground">No characters yet. Create one to get started.</p>
+        <p className="text-muted-foreground">
+          You haven&apos;t created any characters yet. Join a LARP and create a new character.
+        </p>
       ) : (
         <Card>
           <CardContent className="p-0">

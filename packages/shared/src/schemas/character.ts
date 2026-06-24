@@ -28,12 +28,18 @@ export const SchemaFieldOptionSchema = z.object({
   xpCost: z.number().int().min(0).optional(),
 })
 
+export const StatLevelEntrySchema = z.object({
+  level: z.number().int().min(1),
+  value: z.number(),
+})
+
 export const StatBlockStatSchema = z.object({
   key: z.string().min(1),
   label: z.string().min(1),
   min: z.number().int().optional(),
   max: z.number().int().optional(),
   xpCostPerPoint: z.number().int().min(0).optional(),
+  levelEntries: z.array(StatLevelEntrySchema).optional(),
 })
 
 export const SchemaFieldSchema = z.object({
@@ -43,6 +49,7 @@ export const SchemaFieldSchema = z.object({
   required: z.boolean(),
   order: z.number().int().min(0),
   locked: z.boolean().optional(),
+  gmOnly: z.boolean().optional(),
   min: z.number().optional(),
   max: z.number().optional(),
   xpCostPerPoint: z.number().int().min(0).optional(),
@@ -80,22 +87,47 @@ export const CreateCharacterInput = z.object({
   name: z.string().min(1).max(200),
   portraitUrl: z.string().url().optional(),
   data: z.record(z.unknown()).optional().default({}),
+  raceSchemaId: z.string().uuid().optional(),
+  classSchemaId: z.string().uuid().optional(),
 })
 
 export const UpdateCharacterInput = z.object({
   name: z.string().min(1).max(200).optional(),
   portraitUrl: z.string().url().nullable().optional(),
   data: z.record(z.unknown()).optional(),
+  xpSpend: z.number().int().nonnegative().optional(),
 })
 
 export const AwardXPInput = z.object({
-  amount: z.number().int().positive(),
+  amount: z.number().int().refine(n => n !== 0, { message: 'Amount must be non-zero' }),
   reason: z.string().min(1).max(500),
 })
 
 export const SpendXPInput = z.object({
   amount: z.number().int().positive(),
   reason: z.string().min(1).max(500),
+})
+
+const GmConditionSchema = z.object({
+  type: z.enum(['poisoned', 'cursed', 'diseased', 'blinded', 'deafened', 'paralyzed', 'stunned', 'charmed', 'frightened', 'custom']),
+  flavorText: z.string().max(500).optional(),
+  duration: z.string().max(200).optional(),
+})
+
+export const GmDataInput = z.object({
+  milestones: z.array(z.string().min(1).max(500)).optional(),
+  currency: z.number().int().min(0).optional(),
+  consumables: z.array(z.object({ name: z.string().min(1).max(200), count: z.number().int().min(0) })).optional(),
+  inventory: z.array(z.object({ name: z.string().min(1).max(200), description: z.string().max(500).optional() })).optional(),
+  craftingMaterials: z.array(z.object({ name: z.string().min(1).max(200), count: z.number().int().min(0) })).optional(),
+  currentHp: z.number().int().optional(),
+  maxHpOverride: z.number().int().min(0).optional().nullable(),
+  deathCount: z.number().int().min(0).optional(),
+  statusFlag: z.enum(['alive', 'unconscious', 'stable', 'dead']).optional(),
+  exhaustionLevel: z.number().int().min(0).max(6).optional(),
+  conditions: z.array(GmConditionSchema).optional(),
+  customCondition: z.string().max(500).optional(),
+  customConditionDuration: z.string().max(200).optional(),
 })
 
 export type SchemaFieldInput = z.infer<typeof SchemaFieldSchema>
@@ -105,3 +137,4 @@ export type CreateCharacterInput = z.infer<typeof CreateCharacterInput>
 export type UpdateCharacterInput = z.infer<typeof UpdateCharacterInput>
 export type AwardXPInput = z.infer<typeof AwardXPInput>
 export type SpendXPInput = z.infer<typeof SpendXPInput>
+export type GmDataInput = z.infer<typeof GmDataInput>

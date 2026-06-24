@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import type { SiteConfig, GameCodex, LevelingSystemType, Faction } from '@larpdb/shared'
+import type { SiteConfig, GameCodex, LevelingSystemType, Faction, AdditionalWebsite } from '@larpdb/shared'
 import { DatePicker } from '@/components/ui/date-picker'
 
 interface Props {
@@ -42,7 +42,6 @@ export default function CodexTab({ config, reload }: Props) {
 
   return (
     <div className="space-y-6">
-      <LarpDetailsSection codex={codex} onSave={saveSection} />
       <GameSettingSection codex={codex} onSave={saveSection} />
       <LevelingSystemSection codex={codex} onSave={saveSection} />
       <CharactersSection codex={codex} onSave={saveSection} />
@@ -87,72 +86,119 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function LarpDetailsSection({ codex, onSave }: SectionProps) {
-  const [form, setForm] = useState({
-    eventName: '',
-    eventTagline: '',
-    eventAbout: '',
-    eventStartDate: '',
-    eventEndDate: '',
-    locationName: '',
-    keyTimes: '',
-    travelNotes: '',
-  })
-  const { saving, saved, handleSubmit } = useSectionSave(onSave)
+const EMPTY_WEBSITE: AdditionalWebsite = { label: '', url: '' }
+
+const SOCIAL_PLATFORMS: { key: keyof GameCodex; label: string; placeholder: string }[] = [
+  { key: 'socialFacebook', label: 'Facebook', placeholder: 'https://facebook.com/yourgame' },
+  { key: 'socialInstagram', label: 'Instagram', placeholder: 'https://instagram.com/yourgame' },
+  { key: 'socialTikTok', label: 'TikTok', placeholder: 'https://tiktok.com/@yourgame' },
+  { key: 'socialTwitter', label: 'X / Twitter', placeholder: 'https://x.com/yourgame' },
+  { key: 'socialBluesky', label: 'Bluesky', placeholder: 'https://bsky.app/profile/yourgame.bsky.social' },
+  { key: 'socialSnapchat', label: 'Snapchat', placeholder: 'https://snapchat.com/add/yourgame' },
+  { key: 'socialSubstack', label: 'Substack', placeholder: 'https://yourgame.substack.com' },
+  { key: 'socialDiscord', label: 'Discord', placeholder: 'https://discord.gg/invite-code' },
+]
+
+export function BrandingSection({ codex, onSave }: SectionProps) {
+  type SocialForm = Record<string, string>
+  const [form, setForm] = useState<SocialForm>({})
+  const [websites, setWebsites] = useState<AdditionalWebsite[]>([{ ...EMPTY_WEBSITE }])
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    setForm({
-      eventName: codex.eventName ?? '',
-      eventTagline: codex.eventTagline ?? '',
-      eventAbout: codex.eventAbout ?? '',
-      eventStartDate: codex.eventStartDate ?? '',
-      eventEndDate: codex.eventEndDate ?? '',
-      locationName: codex.locationName ?? '',
-      keyTimes: codex.keyTimes ?? '',
-      travelNotes: codex.travelNotes ?? '',
-    })
+    const next: SocialForm = {}
+    for (const p of SOCIAL_PLATFORMS) next[p.key] = (codex[p.key] as string | undefined) ?? ''
+    setForm(next)
+    const raw = codex.additionalWebsites
+    setWebsites(Array.isArray(raw) && raw.length > 0 ? raw : [{ ...EMPTY_WEBSITE }])
   }, [codex])
+
+  function updateWebsite(i: number, patch: Partial<AdditionalWebsite>) {
+    setWebsites(prev => prev.map((w, idx) => idx === i ? { ...w, ...patch } : w))
+  }
+
+  function addWebsite() {
+    setWebsites(prev => [...prev, { ...EMPTY_WEBSITE }])
+  }
+
+  function removeWebsite(i: number) {
+    setWebsites(prev => prev.length === 1 ? [{ ...EMPTY_WEBSITE }] : prev.filter((_, idx) => idx !== i))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const updates: Partial<GameCodex> = {}
+      for (const p of SOCIAL_PLATFORMS) {
+        if (form[p.key]) (updates as Record<string, unknown>)[p.key] = form[p.key]
+      }
+      const filledWebsites = websites.filter(w => w.url.trim())
+      if (filledWebsites.length > 0) updates.additionalWebsites = filledWebsites
+      await onSave(updates)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <Card>
-      <CardHeader><CardTitle>LARP Details</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Branding &amp; Social Media</CardTitle></CardHeader>
       <CardContent>
-        <form
-          onSubmit={e => void handleSubmit(e, pick(form))}
-          className="space-y-4"
-        >
-          <Field label="Event name">
-            <Input value={form.eventName} onChange={e => setForm(f => ({ ...f, eventName: e.target.value }))} placeholder="The Siege of Thornwall" />
-          </Field>
-          <Field label="Tagline">
-            <Input value={form.eventTagline} onChange={e => setForm(f => ({ ...f, eventTagline: e.target.value }))} placeholder="1–2 sentence hook" />
-          </Field>
-          <Field label="About this event">
-            <Textarea rows={8} value={form.eventAbout} onChange={e => setForm(f => ({ ...f, eventAbout: e.target.value }))} placeholder="2–4 paragraphs about the event" />
-          </Field>
-          <Field label="Event start date">
-            <DatePicker
-              value={form.eventStartDate || undefined}
-              onChange={val => setForm(f => ({ ...f, eventStartDate: val ?? '' }))}
-              placeholder="Pick start date"
-            />
-          </Field>
-          <Field label="Event end date">
-            <DatePicker
-              value={form.eventEndDate || undefined}
-              onChange={val => setForm(f => ({ ...f, eventEndDate: val ?? '' }))}
-              placeholder="Pick end date"
-            />
-          </Field>
-          <Field label="Location name + address">
-            <Textarea rows={2} value={form.locationName} onChange={e => setForm(f => ({ ...f, locationName: e.target.value }))} />
-          </Field>
-          <Field label="Key times">
-            <Textarea rows={3} value={form.keyTimes} onChange={e => setForm(f => ({ ...f, keyTimes: e.target.value }))} placeholder="Check-in, game-on, game-off, check-out" />
-          </Field>
-          <Field label="Parking / travel / accessibility notes">
-            <Textarea rows={4} value={form.travelNotes} onChange={e => setForm(f => ({ ...f, travelNotes: e.target.value }))} />
-          </Field>
+        <form onSubmit={e => void handleSubmit(e)} className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {SOCIAL_PLATFORMS.map(p => (
+              <Field key={p.key} label={p.label}>
+                <Input
+                  value={form[p.key] ?? ''}
+                  onChange={e => setForm(f => ({ ...f, [p.key]: e.target.value }))}
+                  placeholder={p.placeholder}
+                  type="url"
+                />
+              </Field>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Additional websites</Label>
+              <button
+                type="button"
+                onClick={addWebsite}
+                className="text-xs text-primary underline"
+              >
+                + Add another
+              </button>
+            </div>
+            {websites.map((w, i) => (
+              <div key={i} className="flex gap-2 items-start">
+                <Input
+                  value={w.label}
+                  onChange={e => updateWebsite(i, { label: e.target.value })}
+                  placeholder="Label (e.g. Our Blog)"
+                  className="w-36 shrink-0"
+                />
+                <Input
+                  value={w.url}
+                  onChange={e => updateWebsite(i, { url: e.target.value })}
+                  placeholder="https://…"
+                  type="url"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeWebsite(i)}
+                  className="text-muted-foreground hover:text-destructive text-sm mt-2 shrink-0"
+                  aria-label="Remove"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+
           <Button type="submit" disabled={saving}>{saving ? 'Saving…' : saved ? 'Saved!' : 'Save'}</Button>
         </form>
       </CardContent>
@@ -648,7 +694,6 @@ function PeopleSection({ codex, onSave }: SectionProps) {
   const [form, setForm] = useState({
     organizerTeam: '',
     contactEmail: '',
-    socialMedia: '',
     npcCall: '',
   })
   const { saving, saved, handleSubmit } = useSectionSave(onSave)
@@ -657,7 +702,6 @@ function PeopleSection({ codex, onSave }: SectionProps) {
     setForm({
       organizerTeam: codex.organizerTeam ?? '',
       contactEmail: codex.contactEmail ?? '',
-      socialMedia: codex.socialMedia ?? '',
       npcCall: codex.npcCall ?? '',
     })
   }, [codex])
@@ -675,9 +719,6 @@ function PeopleSection({ codex, onSave }: SectionProps) {
           </Field>
           <Field label="Primary contact email">
             <Input type="email" value={form.contactEmail} onChange={e => setForm(f => ({ ...f, contactEmail: e.target.value }))} />
-          </Field>
-          <Field label="Social media handles + Discord">
-            <Textarea rows={3} value={form.socialMedia} onChange={e => setForm(f => ({ ...f, socialMedia: e.target.value }))} />
           </Field>
           <Field label="NPC / volunteer call">
             <Textarea rows={4} value={form.npcCall} onChange={e => setForm(f => ({ ...f, npcCall: e.target.value }))} placeholder="Perks for joining the crew…" />

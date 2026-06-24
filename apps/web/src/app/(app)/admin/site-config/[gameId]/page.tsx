@@ -14,10 +14,10 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import type { SiteConfig } from '@larpdb/shared'
+import type { SiteConfig, GameCodex } from '@larpdb/shared'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import dynamic from 'next/dynamic'
-import CodexTab from '../_components/CodexTab'
+import CodexTab, { BrandingSection } from '../_components/CodexTab'
 import StoreTab from '../_components/StoreTab'
 import BuildsTab from '../_components/BuildsTab'
 
@@ -86,6 +86,12 @@ export default function BuilderPage() {
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(f => ({ ...f, [key]: value }))
+  }
+
+  async function saveCodexSection(updates: Partial<GameCodex>) {
+    const merged = { ...(config?.codex ?? {}), ...updates }
+    await api.patch<SiteConfig>('/config', { codex: merged })
+    reload()
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -255,6 +261,8 @@ export default function BuilderPage() {
               {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
             </Button>
           </form>
+
+          <BrandingSection codex={config?.codex ?? {}} onSave={saveCodexSection} />
         </TabsContent>
 
         <TabsContent value="codex">

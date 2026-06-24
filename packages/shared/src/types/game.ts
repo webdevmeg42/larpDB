@@ -48,7 +48,21 @@ export interface Faction {
   description: string
 }
 
+export interface AdditionalWebsite {
+  label: string
+  url: string
+}
+
 export interface GameCodex {
+  socialFacebook?: string
+  socialInstagram?: string
+  socialSnapchat?: string
+  socialTikTok?: string
+  socialBluesky?: string
+  socialSubstack?: string
+  socialTwitter?: string
+  socialDiscord?: string
+  additionalWebsites?: AdditionalWebsite[]
   levelingSystem?: LevelingSystemType
   maxLevel?: number
   baseLevel?: number

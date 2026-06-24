@@ -4,12 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
-import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import type { SchemaTemplate, CharacterSchema } from '@larpdb/shared'
+import { SchemaBuilder } from '@/components/schema-builder/SchemaBuilder'
+import type { SchemaTemplate, CharacterSchema, SchemaField } from '@larpdb/shared'
 
 export default function NewSchemaPage() {
   const { user } = useAuth()
@@ -19,8 +19,9 @@ export default function NewSchemaPage() {
   const [templates, setTemplates] = useState<SchemaTemplate[]>([])
   const [selected, setSelected] = useState<SchemaTemplate | null>(null)
   const [name, setName] = useState('')
-  const [creating, setCreating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [building, setBuilding] = useState(false)
+  const [initialFields, setInitialFields] = useState<SchemaField[]>([])
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     api.get<SchemaTemplate[]>('/schema-templates').then(setTemplates)
@@ -30,29 +31,48 @@ export default function NewSchemaPage() {
     return <div className="p-6 text-muted-foreground">Owner access required.</div>
   }
 
-  async function handleCreate() {
+  function handleStartBuilding() {
     if (!name.trim()) return
-    setCreating(true)
-    setError(null)
+    const rawFields = selected ? selected.fields : []
+    const fields = rawFields.filter(f => {
+      if (f.type === 'statblock' && f.label === 'Core Stats') return false
+      if (schemaType === 'race' && f.type === 'number' && f.label.toLowerCase() === 'level') return false
+      return true
+    })
+    setInitialFields(fields)
+    setBuilding(true)
+  }
+
+  async function handleSave(savedName: string, fields: SchemaField[]) {
+    setIsSaving(true)
     try {
-      const rawFields = selected ? selected.fields : []
-      const fields = rawFields.filter(f => {
-        if (f.type === 'statblock' && f.label === 'Core Stats') return false
-        if (schemaType === 'race' && f.type === 'number' && f.label.toLowerCase() === 'level') return false
-        return true
-      })
       const schema = await api.post<CharacterSchema>('/character-schemas', {
-        name: name.trim(),
+        name: savedName.trim(),
         fields,
         templateSource: selected ? selected.id : null,
         type: schemaType,
       })
       router.push(`/admin/schemas/${schema.id}`)
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Failed to create schema'))
     } finally {
-      setCreating(false)
+      setIsSaving(false)
     }
+  }
+
+  if (building) {
+    return (
+      <div className="h-full flex flex-col">
+        <SchemaBuilder
+          schemaId=""
+          initialName={name}
+          initialFields={initialFields}
+          schemaType={schemaType}
+          onSave={handleSave}
+          onActivate={async () => {}}
+          isActive={false}
+          isSaving={isSaving}
+        />
+      </div>
+    )
   }
 
   const isRace = schemaType === 'race'
@@ -76,6 +96,7 @@ export default function NewSchemaPage() {
             onChange={e => setName(e.target.value)}
             placeholder={isRace ? 'e.g. Elf' : 'e.g. Wizard'}
             className="max-w-sm"
+            onKeyDown={e => { if (e.key === 'Enter') handleStartBuilding() }}
           />
         </div>
 
@@ -106,9 +127,8 @@ export default function NewSchemaPage() {
           </div>
         </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button onClick={() => void handleCreate()} disabled={!name.trim() || creating}>
-          {creating ? 'Creating…' : 'Create schema'}
+        <Button onClick={handleStartBuilding} disabled={!name.trim()}>
+          Start building
         </Button>
       </div>
     </div>

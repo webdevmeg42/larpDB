@@ -5,6 +5,8 @@ export function fieldHasXpCost(field: SchemaField): boolean {
   if (field.xpCost !== undefined) return true
   if (field.options?.some(o => o.xpCost !== undefined)) return true
   if (field.stats?.some(s => s.xpCostPerPoint !== undefined)) return true
+  // Statblocks with any user-editable stat (not level-progression-driven) cost 1 XP per point by default
+  if (field.type === 'statblock' && (field.stats ?? []).some(s => (s.levelEntries ?? []).length === 0)) return true
   return false
 }
 
@@ -57,12 +59,13 @@ export function calculateXpDelta(
         const oldBlock = (typeof oldVal === 'object' && oldVal !== null) ? oldVal as Record<string, unknown> : {}
         const newBlock = (typeof newVal === 'object' && newVal !== null) ? newVal as Record<string, unknown> : {}
         for (const stat of stats) {
-          if (stat.xpCostPerPoint === undefined) continue
-          const oldStatVal = oldBlock[stat.key]
-          const newStatVal = newBlock[stat.key]
-          const oldNum = typeof oldStatVal === 'number' ? oldStatVal : 0
-          const newNum = typeof newStatVal === 'number' ? newStatVal : 0
-          total += Math.max(0, (newNum - oldNum) * stat.xpCostPerPoint)
+          // Level-progression stats are auto-set — never cost XP
+          if ((stat.levelEntries ?? []).length > 0) continue
+          // Explicit per-stat or field-level cost; default is 1 XP per point
+          const costPerPoint = stat.xpCostPerPoint ?? field.xpCostPerPoint ?? 1
+          const oldNum = typeof oldBlock[stat.key] === 'number' ? (oldBlock[stat.key] as number) : 0
+          const newNum = typeof newBlock[stat.key] === 'number' ? (newBlock[stat.key] as number) : 0
+          total += Math.max(0, (newNum - oldNum) * costPerPoint)
         }
         break
       }

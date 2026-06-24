@@ -7,6 +7,7 @@ import { api } from '@/lib/api'
 import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
+import { PlusCircle } from 'lucide-react'
 import type { LarpEvent, EventRegistration } from '@larpdb/shared'
 
 type EventBadge = 'Open' | 'Registered' | 'Waitlisted' | 'Cancelled'
@@ -54,9 +55,22 @@ export default function EventsPage() {
 
   if (!user) return null
 
+  const canCreate = user.role === 'owner' || user.role === 'gm'
+
   return (
     <div className="p-6 max-w-3xl">
-      <h1 className="text-2xl font-semibold mb-6">Events</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold">Events</h1>
+        {canCreate && (
+          <Link
+            href="/events/new"
+            className={buttonVariants({ variant: 'default', size: 'sm' })}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" />
+            New Event
+          </Link>
+        )}
+      </div>
       {loading ? (
         <p className="text-muted-foreground">Loading…</p>
       ) : error ? (

@@ -9,13 +9,12 @@ const BUILTIN_TEMPLATES: Array<{ name: string; genre: string; description: strin
     genre: 'Fantasy',
     description: 'Classic high-fantasy sheet with core stats and backstory.',
     fields: [
-      { id: '11111111-0001-0001-0001-000000000003', label: 'Level', type: 'number', required: true, order: 0, min: 1, max: 20 },
       {
         id: '11111111-0001-0001-0001-000000000004',
         label: 'Core Stats',
         type: 'statblock',
         required: false,
-        order: 1,
+        order: 0,
         stats: [
           { key: 'str', label: 'Strength', min: 1, max: 20 },
           { key: 'dex', label: 'Dexterity', min: 1, max: 20 },
@@ -30,7 +29,7 @@ const BUILTIN_TEMPLATES: Array<{ name: string; genre: string; description: strin
         label: 'Skills',
         type: 'statblock',
         required: false,
-        order: 2,
+        order: 1,
         stats: [
           { key: 'acrobatics', label: 'Acrobatics', min: 0 },
           { key: 'animal_hunting', label: 'Animal Hunting', min: 0 },

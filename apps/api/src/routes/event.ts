@@ -44,8 +44,11 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
       const [event] = await db.insert(events).values({
         gameId,
         title: result.data.title,
+        tagline: result.data.tagline ?? null,
         description: result.data.description ?? null,
         location: result.data.location ?? null,
+        keyTimes: result.data.keyTimes ?? null,
+        travelNotes: result.data.travelNotes ?? null,
         startAt: new Date(result.data.startAt),
         endAt: result.data.endAt ? new Date(result.data.endAt) : null,
         maxPlayers: result.data.maxPlayers ?? null,
