@@ -6,6 +6,7 @@ import {
   users, game, gameMembers, siteConfig, characterSchemas, characters,
   xpTransactions, events, eventRegistrations, npcs, plots, schemaTemplates,
   storeItems, purchases, postLikes, comments, larpSubscriptions, posts,
+  requestLogs,
 } from '../src/db/schema.js'
 
 const testPool = new Pool({
@@ -19,6 +20,7 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
+  await testDb.delete(requestLogs)
   await testDb.delete(postLikes)
   await testDb.delete(comments)
   await testDb.delete(larpSubscriptions)

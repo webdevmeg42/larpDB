@@ -19,6 +19,7 @@ export const users = pgTable('users', {
   displayName: text('display_name').notNull(),
   avatarUrl: text('avatar_url'),
   phone: text('phone'),
+  isSysAdmin: boolean('is_sys_admin').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
@@ -156,6 +157,8 @@ export const eventRegistrations = pgTable('event_registrations', {
 }, (t) => ({
   eventIdIdx: index('event_registrations_event_id_idx').on(t.eventId),
   eventIdUserIdIdx: index('event_registrations_event_id_user_id_idx').on(t.eventId, t.userId),
+  userIdIdx: index('event_registrations_user_id_idx').on(t.userId),
+  characterIdIdx: index('event_registrations_character_id_idx').on(t.characterId),
 }))
 
 export const npcs = pgTable('npcs', {
@@ -210,6 +213,7 @@ export const purchases = pgTable('purchases', {
 }, (t) => ({
   eventIdIdx: index('purchases_event_id_idx').on(t.eventId),
   storeItemIdIdx: index('purchases_store_item_id_idx').on(t.storeItemId),
+  characterIdIdx: index('purchases_character_id_idx').on(t.characterId),
 }))
 
 export const larpSubscriptions = pgTable('larp_subscriptions', {
@@ -256,4 +260,17 @@ export const postLikes = pgTable('post_likes', {
 }, (t) => ({
   uniqPostUser: unique().on(t.postId, t.userId),
   postIdIdx: index('post_likes_post_id_idx').on(t.postId),
+}))
+
+export const requestLogs = pgTable('request_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  method: text('method').notNull(),
+  url: text('url').notNull(),
+  statusCode: integer('status_code').notNull(),
+  durationMs: integer('duration_ms').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  userIdIdx: index('request_logs_user_id_idx').on(t.userId),
+  createdAtIdx: index('request_logs_created_at_idx').on(t.createdAt),
 }))
