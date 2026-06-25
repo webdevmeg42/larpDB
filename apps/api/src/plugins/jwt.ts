@@ -23,6 +23,7 @@ declare module 'fastify' {
   }
   interface FastifyInstance {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
+    requireSysAdmin: (request: FastifyRequest, reply: FastifyReply) => Promise<void>
   }
 }
 
@@ -35,6 +36,15 @@ const jwtPlugin: FastifyPluginAsync = async (fastify) => {
     } catch {
       return reply.status(401).send({ error: 'Unauthorized' })
     }
+  })
+
+  fastify.decorate('requireSysAdmin', async function (request: FastifyRequest, reply: FastifyReply) {
+    try {
+      await request.jwtVerify()
+    } catch {
+      return reply.status(401).send({ error: 'Unauthorized' })
+    }
+    if (!request.user.isSysAdmin) return reply.status(403).send({ error: 'Forbidden' })
   })
 }
 

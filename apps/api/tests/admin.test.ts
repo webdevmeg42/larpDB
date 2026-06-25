@@ -47,3 +47,129 @@ describe('isSysAdmin in JWT', () => {
     await app.close()
   })
 })
+
+describe('POST /admin/users/:id/promote', () => {
+  it('promotes a user to sys_admin', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    const { userId: targetId } = await registerAndLogin(app, 'target@test.com')
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/admin/users/${targetId}/promote`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().isSysAdmin).toBe(true)
+    await app.close()
+  })
+
+  it('returns 409 when user is already sys_admin', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken, userId: adminId } = await createSysAdmin(app)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/admin/users/${adminId}/promote`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    expect(res.statusCode).toBe(409)
+    await app.close()
+  })
+
+  it('returns 404 when user does not exist', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/admin/users/00000000-0000-0000-0000-000000000000/promote',
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    expect(res.statusCode).toBe(404)
+    await app.close()
+  })
+
+  it('returns 403 for non-sys_admin', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token, userId } = await registerAndLogin(app)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/admin/users/${userId}/promote`,
+      headers: { authorization: `Bearer ${token}` },
+    })
+
+    expect(res.statusCode).toBe(403)
+    await app.close()
+  })
+})
+
+describe('DELETE /admin/users/:id/promote', () => {
+  it('demotes a sys_admin', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    const { userId: targetId } = await registerAndLogin(app, 'target@test.com')
+
+    await app.inject({
+      method: 'POST',
+      url: `/admin/users/${targetId}/promote`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/admin/users/${targetId}/promote`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().isSysAdmin).toBe(false)
+    await app.close()
+  })
+
+  it('returns 400 when self-demoting', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken, userId: adminId } = await createSysAdmin(app)
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/admin/users/${adminId}/promote`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    expect(res.statusCode).toBe(400)
+    await app.close()
+  })
+
+  it('returns 403 for non-sys_admin', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token, userId } = await registerAndLogin(app)
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/admin/users/${userId}/promote`,
+      headers: { authorization: `Bearer ${token}` },
+    })
+
+    expect(res.statusCode).toBe(403)
+    await app.close()
+  })
+})
