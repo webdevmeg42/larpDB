@@ -231,6 +231,8 @@ export const posts = pgTable('posts', {
   body: text('body').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  mediaType: text('media_type', { enum: ['photo', 'video'] }),
+  mediaUrls: text('media_urls').array(),
 }, (t) => ({
   gameIdIdx: index('posts_game_id_idx').on(t.gameId),
   gameIdCreatedAtIdx: index('posts_game_id_created_at_idx').on(t.gameId, t.createdAt),
