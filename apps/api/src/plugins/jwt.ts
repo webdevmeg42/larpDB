@@ -39,11 +39,8 @@ const jwtPlugin: FastifyPluginAsync = async (fastify) => {
   })
 
   fastify.decorate('requireSysAdmin', async function (request: FastifyRequest, reply: FastifyReply) {
-    try {
-      await request.jwtVerify()
-    } catch {
-      return reply.status(401).send({ error: 'Unauthorized' })
-    }
+    await fastify.authenticate(request, reply)
+    if (reply.sent) return
     if (!request.user.isSysAdmin) return reply.status(403).send({ error: 'Forbidden' })
   })
 }

@@ -64,6 +64,7 @@ describe('POST /admin/users/:id/promote', () => {
 
     expect(res.statusCode).toBe(200)
     expect(res.json().isSysAdmin).toBe(true)
+    expect(res.json().passwordHash).toBeUndefined()
     await app.close()
   })
 
@@ -138,6 +139,7 @@ describe('DELETE /admin/users/:id/promote', () => {
 
     expect(res.statusCode).toBe(200)
     expect(res.json().isSysAdmin).toBe(false)
+    expect(res.json().passwordHash).toBeUndefined()
     await app.close()
   })
 
@@ -154,6 +156,22 @@ describe('DELETE /admin/users/:id/promote', () => {
     })
 
     expect(res.statusCode).toBe(400)
+    await app.close()
+  })
+
+  it('returns 404 when user does not exist', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app)
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/admin/users/00000000-0000-0000-0000-000000000000/promote',
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    expect(res.statusCode).toBe(404)
     await app.close()
   })
 
