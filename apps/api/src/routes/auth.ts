@@ -7,7 +7,13 @@ import { LoginInput, RegisterInput } from '@larpdb/shared'
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
   function signResponse(user: typeof users.$inferSelect, role: string) {
-    const token = fastify.jwt.sign({ sub: user.id, email: user.email, displayName: user.displayName, role })
+    const token = fastify.jwt.sign({
+      sub: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      role,
+      isSysAdmin: user.isSysAdmin,
+    })
     const { passwordHash: _, ...safeUser } = user
     return { user: safeUser, token }
   }
