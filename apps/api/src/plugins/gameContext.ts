@@ -24,6 +24,18 @@ const gameContextPlugin: FastifyPluginAsync = async (fastify) => {
     }
 
     const userId = request.user.sub
+
+    if (request.user.isSysAdmin) {
+      const [gameRow] = await db
+        .select({ status: game.status })
+        .from(game)
+        .where(eq(game.id, gameId))
+        .limit(1)
+      if (!gameRow) return reply.status(404).send({ error: 'Game not found' })
+      request.gameContext = { userId, gameId, role: 'owner', gameStatus: gameRow.status }
+      return
+    }
+
     const [row] = await db
       .select({ role: gameMembers.role, gameStatus: game.status })
       .from(gameMembers)

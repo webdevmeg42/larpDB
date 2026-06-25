@@ -191,3 +191,48 @@ describe('DELETE /admin/users/:id/promote', () => {
     await app.close()
   })
 })
+
+describe('sys_admin game context bypass', () => {
+  it('allows sys_admin to access any game without membership', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: ownerToken } = await registerAndLogin(app, 'owner@test.com')
+    const gameRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { name: 'Private LARP' },
+    })
+    const { id: gameId } = gameRes.json()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/events',
+      headers: { authorization: `Bearer ${adminToken}`, 'x-game-id': gameId },
+    })
+
+    expect(res.statusCode).toBe(200)
+    await app.close()
+  })
+
+  it('returns 404 for sys_admin with a non-existent game id', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app)
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/events',
+      headers: {
+        authorization: `Bearer ${adminToken}`,
+        'x-game-id': '00000000-0000-0000-0000-000000000000',
+      },
+    })
+
+    expect(res.statusCode).toBe(404)
+    await app.close()
+  })
+})
