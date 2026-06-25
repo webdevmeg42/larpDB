@@ -8,6 +8,8 @@ export interface Post {
   likeCount: number
   commentCount: number
   likedByMe?: boolean
+  mediaType: 'photo' | 'video' | null
+  mediaUrls: string[] | null
   createdAt: string
   updatedAt: string
 }
