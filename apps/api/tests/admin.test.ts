@@ -30,7 +30,7 @@ describe('isSysAdmin in JWT', () => {
     await app.ready()
 
     const { token } = await registerAndLogin(app)
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString())
     expect(payload.isSysAdmin).toBe(false)
 
     await app.close()
@@ -41,7 +41,7 @@ describe('isSysAdmin in JWT', () => {
     await app.ready()
 
     const { token } = await createSysAdmin(app)
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString())
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString())
     expect(payload.isSysAdmin).toBe(true)
 
     await app.close()
