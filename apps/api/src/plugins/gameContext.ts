@@ -32,6 +32,7 @@ const gameContextPlugin: FastifyPluginAsync = async (fastify) => {
         .where(eq(game.id, gameId))
         .limit(1)
       if (!gameRow) return reply.status(404).send({ error: 'Game not found' })
+      // role: 'owner' is intentional — sys_admin has full write access across all LARPs
       request.gameContext = { userId, gameId, role: 'owner', gameStatus: gameRow.status }
       return
     }
