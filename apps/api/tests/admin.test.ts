@@ -441,3 +441,75 @@ describe('GET /admin/games', () => {
     await app.close()
   })
 })
+
+describe('GET /admin/logs — enriched with user info', () => {
+  it('includes userDisplayName and userEmail in log items', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    const { token: userToken } = await registerAndLogin(app, 'user@test.com')
+
+    await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${userToken}` },
+      payload: { name: 'Enriched Log Test' },
+    })
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin/logs',
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    const entry = body.items.find((l: { userEmail: string }) => l.userEmail === 'user@test.com')
+    expect(entry).toBeDefined()
+    expect(entry.userDisplayName).toBe('Test User')
+    expect(entry.userEmail).toBe('user@test.com')
+
+    await app.close()
+  })
+})
+
+describe('GET /admin/users', () => {
+  it('returns all platform users with id, displayName, email, isSysAdmin, createdAt', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    await registerAndLogin(app, 'user@test.com')
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin/users',
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(Array.isArray(body)).toBe(true)
+    expect(body.length).toBeGreaterThanOrEqual(2)
+    const u = body.find((u: { email: string }) => u.email === 'user@test.com')
+    expect(u).toBeDefined()
+    expect(u.displayName).toBe('Test User')
+    expect(u.isSysAdmin).toBe(false)
+    expect(typeof u.createdAt).toBe('string')
+
+    await app.close()
+  })
+
+  it('returns 403 for non-sys_admin', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token } = await registerAndLogin(app)
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin/users',
+      headers: { authorization: `Bearer ${token}` },
+    })
+
+    expect(res.statusCode).toBe(403)
+    await app.close()
+  })
+})

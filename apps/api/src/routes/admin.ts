@@ -77,8 +77,19 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       const [{ total }] = await db.select({ total: count() }).from(requestLogs).where(filter)
 
       const items = await db
-        .select()
+        .select({
+          id: requestLogs.id,
+          userId: requestLogs.userId,
+          userDisplayName: users.displayName,
+          userEmail: users.email,
+          method: requestLogs.method,
+          url: requestLogs.url,
+          statusCode: requestLogs.statusCode,
+          durationMs: requestLogs.durationMs,
+          createdAt: requestLogs.createdAt,
+        })
         .from(requestLogs)
+        .leftJoin(users, eq(users.id, requestLogs.userId))
         .where(filter)
         .orderBy(desc(requestLogs.createdAt))
         .limit(limitN)
@@ -103,8 +114,19 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       const [{ total }] = await db.select({ total: count() }).from(requestLogs).where(filter)
 
       const items = await db
-        .select()
+        .select({
+          id: requestLogs.id,
+          userId: requestLogs.userId,
+          userDisplayName: users.displayName,
+          userEmail: users.email,
+          method: requestLogs.method,
+          url: requestLogs.url,
+          statusCode: requestLogs.statusCode,
+          durationMs: requestLogs.durationMs,
+          createdAt: requestLogs.createdAt,
+        })
         .from(requestLogs)
+        .leftJoin(users, eq(users.id, requestLogs.userId))
         .where(filter)
         .orderBy(desc(requestLogs.createdAt))
         .limit(limitN)
@@ -136,6 +158,24 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .orderBy(desc(game.createdAt))
 
       return reply.send(rows)
+    },
+  )
+
+  fastify.get(
+    '/admin/users',
+    { preHandler: [fastify.requireSysAdmin] },
+    async (_request, reply) => {
+      const allUsers = await db
+        .select({
+          id: users.id,
+          displayName: users.displayName,
+          email: users.email,
+          isSysAdmin: users.isSysAdmin,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .orderBy(users.displayName)
+      return reply.send(allUsers)
     },
   )
 }
