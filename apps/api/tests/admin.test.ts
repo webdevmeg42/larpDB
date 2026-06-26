@@ -236,3 +236,43 @@ describe('sys_admin game context bypass', () => {
     await app.close()
   })
 })
+
+describe('audit log', () => {
+  it('records authenticated requests in request_logs', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token, userId } = await registerAndLogin(app, 'logger@test.com')
+
+    await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Log Test Game' },
+    })
+
+    const logs = await testDb
+      .select()
+      .from(requestLogs)
+      .where(eq(requestLogs.userId, userId))
+
+    expect(logs.length).toBeGreaterThan(0)
+    const log = logs.find(l => l.method === 'POST' && l.url === '/games')
+    expect(log).toBeDefined()
+    expect(log!.statusCode).toBe(201)
+    expect(log!.durationMs).toBeGreaterThanOrEqual(0)
+
+    await app.close()
+  })
+
+  it('does not record unauthenticated requests', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    await app.inject({ method: 'GET', url: '/games' })
+
+    const logs = await testDb.select().from(requestLogs)
+    expect(logs.length).toBe(0)
+
+    await app.close()
+  })
+})

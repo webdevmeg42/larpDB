@@ -23,6 +23,8 @@ import { postRoutes } from './routes/post.js'
 import { profileRoutes } from './routes/profile.js'
 import { adminRoutes } from './routes/admin.js'
 import { seedBuiltinTemplates } from './db/seeds/templates.js'
+import { db } from './db/index.js'
+import { requestLogs } from './db/schema.js'
 
 export function buildApp() {
   const app = Fastify({
@@ -54,6 +56,24 @@ export function buildApp() {
   app.register(postRoutes)
   app.register(profileRoutes)
   app.register(adminRoutes)
+
+  app.addHook('onSend', async (request, reply, payload) => {
+    try {
+      const userId = (request.user as { sub: string } | undefined)?.sub ?? null
+      if (userId) {
+        await db.insert(requestLogs).values({
+          userId,
+          method: request.method,
+          url: request.url.split('?')[0],
+          statusCode: reply.statusCode,
+          durationMs: Math.round(reply.elapsedTime),
+        })
+      }
+    } catch {
+      // logging failures must never affect the response
+    }
+    return payload
+  })
 
   app.addHook('onReady', async () => {
     await fs.promises.mkdir(UPLOADS_DIR, { recursive: true })
