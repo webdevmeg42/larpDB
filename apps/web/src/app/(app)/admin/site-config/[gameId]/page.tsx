@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { api } from '@/lib/api'
-import { getErrorMessage } from '@/lib/utils'
+import { getErrorMessage, cn } from '@/lib/utils'
 import { setGameId } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,12 +20,16 @@ import dynamic from 'next/dynamic'
 import CodexTab, { BrandingSection } from '../_components/CodexTab'
 import StoreTab from '../_components/StoreTab'
 import BuildsTab from '../_components/BuildsTab'
+import ThemePreview from '@/components/theme-preview/ThemePreview'
+import { PALETTES, type Palette } from '@/lib/palettes'
+import { FONTS, loadFont } from '@/lib/fonts'
 
 const RulebookTab = dynamic(() => import('../_components/RulebookTab'), { ssr: false })
 
 type FormState = Partial<{
   siteTitle: string
   tagline: string | null
+  themeName: string | null
   logoUrl: string | null
   bannerUrl: string | null
   showDirectory: boolean
@@ -66,6 +70,7 @@ export default function BuilderPage() {
     setForm({
       siteTitle: config.siteTitle,
       tagline: config.tagline ?? null,
+      themeName: config.themeName ?? null,
       logoUrl: config.logoUrl ?? null,
       bannerUrl: config.bannerUrl ?? null,
       showDirectory: config.showDirectory ?? false,
@@ -90,6 +95,28 @@ export default function BuilderPage() {
     setForm(f => ({ ...f, [key]: value }))
   }
 
+  function applyPalette(palette: Palette) {
+    setForm(f => ({
+      ...f,
+      themeName: palette.id,
+      colorPrimary: palette.colorPrimary,
+      colorSecondary: palette.colorSecondary,
+      colorBackground: palette.colorBackground,
+      colorText: palette.colorText,
+      colorAccent: palette.colorAccent,
+    }))
+  }
+
+  useEffect(() => {
+    const font = FONTS.find(f => f.name === form.fontHeading)
+    if (font) loadFont(font.googleFamily)
+  }, [form.fontHeading])
+
+  useEffect(() => {
+    const font = FONTS.find(f => f.name === form.fontBody)
+    if (font) loadFont(font.googleFamily)
+  }, [form.fontBody])
+
   async function saveCodexSection(updates: Partial<GameCodex>) {
     const merged = { ...(config?.codex ?? {}), ...updates }
     await api.patch<SiteConfig>('/config', { codex: merged })
@@ -113,7 +140,7 @@ export default function BuilderPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-6 max-w-6xl">
       <Link
         href="/admin/site-config"
         className="text-sm text-muted-foreground hover:text-foreground mb-4 inline-block"
@@ -133,17 +160,35 @@ export default function BuilderPage() {
         </TabsList>
 
         <TabsContent value="branding">
-          <form onSubmit={handleSave} className="space-y-6">
+          <div className="grid grid-cols-[1fr_380px] gap-6 items-start">
+            <div className="space-y-6">
+              <form onSubmit={handleSave} className="space-y-6">
             <Card>
               <CardHeader><CardTitle>Identity</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1">
-                  <Label>Site title</Label>
-                  <Input value={form.siteTitle ?? ''} onChange={e => set('siteTitle', e.target.value)} />
+                  <Label>LARP Name</Label>
+                  <Input value={form.siteTitle ?? ''} onChange={e => set('siteTitle', e.target.value)} maxLength={150} />
+                  {(() => {
+                    const len = (form.siteTitle ?? '').length
+                    return (
+                      <p className={`text-xs text-right ${len >= 150 ? 'text-destructive' : len >= 130 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                        {len} / 150
+                      </p>
+                    )
+                  })()}
                 </div>
                 <div className="space-y-1">
                   <Label>Tagline</Label>
-                  <Input value={form.tagline ?? ''} onChange={e => set('tagline', e.target.value || null)} placeholder="Optional" />
+                  <Input value={form.tagline ?? ''} onChange={e => set('tagline', e.target.value || null)} placeholder="Optional" maxLength={150} />
+                  {(() => {
+                    const len = (form.tagline ?? '').length
+                    return (
+                      <p className={`text-xs text-right ${len >= 150 ? 'text-destructive' : len >= 130 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                        {len} / 150
+                      </p>
+                    )
+                  })()}
                 </div>
                 <div className="space-y-1">
                   <Label>Logo URL</Label>
@@ -257,22 +302,22 @@ export default function BuilderPage() {
                     onChange={e => set('welcomeMessage', e.target.value || null)}
                     rows={4}
                     placeholder="Displayed on the player dashboard"
+                    maxLength={1000}
                   />
+                  {(() => {
+                    const len = (form.welcomeMessage ?? '').length
+                    return (
+                      <p className={`text-xs text-right ${len >= 1000 ? 'text-destructive' : len >= 900 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                        {len} / 1000
+                      </p>
+                    )
+                  })()}
                 </div>
                 <div className="space-y-1">
                   <Label>Footer text</Label>
                   <Input value={form.footerText ?? ''} onChange={e => set('footerText', e.target.value || null)} />
                 </div>
-                <div className="space-y-1">
-                  <Label>Custom CSS</Label>
-                  <Textarea
-                    value={form.customCss ?? ''}
-                    onChange={e => set('customCss', e.target.value || null)}
-                    rows={6}
-                    className="font-mono text-xs"
-                    placeholder="/* custom styles */"
-                  />
-                </div>
+
               </CardContent>
             </Card>
 
@@ -280,9 +325,13 @@ export default function BuilderPage() {
             <Button type="submit" disabled={saving || logoUpload.uploading || bannerUpload.uploading}>
               {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
             </Button>
-          </form>
-
-          <BrandingSection codex={config?.codex ?? {}} onSave={saveCodexSection} />
+              </form>
+              <BrandingSection codex={config?.codex ?? {}} onSave={saveCodexSection} />
+            </div>
+            <div className="sticky top-6">
+              <ThemePreview form={form} />
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="codex">
