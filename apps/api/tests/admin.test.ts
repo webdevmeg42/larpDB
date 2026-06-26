@@ -276,3 +276,168 @@ describe('audit log', () => {
     await app.close()
   })
 })
+
+describe('GET /admin/logs', () => {
+  it('returns paginated logs across all users', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    const { token: userToken } = await registerAndLogin(app, 'user@test.com')
+
+    await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${userToken}` },
+      payload: { name: 'Game 1' },
+    })
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin/logs',
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(typeof body.total).toBe('number')
+    expect(Array.isArray(body.items)).toBe(true)
+    expect(body.items.length).toBeGreaterThan(0)
+    await app.close()
+  })
+
+  it('filters logs by userId', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    const { token: userToken, userId } = await registerAndLogin(app, 'user@test.com')
+
+    await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${userToken}` },
+      payload: { name: 'Game 1' },
+    })
+
+    const res = await app.inject({
+      method: 'GET', url: `/admin/logs?userId=${userId}`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.items.every((l: { userId: string }) => l.userId === userId)).toBe(true)
+    await app.close()
+  })
+
+  it('returns 403 for non-sys_admin', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token } = await registerAndLogin(app)
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin/logs',
+      headers: { authorization: `Bearer ${token}` },
+    })
+
+    expect(res.statusCode).toBe(403)
+    await app.close()
+  })
+})
+
+describe('GET /admin/logs/users/:userId', () => {
+  it('returns logs for a specific user', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    const { token: userToken, userId } = await registerAndLogin(app, 'user@test.com')
+
+    await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${userToken}` },
+      payload: { name: 'Game 1' },
+    })
+
+    const res = await app.inject({
+      method: 'GET', url: `/admin/logs/users/${userId}`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.items.every((l: { userId: string }) => l.userId === userId)).toBe(true)
+    await app.close()
+  })
+
+  it('returns empty results for a non-existent userId (not 404)', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app)
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin/logs/users/00000000-0000-0000-0000-000000000000',
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().items).toHaveLength(0)
+    await app.close()
+  })
+})
+
+describe('GET /admin/games', () => {
+  it('returns all games regardless of status and visibility', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: ownerToken } = await registerAndLogin(app, 'owner@test.com')
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+
+    // Create a public active game
+    const g1 = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { name: 'Public Active' },
+    })
+    await app.inject({
+      method: 'PATCH', url: `/games/${g1.json().id}/status`,
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { status: 'active' },
+    })
+
+    // Create a private inactive game (default state)
+    await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { name: 'Private Inactive' },
+    })
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin/games',
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.length).toBe(2)
+    expect(body.every((g: { memberCount: number }) => typeof g.memberCount === 'number')).toBe(true)
+    await app.close()
+  })
+
+  it('returns 403 for non-sys_admin', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token } = await registerAndLogin(app)
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin/games',
+      headers: { authorization: `Bearer ${token}` },
+    })
+
+    expect(res.statusCode).toBe(403)
+    await app.close()
+  })
+})
