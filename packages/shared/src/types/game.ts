@@ -122,6 +122,7 @@ export interface SiteConfig {
   colorBackground: string
   colorText: string
   colorAccent: string
+  themeName: string | null
   fontHeading: string
   fontBody: string
   welcomeMessage: string | null
