@@ -63,10 +63,15 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       const limitN = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200)
       const offsetN = Math.max(parseInt(offset, 10) || 0, 0)
 
+      const fromDate = from ? new Date(from) : undefined
+      const toDate = to ? new Date(to) : undefined
+      if (fromDate && isNaN(fromDate.getTime())) return reply.status(400).send({ error: 'Invalid from date' })
+      if (toDate && isNaN(toDate.getTime())) return reply.status(400).send({ error: 'Invalid to date' })
+
       const filter = and(
         userId ? eq(requestLogs.userId, userId) : undefined,
-        from ? gte(requestLogs.createdAt, new Date(from)) : undefined,
-        to ? lte(requestLogs.createdAt, new Date(to)) : undefined,
+        fromDate ? gte(requestLogs.createdAt, fromDate) : undefined,
+        toDate ? lte(requestLogs.createdAt, toDate) : undefined,
       )
 
       const [{ total }] = await db.select({ total: count() }).from(requestLogs).where(filter)
@@ -79,7 +84,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .limit(limitN)
         .offset(offsetN)
 
-      return reply.send({ total, items })
+      return reply.send({ total, items, limit: limitN, offset: offsetN })
     },
   )
 
@@ -105,7 +110,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .limit(limitN)
         .offset(offsetN)
 
-      return reply.send({ total, items })
+      return reply.send({ total, items, limit: limitN, offset: offsetN })
     },
   )
 
@@ -126,7 +131,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
           memberCount: count(gameMembers.id),
         })
         .from(game)
-        .leftJoin(gameMembers, eq(gameMembers.gameId, game.id))
+        .leftJoin(gameMembers, and(eq(gameMembers.gameId, game.id), eq(gameMembers.status, 'active')))
         .groupBy(game.id)
         .orderBy(desc(game.createdAt))
 
