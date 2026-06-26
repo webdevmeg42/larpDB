@@ -32,11 +32,11 @@ CREATE TABLE IF NOT EXISTS "posts" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "characters" ADD COLUMN "class_schema_id" uuid;--> statement-breakpoint
-ALTER TABLE "events" ADD COLUMN "tagline" text;--> statement-breakpoint
-ALTER TABLE "events" ADD COLUMN "key_times" text;--> statement-breakpoint
-ALTER TABLE "events" ADD COLUMN "travel_notes" text;--> statement-breakpoint
-ALTER TABLE "users" ADD COLUMN "phone" text;--> statement-breakpoint
+DO $$ BEGIN ALTER TABLE "characters" ADD COLUMN "class_schema_id" uuid; EXCEPTION WHEN duplicate_column THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN ALTER TABLE "events" ADD COLUMN "tagline" text; EXCEPTION WHEN duplicate_column THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN ALTER TABLE "events" ADD COLUMN "key_times" text; EXCEPTION WHEN duplicate_column THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN ALTER TABLE "events" ADD COLUMN "travel_notes" text; EXCEPTION WHEN duplicate_column THEN null; END $$;--> statement-breakpoint
+DO $$ BEGIN ALTER TABLE "users" ADD COLUMN "phone" text; EXCEPTION WHEN duplicate_column THEN null; END $$;--> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "comments" ADD CONSTRAINT "comments_post_id_posts_id_fk" FOREIGN KEY ("post_id") REFERENCES "public"."posts"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
@@ -99,4 +99,4 @@ END $$;
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "purchases_event_id_idx" ON "purchases" ("event_id");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "purchases_store_item_id_idx" ON "purchases" ("store_item_id");--> statement-breakpoint
-ALTER TABLE "site_config" ADD CONSTRAINT "site_config_game_id_unique" UNIQUE("game_id");
+DO $$ BEGIN ALTER TABLE "site_config" ADD CONSTRAINT "site_config_game_id_unique" UNIQUE("game_id"); EXCEPTION WHEN duplicate_table THEN null; WHEN duplicate_object THEN null; END $$;
