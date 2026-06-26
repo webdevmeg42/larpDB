@@ -289,14 +289,56 @@ export default function BuilderPage() {
 
             <Card>
               <CardHeader><CardTitle>Typography</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1">
-                  <Label>Heading font (Google Fonts name)</Label>
-                  <Input value={form.fontHeading ?? ''} onChange={e => set('fontHeading', e.target.value)} placeholder="Cinzel" />
-                </div>
-                <div className="space-y-1">
-                  <Label>Body font (Google Fonts name)</Label>
-                  <Input value={form.fontBody ?? ''} onChange={e => set('fontBody', e.target.value)} placeholder="Inter" />
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Heading Font</Label>
+                    <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
+                      {FONTS.map(font => {
+                        const isSelected = form.fontHeading === font.name
+                        return (
+                          <button
+                            key={font.id}
+                            type="button"
+                            onClick={() => set('fontHeading', font.name)}
+                            className={cn(
+                              'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
+                              isSelected
+                                ? 'bg-primary text-primary-foreground'
+                                : 'hover:bg-muted'
+                            )}
+                          >
+                            <span className="block font-medium" style={{ fontFamily: font.family }}>{font.name}</span>
+                            <span className="block text-xs opacity-70">{font.theme}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Body Font</Label>
+                    <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
+                      {FONTS.map(font => {
+                        const isSelected = form.fontBody === font.name
+                        return (
+                          <button
+                            key={font.id}
+                            type="button"
+                            onClick={() => set('fontBody', font.name)}
+                            className={cn(
+                              'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
+                              isSelected
+                                ? 'bg-primary text-primary-foreground'
+                                : 'hover:bg-muted'
+                            )}
+                          >
+                            <span className="block font-medium" style={{ fontFamily: font.family }}>{font.name}</span>
+                            <span className="block text-xs opacity-70">{font.theme}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
