@@ -80,6 +80,7 @@ export const FONTS: Font[] = [
 ]
 
 export function loadFont(googleFamily: string): void {
+  if (typeof document === 'undefined') return
   const id = `gfont-${googleFamily.split(':')[0]!.replace(/\+/g, '-').toLowerCase()}`
   if (document.getElementById(id)) return
   const link = document.createElement('link')
