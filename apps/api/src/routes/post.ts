@@ -37,6 +37,8 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
         commentCount: sql<number>`cast(count(distinct ${comments.id}) as int)`,
         createdAt: posts.createdAt,
         updatedAt: posts.updatedAt,
+        mediaType: posts.mediaType,
+        mediaUrls: posts.mediaUrls,
       })
       .from(posts)
       .innerJoin(users, eq(users.id, posts.authorId))
@@ -75,6 +77,8 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
         authorId: userId,
         title: result.data.title,
         body: result.data.body,
+        mediaType: result.data.mediaType ?? null,
+        mediaUrls: result.data.mediaUrls ?? null,
       }).returning()
 
       return reply.status(201).send(post)
@@ -284,6 +288,8 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
           commentCount: sql<number>`cast(count(distinct ${comments.id}) as int)`,
           createdAt: posts.createdAt,
           updatedAt: posts.updatedAt,
+          mediaType: posts.mediaType,
+          mediaUrls: posts.mediaUrls,
         })
         .from(posts)
         .innerJoin(game, eq(game.id, posts.gameId))

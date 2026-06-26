@@ -71,7 +71,7 @@ describe('POST /upload', () => {
       payload: body,
     })
     expect(res.statusCode).toBe(400)
-    expect(res.json().error).toBe('Only image files are accepted')
+    expect(res.json().error).toBe('Only image or video files are accepted')
     await app.close()
   })
 

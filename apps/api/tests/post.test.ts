@@ -113,8 +113,9 @@ describe('POST /posts', () => {
     })
     const { token: playerToken } = playerRes.json()
     await app.inject({
-      method: 'POST', url: `/games/${gameId}/join`,
+      method: 'POST', url: '/subscriptions',
       headers: { authorization: `Bearer ${playerToken}` },
+      payload: { gameId },
     })
 
     const res = await app.inject({
@@ -202,8 +203,9 @@ describe('DELETE /posts/:postId', () => {
     })
     const { token: playerToken } = playerRes.json()
     await app.inject({
-      method: 'POST', url: `/games/${gameId}/join`,
+      method: 'POST', url: '/subscriptions',
       headers: { authorization: `Bearer ${playerToken}` },
+      payload: { gameId },
     })
 
     const res = await app.inject({
@@ -359,8 +361,9 @@ describe('DELETE /posts/:postId/comments/:commentId', () => {
     })
     const { token: playerToken } = playerRes.json()
     await app.inject({
-      method: 'POST', url: `/games/${gameId}/join`,
+      method: 'POST', url: '/subscriptions',
       headers: { authorization: `Bearer ${playerToken}` },
+      payload: { gameId },
     })
 
     const res = await app.inject({
@@ -526,6 +529,126 @@ describe('GET /feed', () => {
     await app.ready()
     const res = await app.inject({ method: 'GET', url: '/feed' })
     expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+})
+
+async function setupMediaTests() {
+  const app = buildApp()
+  await app.ready()
+
+  const regRes = await app.inject({
+    method: 'POST',
+    url: '/auth/register',
+    payload: { email: 'owner@posttest.com', password: 'password123', displayName: 'Owner' },
+  })
+  const { token } = regRes.json()
+
+  const gameRes = await app.inject({
+    method: 'POST',
+    url: '/games',
+    headers: { authorization: `Bearer ${token}` },
+    payload: { name: 'Post Test Game' },
+  })
+  const { id: gameId } = gameRes.json()
+
+  await app.inject({
+    method: 'PATCH',
+    url: `/games/${gameId}/status`,
+    headers: { authorization: `Bearer ${token}` },
+    payload: { status: 'active' },
+  })
+
+  return { app, token, gameId }
+}
+
+describe('POST /posts — media fields', () => {
+  it('creates a post with no media', async () => {
+    const { app, token, gameId } = await setupMediaTests()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { title: 'Hello', body: 'World' },
+    })
+    expect(res.statusCode).toBe(201)
+    const post = res.json()
+    expect(post.mediaType).toBeNull()
+    expect(post.mediaUrls).toBeNull()
+    await app.close()
+  })
+
+  it('creates a post with a photo', async () => {
+    const { app, token, gameId } = await setupMediaTests()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: {
+        title: 'Photo post',
+        body: 'Look at this',
+        mediaType: 'photo',
+        mediaUrls: ['https://example.com/photo.jpg'],
+      },
+    })
+    expect(res.statusCode).toBe(201)
+    const post = res.json()
+    expect(post.mediaType).toBe('photo')
+    expect(post.mediaUrls).toEqual(['https://example.com/photo.jpg'])
+    await app.close()
+  })
+
+  it('creates a post with a video', async () => {
+    const { app, token, gameId } = await setupMediaTests()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: {
+        title: 'Video post',
+        body: 'Watch this',
+        mediaType: 'video',
+        mediaUrls: ['https://example.com/video.mp4'],
+      },
+    })
+    expect(res.statusCode).toBe(201)
+    const post = res.json()
+    expect(post.mediaType).toBe('video')
+    expect(post.mediaUrls).toEqual(['https://example.com/video.mp4'])
+    await app.close()
+  })
+
+  it('rejects more than 8 photos', async () => {
+    const { app, token, gameId } = await setupMediaTests()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: {
+        title: 'Too many',
+        body: 'photos',
+        mediaType: 'photo',
+        mediaUrls: Array.from({ length: 9 }, (_, i) => `https://example.com/p${i}.jpg`),
+      },
+    })
+    expect(res.statusCode).toBe(400)
+    await app.close()
+  })
+
+  it('rejects video with more than 1 URL', async () => {
+    const { app, token, gameId } = await setupMediaTests()
+    const res = await app.inject({
+      method: 'POST',
+      url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: {
+        title: 'Two videos',
+        body: 'nope',
+        mediaType: 'video',
+        mediaUrls: ['https://example.com/v1.mp4', 'https://example.com/v2.mp4'],
+      },
+    })
+    expect(res.statusCode).toBe(400)
     await app.close()
   })
 })
