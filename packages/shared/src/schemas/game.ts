@@ -82,7 +82,7 @@ export type GameCodexInput = z.infer<typeof GameCodexSchema>
 export const UpdateSiteConfigInput = z.object({
   siteTitle: z.string().min(1).max(150).optional(),
   tagline: z.string().max(150).nullable().optional(),
-  themeName: z.string().nullable().optional(),
+  themeName: z.string().max(100).nullable().optional(),
   logoUrl: z.string().url().nullable().optional(),
   faviconUrl: z.string().url().nullable().optional(),
   bannerUrl: z.string().url().nullable().optional(),
