@@ -10,9 +10,10 @@ import type { ApiError } from '@larpdb/shared'
 interface SubscribeButtonProps {
   gameId: string
   initialSubscribed?: boolean
+  onToggle?: (subscribed: boolean) => void
 }
 
-export function SubscribeButton({ gameId, initialSubscribed = false }: SubscribeButtonProps) {
+export function SubscribeButton({ gameId, initialSubscribed = false, onToggle }: SubscribeButtonProps) {
   const { user } = useAuth()
   const router = useRouter()
   const [subscribed, setSubscribed] = useState(initialSubscribed)
@@ -28,13 +29,16 @@ export function SubscribeButton({ gameId, initialSubscribed = false }: Subscribe
       if (subscribed) {
         await api.delete(`/subscriptions/${gameId}`)
         setSubscribed(false)
+        onToggle?.(false)
       } else {
         try {
           await api.post('/subscriptions', { gameId })
           setSubscribed(true)
+          onToggle?.(true)
         } catch (err) {
           if ((err as ApiError).status === 409) {
             setSubscribed(true)
+            onToggle?.(true)
           } else {
             throw err
           }

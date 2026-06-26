@@ -4,13 +4,11 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { getToken } from '@/lib/auth'
+import { SubscribeButton } from '@/components/SubscribeButton'
 
 interface LarpPublic {
   id: string
-  name: string
   slug: string
-  joinMode: 'open' | 'approval'
-  status: 'active' | 'inactive'
   siteTitle: string
   tagline: string | null
   logoUrl: string | null
@@ -53,6 +51,7 @@ export default function LarpLandingPage() {
   const params = useParams<{ slug: string }>()
   const [larp, setLarp] = useState<LarpPublic | null>(null)
   const [isMember, setIsMember] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
@@ -66,6 +65,7 @@ export default function LarpLandingPage() {
         setLarp(data)
 
         const token = getToken()
+        if (token) setIsLoggedIn(true)
         if (token) {
           try {
             const memRes = await fetch(`${API_BASE}/games/${params.slug}/membership`, {
@@ -121,13 +121,8 @@ export default function LarpLandingPage() {
             <h1 className="text-2xl font-bold leading-tight truncate">{larp.siteTitle}</h1>
             {larp.tagline && <p className="text-muted-foreground text-sm mt-0.5">{larp.tagline}</p>}
           </div>
-          {larp.joinMode === 'open' && !isMember && (
-            <Link
-              href={`/join/${larp.id}`}
-              className="flex-shrink-0 px-4 py-2 rounded-md border text-sm font-medium hover:bg-muted transition-colors"
-            >
-              Join LARP
-            </Link>
+          {isLoggedIn && (
+            <SubscribeButton gameId={larp.id} initialSubscribed={isMember} onToggle={setIsMember} />
           )}
         </div>
 
@@ -191,17 +186,7 @@ export default function LarpLandingPage() {
             </div>
           ) : (
             <div className="rounded-xl border p-6 text-center">
-              <p className="text-muted-foreground text-sm mb-3">Become a member to view the directory.</p>
-              {larp.joinMode === 'open' ? (
-                <Link
-                  href={`/join/${larp.id}`}
-                  className="inline-block px-4 py-2 rounded-md border text-sm font-medium hover:bg-muted transition-colors"
-                >
-                  Join LARP
-                </Link>
-              ) : (
-                <p className="text-xs text-muted-foreground">Membership by approval.</p>
-              )}
+              <p className="text-muted-foreground text-sm">Become a member to view the directory.</p>
             </div>
           )}
         </div>

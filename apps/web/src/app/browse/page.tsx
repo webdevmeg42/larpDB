@@ -17,13 +17,20 @@ interface BrowseGame {
 
 export default function BrowsePage() {
   const [games, setGames] = useState<BrowseGame[]>([])
+  const [subscribedIds, setSubscribedIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [joinModeFilter, setJoinModeFilter] = useState<'any' | 'open'>('any')
   const [search, setSearch] = useState('')
 
   useEffect(() => {
-    api.get<{ items: BrowseGame[] }>('/games')
-      .then(r => setGames(r.items))
+    const gamesReq = api.get<{ items: BrowseGame[] }>('/games')
+    const subsReq = api.get<{ gameId: string }[]>('/subscriptions').catch(() => [] as { gameId: string }[])
+
+    Promise.all([gamesReq, subsReq])
+      .then(([gamesRes, subs]) => {
+        setGames(gamesRes.items)
+        setSubscribedIds(new Set(subs.map(s => s.gameId)))
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
@@ -106,7 +113,7 @@ export default function BrowsePage() {
                     {g.joinMode === 'open' ? 'Open' : 'Approval required'}
                   </p>
                 </div>
-                <SubscribeButton gameId={g.id} />
+                <SubscribeButton gameId={g.id} initialSubscribed={subscribedIds.has(g.id)} />
               </div>
             ))
           )}

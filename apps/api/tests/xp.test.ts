@@ -58,15 +58,16 @@ async function setupWithCharacter() {
 
   await app.inject({
     method: 'POST',
-    url: `/games/${gameId}/join`,
+    url: '/subscriptions',
     headers: { authorization: `Bearer ${playerToken}` },
+    payload: { gameId },
   })
 
   const charRes = await app.inject({
     method: 'POST',
     url: '/characters',
     headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
-    payload: { name: 'Elara', data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
+    payload: { name: 'Elara', raceSchemaId: schemaRes.json().id, data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
   })
   const character = charRes.json()
 
@@ -182,8 +183,9 @@ describe('POST /characters/:id/xp/spend', () => {
 
     await app.inject({
       method: 'POST',
-      url: `/games/${gameId}/join`,
+      url: '/subscriptions',
       headers: { authorization: `Bearer ${otherToken}` },
+      payload: { gameId },
     })
 
     const res = await app.inject({

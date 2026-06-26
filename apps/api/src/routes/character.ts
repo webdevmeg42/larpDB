@@ -15,7 +15,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { gameId, userId, gameStatus, role } = request.gameContext
 
-      if (gameStatus !== 'active' && !gmOrOwner(role)) {
+      if (gameStatus !== 'active') {
         return reply.status(403).send({ error: 'LARP is not currently active' })
       }
 
@@ -99,22 +99,21 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         ? (computeCumulativeXp(baseLevel, config.codex) ?? 0)
         : 0
 
-      const [character] = await db.insert(characters).values({
-        gameId,
-        userId,
-        schemaId: primarySchemaId,
-        classSchemaId: classRow?.id ?? null,
-        name: result.data.name,
-        portraitUrl: result.data.portraitUrl ?? null,
-        data: characterData,
-      }).returning()
+      const character = await db.transaction(async (tx) => {
+        const [c] = await tx.insert(characters).values({
+          gameId,
+          userId,
+          schemaId: primarySchemaId,
+          classSchemaId: classRow?.id ?? null,
+          name: result.data.name,
+          portraitUrl: result.data.portraitUrl ?? null,
+          data: characterData,
+        }).returning()
+        if (!c) throw new Error('Failed to create character')
 
-      if (!character) return reply.status(500).send({ error: 'Failed to create character' })
-
-      if (initialXp > 0) {
-        await db.transaction(async (tx) => {
+        if (initialXp > 0) {
           await tx.insert(xpTransactions).values({
-            characterId: character.id,
+            characterId: c.id,
             awardedBy: userId,
             amount: initialXp,
             reason: `Starting XP (Level ${baseLevel})`,
@@ -122,10 +121,11 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
           })
           await tx.update(characters)
             .set({ totalXp: initialXp })
-            .where(eq(characters.id, character.id))
-        })
-        return reply.status(201).send({ ...character, totalXp: initialXp })
-      }
+            .where(eq(characters.id, c.id))
+          return { ...c, totalXp: initialXp }
+        }
+        return c
+      })
 
       return reply.status(201).send(character)
     },
@@ -150,41 +150,10 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId, role, userId } = request.gameContext
       const { id } = request.params as { id: string }
 
-      const [[character], [siteCfg]] = await Promise.all([
-        db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1),
-        db.select({ codex: siteConfig.codex }).from(siteConfig).where(eq(siteConfig.gameId, gameId)).limit(1),
-      ])
+      const [character] = await db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
 
       if (!character) return reply.status(404).send({ error: 'Character not found' })
       if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
-
-      // Sync level field in character.data whenever XP-derived level differs from stored value
-      if (siteCfg?.codex?.levelingSystem) {
-        try {
-          const targetLevel = resolveLevelFromXp(character.totalXp, siteCfg.codex)
-          if (targetLevel !== null) {
-            const [raceSchema, classSchemaRow] = await Promise.all([
-              db.select().from(characterSchemas).where(eq(characterSchemas.id, character.schemaId)).limit(1),
-              character.classSchemaId
-                ? db.select().from(characterSchemas).where(eq(characterSchemas.id, character.classSchemaId)).limit(1)
-                : Promise.resolve([] as (typeof characterSchemas.$inferSelect)[]),
-            ])
-            const allFields = [...(raceSchema[0]?.fields ?? []), ...(classSchemaRow[0]?.fields ?? [])]
-            const levelField = allFields.find((f: { type: string; label: string }) => f.type === 'number' && f.label.toLowerCase() === 'level')
-            if (levelField) {
-              const storedLevel = (character.data as Record<string, unknown>)[levelField.id] as number | undefined
-              if (storedLevel !== targetLevel) {
-                const newData = { ...(character.data as Record<string, unknown>), [levelField.id]: targetLevel }
-                const progressedData = applyLevelProgression(targetLevel, classSchemaRow[0]?.fields ?? [], newData)
-                await db.update(characters).set({ data: progressedData, updatedAt: new Date() }).where(eq(characters.id, id))
-                return reply.send({ ...character, data: progressedData })
-              }
-            }
-          }
-        } catch {
-          // Non-fatal: return character as-is if sync fails
-        }
-      }
 
       return reply.send(character)
     },

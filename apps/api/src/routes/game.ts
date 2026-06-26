@@ -30,6 +30,33 @@ function generateSlug(name: string): string {
     .slice(0, 60)
 }
 
+async function fetchPublicGameCodex(slug: string) {
+  const [row] = await db
+    .select({ codex: siteConfig.codex })
+    .from(game)
+    .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
+    .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
+    .limit(1)
+  return row ?? null
+}
+
+async function fetchPublicSchemas(slug: string, type: 'race' | 'class') {
+  const [gameRow] = await db
+    .select({ id: game.id })
+    .from(game)
+    .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
+    .limit(1)
+  if (!gameRow) return null
+  return db
+    .select({ id: characterSchemas.id, name: characterSchemas.name, fields: characterSchemas.fields })
+    .from(characterSchemas)
+    .where(and(
+      eq(characterSchemas.gameId, gameRow.id),
+      eq(characterSchemas.isActive, true),
+      eq(characterSchemas.type, type),
+    ))
+}
+
 async function uniqueSlug(base: string): Promise<string> {
   let attempt = 0
   while (true) {
@@ -240,9 +267,6 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
-      const [existing] = await db.select({ id: game.id }).from(game).where(eq(game.id, id)).limit(1)
-      if (!existing) return reply.status(404).send({ error: 'Game not found' })
-
       await db.transaction(async (tx) => {
         // larp_subscriptions, posts, comments, and post_likes are handled by DB-level CASCADE on game_id FK
         const gameEvents = await tx
@@ -400,16 +424,8 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get<{ Params: { slug: string } }>(
     '/games/:slug/codex',
     async (request, reply) => {
-      const { slug } = request.params
-      const [row] = await db
-        .select({ codex: siteConfig.codex })
-        .from(game)
-        .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
-        .limit(1)
-
+      const row = await fetchPublicGameCodex(request.params.slug)
       if (!row) return reply.status(404).send({ error: 'LARP not found' })
-
       return reply.send(row.codex ?? {})
     },
   )
@@ -417,16 +433,8 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get<{ Params: { slug: string } }>(
     '/games/:slug/rulebook',
     async (request, reply) => {
-      const { slug } = request.params
-      const [row] = await db
-        .select({ codex: siteConfig.codex })
-        .from(game)
-        .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
-        .limit(1)
-
+      const row = await fetchPublicGameCodex(request.params.slug)
       if (!row) return reply.status(404).send({ error: 'LARP not found' })
-
       const codex = row.codex ?? {}
       return reply.send({
         rulebookLink: (codex as Record<string, unknown>).rulebookLink ?? null,
@@ -501,24 +509,8 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get<{ Params: { slug: string } }>(
     '/games/:slug/schemas/race',
     async (request, reply) => {
-      const { slug } = request.params
-      const [gameRow] = await db
-        .select({ id: game.id })
-        .from(game)
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
-        .limit(1)
-
-      if (!gameRow) return reply.status(404).send({ error: 'LARP not found' })
-
-      const schemas = await db
-        .select({ id: characterSchemas.id, name: characterSchemas.name, fields: characterSchemas.fields })
-        .from(characterSchemas)
-        .where(and(
-          eq(characterSchemas.gameId, gameRow.id),
-          eq(characterSchemas.isActive, true),
-          eq(characterSchemas.type, 'race'),
-        ))
-
+      const schemas = await fetchPublicSchemas(request.params.slug, 'race')
+      if (!schemas) return reply.status(404).send({ error: 'LARP not found' })
       return reply.send(schemas)
     },
   )
@@ -526,24 +518,8 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get<{ Params: { slug: string } }>(
     '/games/:slug/schemas/class',
     async (request, reply) => {
-      const { slug } = request.params
-      const [gameRow] = await db
-        .select({ id: game.id })
-        .from(game)
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
-        .limit(1)
-
-      if (!gameRow) return reply.status(404).send({ error: 'LARP not found' })
-
-      const schemas = await db
-        .select({ id: characterSchemas.id, name: characterSchemas.name, fields: characterSchemas.fields })
-        .from(characterSchemas)
-        .where(and(
-          eq(characterSchemas.gameId, gameRow.id),
-          eq(characterSchemas.isActive, true),
-          eq(characterSchemas.type, 'class'),
-        ))
-
+      const schemas = await fetchPublicSchemas(request.params.slug, 'class')
+      if (!schemas) return reply.status(404).send({ error: 'LARP not found' })
       return reply.send(schemas)
     },
   )

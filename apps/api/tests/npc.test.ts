@@ -35,8 +35,9 @@ async function setupOwnerAndGm() {
 
   await app.inject({
     method: 'POST',
-    url: `/games/${gameId}/join`,
+    url: '/subscriptions',
     headers: { authorization: `Bearer ${gmToken}` },
+    payload: { gameId },
   })
 
   await app.inject({
@@ -55,8 +56,9 @@ async function setupOwnerAndGm() {
 
   await app.inject({
     method: 'POST',
-    url: `/games/${gameId}/join`,
+    url: '/subscriptions',
     headers: { authorization: `Bearer ${playerToken}` },
+    payload: { gameId },
   })
 
   return { app, ownerToken, gmToken, playerToken, gameId }

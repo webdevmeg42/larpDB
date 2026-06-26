@@ -6,6 +6,11 @@ const SIMPLE_FIELDS = [
   { id: '22222222-2222-2222-2222-222222222222', label: 'Level', type: 'number' as const, required: false, order: 1, min: 1, max: 20 },
 ]
 
+const RANGE_FIELDS = [
+  { id: '11111111-1111-1111-1111-111111111111', label: 'Class', type: 'text' as const, required: true, order: 0 },
+  { id: '33333333-3333-3333-3333-333333333333', label: 'Strength', type: 'number' as const, required: false, order: 1, min: 1, max: 20 },
+]
+
 async function createAndLogin(email = 'owner@test.com') {
   const app = buildApp()
   await app.ready()
@@ -61,16 +66,17 @@ async function setupWithActiveSchema() {
 
   await app.inject({
     method: 'POST',
-    url: `/games/${gameId}/join`,
+    url: '/subscriptions',
     headers: { authorization: `Bearer ${playerToken}` },
+    payload: { gameId },
   })
 
-  return { app, ownerToken, playerToken, schema, gameId }
+  return { app, ownerToken, playerToken, schema, schemaId: schema.id, gameId }
 }
 
 describe('POST /characters', () => {
   it('creates a character with valid data', async () => {
-    const { app, playerToken, gameId } = await setupWithActiveSchema()
+    const { app, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     const res = await app.inject({
       method: 'POST',
@@ -78,6 +84,7 @@ describe('POST /characters', () => {
       headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
       payload: {
         name: 'Elara',
+        raceSchemaId: schemaId,
         data: {
           '11111111-1111-1111-1111-111111111111': 'Ranger',
           '22222222-2222-2222-2222-222222222222': 5,
@@ -93,13 +100,13 @@ describe('POST /characters', () => {
   })
 
   it('returns 400 when required field is missing', async () => {
-    const { app, playerToken, gameId } = await setupWithActiveSchema()
+    const { app, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     const res = await app.inject({
       method: 'POST',
       url: '/characters',
       headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
-      payload: { name: 'Elara', data: {} },
+      payload: { name: 'Elara', raceSchemaId: schemaId, data: {} },
     })
 
     expect(res.statusCode).toBe(400)
@@ -108,7 +115,20 @@ describe('POST /characters', () => {
   })
 
   it('returns 400 when number field is out of range', async () => {
-    const { app, playerToken, gameId } = await setupWithActiveSchema()
+    const { app, ownerToken, playerToken, gameId } = await setupWithActiveSchema()
+
+    const rangeSchemaRes = await app.inject({
+      method: 'POST',
+      url: '/character-schemas',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { name: 'Range Sheet', fields: RANGE_FIELDS },
+    })
+    const { id: rangeSchemaId } = rangeSchemaRes.json()
+    await app.inject({
+      method: 'POST',
+      url: `/character-schemas/${rangeSchemaId}/activate`,
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+    })
 
     const res = await app.inject({
       method: 'POST',
@@ -116,9 +136,10 @@ describe('POST /characters', () => {
       headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
       payload: {
         name: 'Elara',
+        raceSchemaId: rangeSchemaId,
         data: {
           '11111111-1111-1111-1111-111111111111': 'Ranger',
-          '22222222-2222-2222-2222-222222222222': 99,
+          '33333333-3333-3333-3333-333333333333': 99,
         },
       },
     })
@@ -139,8 +160,9 @@ describe('POST /characters', () => {
 
     await app.inject({
       method: 'POST',
-      url: `/games/${gameId}/join`,
+      url: '/subscriptions',
       headers: { authorization: `Bearer ${playerToken}` },
+      payload: { gameId },
     })
 
     const res = await app.inject({
@@ -150,12 +172,12 @@ describe('POST /characters', () => {
       payload: { name: 'NoSchema', data: {} },
     })
 
-    expect(res.statusCode).toBe(404)
+    expect(res.statusCode).toBe(400)
     await app.close()
   })
 
   it('returns 403 for every role when the LARP is inactive', async () => {
-    const { app, ownerToken, playerToken, gameId } = await setupWithActiveSchema()
+    const { app, ownerToken, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     const gmRegRes = await app.inject({
       method: 'POST',
@@ -165,8 +187,9 @@ describe('POST /characters', () => {
     const { token: gmToken, user: gmUser } = gmRegRes.json()
     await app.inject({
       method: 'POST',
-      url: `/games/${gameId}/join`,
+      url: '/subscriptions',
       headers: { authorization: `Bearer ${gmToken}` },
+      payload: { gameId },
     })
     await app.inject({
       method: 'PATCH',
@@ -189,6 +212,7 @@ describe('POST /characters', () => {
         headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
         payload: {
           name: 'Blocked',
+          raceSchemaId: schemaId,
           data: { '11111111-1111-1111-1111-111111111111': 'Ranger' },
         },
       })
@@ -202,13 +226,13 @@ describe('POST /characters', () => {
 
 describe('GET /characters', () => {
   it('player sees only their own characters', async () => {
-    const { app, playerToken, gameId } = await setupWithActiveSchema()
+    const { app, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     await app.inject({
       method: 'POST',
       url: '/characters',
       headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
-      payload: { name: 'My Char', data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
+      payload: { name: 'My Char', raceSchemaId: schemaId, data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
     })
 
     const res = await app.inject({
@@ -225,13 +249,13 @@ describe('GET /characters', () => {
   })
 
   it('owner sees all characters', async () => {
-    const { app, ownerToken, playerToken, gameId } = await setupWithActiveSchema()
+    const { app, ownerToken, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     await app.inject({
       method: 'POST',
       url: '/characters',
       headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
-      payload: { name: 'Player Char', data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
+      payload: { name: 'Player Char', raceSchemaId: schemaId, data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
     })
 
     const res = await app.inject({
@@ -248,13 +272,13 @@ describe('GET /characters', () => {
 
 describe('PATCH /characters/:id', () => {
   it('player can update their own character', async () => {
-    const { app, playerToken, gameId } = await setupWithActiveSchema()
+    const { app, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     const createRes = await app.inject({
       method: 'POST',
       url: '/characters',
       headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
-      payload: { name: 'Elara', data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
+      payload: { name: 'Elara', raceSchemaId: schemaId, data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
     })
     const char = createRes.json()
 
@@ -271,13 +295,13 @@ describe('PATCH /characters/:id', () => {
   })
 
   it("player cannot update another player's character", async () => {
-    const { app, playerToken, gameId } = await setupWithActiveSchema()
+    const { app, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     const createRes = await app.inject({
       method: 'POST',
       url: '/characters',
       headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
-      payload: { name: 'Elara', data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
+      payload: { name: 'Elara', raceSchemaId: schemaId, data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
     })
     const char = createRes.json()
 
@@ -290,8 +314,9 @@ describe('PATCH /characters/:id', () => {
 
     await app.inject({
       method: 'POST',
-      url: `/games/${gameId}/join`,
+      url: '/subscriptions',
       headers: { authorization: `Bearer ${otherToken}` },
+      payload: { gameId },
     })
 
     const res = await app.inject({
@@ -306,13 +331,13 @@ describe('PATCH /characters/:id', () => {
   })
 
   it('blocks a player from editing their own character while the LARP is inactive', async () => {
-    const { app, ownerToken, playerToken, gameId } = await setupWithActiveSchema()
+    const { app, ownerToken, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     const createRes = await app.inject({
       method: 'POST',
       url: '/characters',
       headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
-      payload: { name: 'Elara', data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
+      payload: { name: 'Elara', raceSchemaId: schemaId, data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
     })
     const char = createRes.json()
 
@@ -336,13 +361,13 @@ describe('PATCH /characters/:id', () => {
   })
 
   it('allows gm and owner to edit characters while the LARP is inactive', async () => {
-    const { app, ownerToken, playerToken, gameId } = await setupWithActiveSchema()
+    const { app, ownerToken, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     const createRes = await app.inject({
       method: 'POST',
       url: '/characters',
       headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
-      payload: { name: 'Elara', data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
+      payload: { name: 'Elara', raceSchemaId: schemaId, data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
     })
     const char = createRes.json()
 
@@ -354,8 +379,9 @@ describe('PATCH /characters/:id', () => {
     const { token: gmToken, user: gmUser } = gmRegRes.json()
     await app.inject({
       method: 'POST',
-      url: `/games/${gameId}/join`,
+      url: '/subscriptions',
       headers: { authorization: `Bearer ${gmToken}` },
+      payload: { gameId },
     })
     await app.inject({
       method: 'PATCH',
@@ -393,13 +419,13 @@ describe('PATCH /characters/:id', () => {
   })
 
   it('allows GET /characters and GET /characters/:id regardless of LARP status', async () => {
-    const { app, ownerToken, playerToken, gameId } = await setupWithActiveSchema()
+    const { app, ownerToken, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     const createRes = await app.inject({
       method: 'POST',
       url: '/characters',
       headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
-      payload: { name: 'Elara', data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
+      payload: { name: 'Elara', raceSchemaId: schemaId, data: { '11111111-1111-1111-1111-111111111111': 'Ranger' } },
     })
     const char = createRes.json()
 

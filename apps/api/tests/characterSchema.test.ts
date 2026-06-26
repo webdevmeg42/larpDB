@@ -75,8 +75,9 @@ describe('POST /character-schemas', () => {
 
     await app.inject({
       method: 'POST',
-      url: `/games/${gameId}/join`,
+      url: '/subscriptions',
       headers: { authorization: `Bearer ${playerToken}` },
+      payload: { gameId },
     })
 
     const res = await app.inject({

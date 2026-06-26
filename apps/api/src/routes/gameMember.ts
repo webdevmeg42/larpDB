@@ -1,53 +1,13 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { eq, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { game, gameMembers, larpSubscriptions, users } from '../db/schema.js'
+import { gameMembers, larpSubscriptions, users } from '../db/schema.js'
 import { UpdateMemberInput } from '@larpdb/shared'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 
 const validStatuses = ['active', 'pending', 'banned'] as const
 
 export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.post(
-    '/games/:gameId/join',
-    { preHandler: [fastify.authenticate] },
-    async (request, reply) => {
-      const { gameId } = request.params as { gameId: string }
-      const userId = request.user.sub
-
-      const [targetGame] = await db.select().from(game).where(eq(game.id, gameId)).limit(1)
-      if (!targetGame) return reply.status(404).send({ error: 'Game not found' })
-
-      const [existing] = await db
-        .select()
-        .from(gameMembers)
-        .where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId)))
-        .limit(1)
-      if (existing) return reply.status(409).send({ error: 'Already a member of this game' })
-
-      const status = targetGame.joinMode === 'open' ? 'active' : 'pending'
-      const [member] = await db.transaction(async (tx) => {
-        const [m] = await tx.insert(gameMembers).values({
-          gameId,
-          userId,
-          role: 'player',
-          status,
-        }).returning()
-
-        if (status === 'active') {
-          await tx
-            .insert(larpSubscriptions)
-            .values({ gameId, userId })
-            .onConflictDoNothing()
-        }
-
-        return [m]
-      })
-
-      return reply.status(201).send(member)
-    },
-  )
-
   fastify.get(
     '/games/:gameId/members',
     { preHandler: [fastify.requireGameContext] },

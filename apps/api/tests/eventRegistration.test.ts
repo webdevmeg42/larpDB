@@ -51,8 +51,9 @@ async function setupWithPublishedEvent() {
 
   await app.inject({
     method: 'POST',
-    url: `/games/${gameId}/join`,
+    url: '/subscriptions',
     headers: { authorization: `Bearer ${playerToken}` },
+    payload: { gameId },
   })
 
   return { app, ownerToken, playerToken, event, gameId }
@@ -111,8 +112,9 @@ describe('POST /events/:id/register', () => {
 
       await app.inject({
         method: 'POST',
-        url: `/games/${gameId}/join`,
+        url: '/subscriptions',
         headers: { authorization: `Bearer ${token}` },
+        payload: { gameId },
       })
 
       const eventRegRes = await app.inject({
@@ -162,8 +164,9 @@ describe('POST /events/:id/register', () => {
 
     await app.inject({
       method: 'POST',
-      url: `/games/${gameId}/join`,
+      url: '/subscriptions',
       headers: { authorization: `Bearer ${playerToken}` },
+      payload: { gameId },
     })
 
     const res = await app.inject({

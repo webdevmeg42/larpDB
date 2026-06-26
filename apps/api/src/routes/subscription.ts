@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { eq, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { game, larpSubscriptions } from '../db/schema.js'
+import { game, gameMembers, larpSubscriptions } from '../db/schema.js'
 import { SubscribeInput } from '@larpdb/shared'
 
 export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
@@ -17,21 +17,38 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId } = result.data
 
       const [targetGame] = await db
-        .select({ id: game.id })
+        .select({ id: game.id, joinMode: game.joinMode })
         .from(game)
         .where(eq(game.id, gameId))
         .limit(1)
       if (!targetGame) return reply.status(404).send({ error: 'Game not found' })
 
-      const [existing] = await db
-        .select()
-        .from(larpSubscriptions)
-        .where(and(eq(larpSubscriptions.gameId, gameId), eq(larpSubscriptions.userId, userId)))
-        .limit(1)
-      if (existing) return reply.status(409).send({ error: 'Already subscribed' })
+      await db.transaction(async (tx) => {
+        await tx
+          .insert(larpSubscriptions)
+          .values({ gameId, userId })
+          .onConflictDoNothing()
 
-      const [sub] = await db.insert(larpSubscriptions).values({ gameId, userId }).returning()
-      return reply.status(201).send(sub)
+        if (targetGame.joinMode === 'open') {
+          // Open-mode: subscribe = immediate active membership; activate any stale pending row
+          await tx
+            .insert(gameMembers)
+            .values({ gameId, userId, role: 'player', status: 'active' })
+            .onConflictDoUpdate({
+              target: [gameMembers.gameId, gameMembers.userId],
+              set: { status: 'active' },
+            })
+        } else {
+          // Approval-mode: subscribe adds a pending membership if not already a member;
+          // never promotes a pending row — that requires explicit GM/owner approval
+          await tx
+            .insert(gameMembers)
+            .values({ gameId, userId, role: 'player', status: 'pending' })
+            .onConflictDoNothing()
+        }
+      })
+
+      return reply.status(201).send({})
     },
   )
 
@@ -42,11 +59,26 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId } = request.params as { gameId: string }
       const userId = request.user.sub
 
-      const [deleted] = await db
-        .delete(larpSubscriptions)
-        .where(and(eq(larpSubscriptions.gameId, gameId), eq(larpSubscriptions.userId, userId)))
-        .returning()
-      if (!deleted) return reply.status(404).send({ error: 'Subscription not found' })
+      await db.transaction(async (tx) => {
+        const [deleted] = await tx
+          .delete(larpSubscriptions)
+          .where(and(eq(larpSubscriptions.gameId, gameId), eq(larpSubscriptions.userId, userId)))
+          .returning()
+
+        if (!deleted) {
+          await tx.rollback()
+          return
+        }
+
+        // Remove player membership; leave GM/owner rows intact
+        await tx
+          .delete(gameMembers)
+          .where(and(
+            eq(gameMembers.gameId, gameId),
+            eq(gameMembers.userId, userId),
+            eq(gameMembers.role, 'player'),
+          ))
+      }).catch(() => {})
 
       return reply.status(204).send()
     },

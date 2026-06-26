@@ -63,8 +63,9 @@ async function setupForStore() {
 
   await app.inject({
     method: 'POST',
-    url: `/games/${gameId}/join`,
+    url: '/subscriptions',
     headers: { authorization: `Bearer ${playerToken}` },
+    payload: { gameId },
   })
 
   // Create and activate character schema
@@ -88,6 +89,7 @@ async function setupForStore() {
     headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
     payload: {
       name: 'Elara',
+      raceSchemaId: schema.id,
       data: { '11111111-1111-1111-1111-111111111111': 'Ranger' },
     },
   })
@@ -324,15 +326,23 @@ describe('POST /store/purchases', () => {
 
     await app.inject({
       method: 'POST',
-      url: `/games/${gameId}/join`,
+      url: '/subscriptions',
       headers: { authorization: `Bearer ${otherToken}` },
+      payload: { gameId },
     })
+
+    const schemaRes = await app.inject({
+      method: 'GET',
+      url: '/character-schemas',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+    })
+    const activeSchemaId = schemaRes.json()[0]?.id
 
     const charRes = await app.inject({
       method: 'POST',
       url: '/characters',
       headers: { authorization: `Bearer ${otherToken}`, 'x-game-id': gameId },
-      payload: { name: 'Unregistered', data: { '11111111-1111-1111-1111-111111111111': 'Mage' } },
+      payload: { name: 'Unregistered', raceSchemaId: activeSchemaId, data: { '11111111-1111-1111-1111-111111111111': 'Mage' } },
     })
     const unregisteredChar = charRes.json()
 

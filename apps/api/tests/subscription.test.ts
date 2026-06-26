@@ -43,11 +43,10 @@ describe('POST /subscriptions', () => {
       payload: { gameId },
     })
     expect(res.statusCode).toBe(201)
-    expect(res.json().gameId).toBe(gameId)
     await app.close()
   })
 
-  it('returns 409 if already subscribed', async () => {
+  it('is idempotent when already subscribed', async () => {
     const { app, token, gameId } = await createAndLogin()
 
     await app.inject({
@@ -61,7 +60,7 @@ describe('POST /subscriptions', () => {
       headers: { authorization: `Bearer ${token}` },
       payload: { gameId },
     })
-    expect(res.statusCode).toBe(409)
+    expect(res.statusCode).toBe(201)
     await app.close()
   })
 
@@ -105,13 +104,13 @@ describe('DELETE /subscriptions/:gameId', () => {
     await app.close()
   })
 
-  it('returns 404 if not subscribed', async () => {
+  it('is idempotent when not subscribed', async () => {
     const { app, token, gameId } = await createAndLogin()
     const res = await app.inject({
       method: 'DELETE', url: `/subscriptions/${gameId}`,
       headers: { authorization: `Bearer ${token}` },
     })
-    expect(res.statusCode).toBe(404)
+    expect(res.statusCode).toBe(204)
     await app.close()
   })
 })
@@ -145,60 +144,6 @@ describe('GET /subscriptions', () => {
     })
     expect(res.statusCode).toBe(200)
     expect(res.json()).toHaveLength(0)
-    await app.close()
-  })
-})
-
-describe('auto-subscribe on join (open mode)', () => {
-  it('subscribes user automatically when joining an open LARP', async () => {
-    const { app, gameId } = await createAndLogin()
-
-    const userRes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: 'joiner@test.com', password: 'password123', displayName: 'Joiner' },
-    })
-    const { token: joinerToken } = userRes.json()
-
-    await app.inject({
-      method: 'POST', url: `/games/${gameId}/join`,
-      headers: { authorization: `Bearer ${joinerToken}` },
-    })
-
-    const res = await app.inject({
-      method: 'GET', url: '/subscriptions',
-      headers: { authorization: `Bearer ${joinerToken}` },
-    })
-    expect(res.statusCode).toBe(200)
-    expect(res.json()).toHaveLength(1)
-    expect(res.json()[0].gameId).toBe(gameId)
-    await app.close()
-  })
-
-  it('does not create a duplicate subscription if already subscribed when joining', async () => {
-    const { app, gameId } = await createAndLogin()
-
-    const userRes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: 'joiner2@test.com', password: 'password123', displayName: 'Joiner2' },
-    })
-    const { token: joinerToken } = userRes.json()
-
-    // Subscribe first, then join
-    await app.inject({
-      method: 'POST', url: '/subscriptions',
-      headers: { authorization: `Bearer ${joinerToken}` },
-      payload: { gameId },
-    })
-    await app.inject({
-      method: 'POST', url: `/games/${gameId}/join`,
-      headers: { authorization: `Bearer ${joinerToken}` },
-    })
-
-    const res = await app.inject({
-      method: 'GET', url: '/subscriptions',
-      headers: { authorization: `Bearer ${joinerToken}` },
-    })
-    expect(res.json()).toHaveLength(1)
     await app.close()
   })
 })

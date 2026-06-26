@@ -171,8 +171,9 @@ describe('PATCH /config', () => {
     })
     const { token: playerToken } = reg2.json()
     await app.inject({
-      method: 'POST', url: `/games/${gameId}/join`,
+      method: 'POST', url: '/subscriptions',
       headers: { authorization: `Bearer ${playerToken}` },
+      payload: { gameId },
     })
 
     const res = await app.inject({
