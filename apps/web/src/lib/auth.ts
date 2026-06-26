@@ -3,6 +3,7 @@ export interface JwtPayload {
   email: string
   role: 'owner' | 'gm' | 'player'
   displayName: string
+  isSysAdmin?: boolean
   iat: number
   exp: number
 }
