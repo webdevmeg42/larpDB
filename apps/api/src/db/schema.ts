@@ -64,6 +64,7 @@ export const siteConfig = pgTable('site_config', {
   welcomeMessage: text('welcome_message'),
   footerText: text('footer_text'),
   customCss: text('custom_css'),
+  themeName: text('theme_name'),
   codex: jsonb('codex').$type<GameCodex>(),
   currencyName: text('currency_name').notNull().default('monies'),
   showDirectory: boolean('show_directory').notNull().default(false),
