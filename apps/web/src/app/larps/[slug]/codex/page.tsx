@@ -41,7 +41,7 @@ export default function CodexPage() {
   const hasFactions = codex.factions && codex.factions.length > 0
 
   return (
-    <LarpPublicShell larpName={larpName} larpSlug={params.slug} title="Codex" subtitle="World lore & setting">
+    <LarpPublicShell title="Codex" subtitle="World lore & setting">
       <div className="space-y-4">
         {(codex.genre || codex.tone) && (
           <Section title="Genre & Tone">

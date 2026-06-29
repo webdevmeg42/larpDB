@@ -45,7 +45,7 @@ export default function RaceBuildsPage() {
   if (notFound) return <div className="p-6">LARP not found.</div>
 
   return (
-    <LarpPublicShell larpName={larpName} larpSlug={params.slug} title="Race Builds" subtitle="Playable races">
+    <LarpPublicShell title="Race Builds" subtitle="Playable races">
       {schemas.length === 0 ? (
         <div className="rounded-lg border p-8 text-center text-muted-foreground text-sm">
           No races have been published yet.

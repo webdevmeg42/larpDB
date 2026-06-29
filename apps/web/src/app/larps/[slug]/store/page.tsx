@@ -60,7 +60,7 @@ export default function PublicStorePage() {
   const hasItems = data.events.some(e => e.items.length > 0)
 
   return (
-    <LarpPublicShell larpName={larpName} larpSlug={params.slug} title="Store" subtitle="Tickets & items">
+    <LarpPublicShell title="Store" subtitle="Tickets & items">
       {!hasItems ? (
         <div className="rounded-lg border p-8 text-center text-muted-foreground text-sm">
           No items are currently available.
