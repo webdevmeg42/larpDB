@@ -22,7 +22,7 @@ import StoreTab from '../_components/StoreTab'
 import BuildsTab from '../_components/BuildsTab'
 import ThemePreview from '@/components/theme-preview/ThemePreview'
 import { PALETTES, type Palette } from '@/lib/palettes'
-import { FONTS, loadFont } from '@/lib/fonts'
+import { FONTS } from '@/lib/fonts'
 
 const RulebookTab = dynamic(() => import('../_components/RulebookTab'), { ssr: false })
 
@@ -106,16 +106,6 @@ export default function BuilderPage() {
       colorAccent: palette.colorAccent,
     }))
   }
-
-  useEffect(() => {
-    const font = FONTS.find(f => f.name === form.fontHeading)
-    if (font) loadFont(font.googleFamily)
-  }, [form.fontHeading])
-
-  useEffect(() => {
-    const font = FONTS.find(f => f.name === form.fontBody)
-    if (font) loadFont(font.googleFamily)
-  }, [form.fontBody])
 
   async function saveCodexSection(updates: Partial<GameCodex>) {
     const merged = { ...(config?.codex ?? {}), ...updates }
