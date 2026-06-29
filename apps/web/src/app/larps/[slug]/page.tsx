@@ -5,9 +5,9 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { getToken } from '@/lib/auth'
 import { SubscribeButton } from '@/components/SubscribeButton'
-import { useLarpContext } from '@/contexts/LarpContext'
+import { useLarpContext, type LarpPublicData } from '@/contexts/LarpContext'
 
-const SOCIAL_MAP: { key: string; icon: string; label: string }[] = [
+const SOCIAL_MAP: { key: keyof LarpPublicData; icon: string; label: string }[] = [
   { key: 'socialFacebook', icon: '📘', label: 'Facebook' },
   { key: 'socialInstagram', icon: '📸', label: 'Instagram' },
   { key: 'socialSnapchat', icon: '👻', label: 'Snapchat' },
@@ -58,7 +58,7 @@ export default function LarpLandingPage() {
   }, [params.slug])
 
   const initials = larp.siteTitle.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-  const socials = SOCIAL_MAP.filter(s => (larp as unknown as Record<string, unknown>)[s.key])
+  const socials = SOCIAL_MAP.filter(s => larp[s.key])
   const hasSocials = socials.length > 0 || (larp.additionalWebsites?.length ?? 0) > 0
   const showDir = larp.showDirectory || isMember
 
@@ -135,7 +135,7 @@ export default function LarpLandingPage() {
               {socials.map(s => (
                 <a
                   key={s.key}
-                  href={(larp as unknown as Record<string, unknown>)[s.key] as string}
+                  href={larp[s.key] as string}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors"
