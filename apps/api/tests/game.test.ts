@@ -347,7 +347,7 @@ describe('GET /games/:slug/public', () => {
     await app.close()
   })
 
-  it('returns fallback defaults when color/font not configured', async () => {
+  it('returns DB-default colors and fonts for a freshly created game', async () => {
     const { app } = await createAndLogin()
 
     const res = await app.inject({
@@ -359,6 +359,8 @@ describe('GET /games/:slug/public', () => {
     const body = res.json()
     expect(body.colorPrimary).toBe('#6366f1')
     expect(body.colorBackground).toBe('#0f0f1a')
+    expect(body.colorSecondary).toBe('#a78bfa')
+    expect(body.colorAccent).toBe('#f59e0b')
     expect(body.fontHeading).toBe('Inter')
     expect(body.fontBody).toBe('Inter')
     await app.close()
