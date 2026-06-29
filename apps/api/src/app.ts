@@ -25,6 +25,14 @@ import { adminRoutes } from './routes/admin.js'
 import { seedBuiltinTemplates } from './db/seeds/templates.js'
 import { db } from './db/index.js'
 import { requestLogs } from './db/schema.js'
+import { lt } from 'drizzle-orm'
+
+const LOG_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
+
+async function purgeOldLogs() {
+  const cutoff = new Date(Date.now() - LOG_RETENTION_MS)
+  await db.delete(requestLogs).where(lt(requestLogs.createdAt, cutoff))
+}
 
 export function buildApp() {
   const app = Fastify({
@@ -79,6 +87,9 @@ export function buildApp() {
     await fs.promises.mkdir(UPLOADS_DIR, { recursive: true })
     if (env.NODE_ENV !== 'test') {
       await seedBuiltinTemplates()
+      await purgeOldLogs()
+      const timer = setInterval(purgeOldLogs, 24 * 60 * 60 * 1000)
+      timer.unref()
     }
   })
 

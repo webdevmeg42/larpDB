@@ -14,6 +14,7 @@ const [newUser] = await db.insert(users).values({
   email: 'webdevmeg@gmail.com',
   passwordHash,
   displayName: 'Megan',
+  isSysAdmin: true,
 }).returning()
 
 if (!newUser) throw new Error('Failed to create user')
