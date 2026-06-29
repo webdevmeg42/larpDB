@@ -23,6 +23,7 @@ import BuildsTab from '../_components/BuildsTab'
 import ThemePreview from '@/components/theme-preview/ThemePreview'
 import { PALETTES, type Palette } from '@/lib/palettes'
 import { FONTS } from '@/lib/fonts'
+import { getContrastColor } from '@/lib/contrast'
 
 const RulebookTab = dynamic(() => import('../_components/RulebookTab'), { ssr: false })
 
@@ -260,7 +261,7 @@ export default function BuilderPage() {
                         </div>
                         <div
                           className="px-1 py-0.5 text-center"
-                          style={{ background: palette.colorBackground, color: palette.colorText }}
+                          style={{ background: palette.colorBackground, color: getContrastColor(palette.colorBackground) }}
                         >
                           <span className="text-[9px] font-medium leading-none block truncate">{palette.name}</span>
                         </div>
