@@ -32,7 +32,7 @@ describe('getContrastColor', () => {
     expect(getContrastColor('#8B0000')).toBe('#ffffff')
   })
 
-  it('returns black for hot pink (Cyberpunk secondary #FF2D78)', () => {
+  it('returns black for hot pink (Cyberpunk secondary #FF2079)', () => {
     // luminance ~0.24 → black ratio ~5.9:1
     expect(getContrastColor('#FF2D78')).toBe('#000000')
   })
@@ -42,8 +42,8 @@ describe('getContrastColor', () => {
     expect(getContrastColor('#808080', '#FF0000')).toBe('#000000')
   })
 
-  it('prefers black over white when both would pass', () => {
-    // Very light color where black clearly wins — black is preferred first per spec
+  it('returns black for very light colors (high luminance)', () => {
+    // #EEEEEE: black ratio ~16:1, white ratio ~1.3:1 — black wins clearly
     expect(getContrastColor('#EEEEEE')).toBe('#000000')
   })
 })

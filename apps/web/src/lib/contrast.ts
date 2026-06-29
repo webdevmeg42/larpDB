@@ -22,6 +22,12 @@ function contrastRatio(l1: number, l2: number): number {
   return (lighter + 0.05) / (darker + 0.05)
 }
 
+// Returns '#000000' or '#ffffff' — whichever achieves WCAG AA (4.5:1) against `background`.
+// Black is preferred: it is checked first and returned if it passes.
+// One of black/white always passes for any valid hex input, so `fallback` and the final
+// tiebreaker are structural guards that are never reached in practice.
+// Note: contrast is computed for fully-opaque text. Callers that apply CSS opacity will
+// reduce the effective contrast ratio below the guaranteed 4.5:1.
 export function getContrastColor(background: string, fallback?: string): string {
   const [r, g, b] = hexToRgb(background)
   const bgL = relativeLuminance(r, g, b)
