@@ -310,6 +310,61 @@ describe('DELETE /games/:id', () => {
   })
 })
 
+describe('GET /games/:slug/public', () => {
+  it('includes color and font fields in the public response', async () => {
+    const { app, token, gameId } = await createAndLogin()
+
+    // Set some color/font values via the config endpoint
+    await app.inject({
+      method: 'PATCH',
+      url: '/config',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: {
+        colorPrimary: '#8B4513',
+        colorSecondary: '#D2691E',
+        colorBackground: '#1A0E00',
+        colorText: '#F5DEB3',
+        colorAccent: '#DAA520',
+        fontHeading: 'Cinzel',
+        fontBody: 'Rye',
+      },
+    })
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/games/realm-of-shadows/public',
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.colorPrimary).toBe('#8B4513')
+    expect(body.colorSecondary).toBe('#D2691E')
+    expect(body.colorBackground).toBe('#1A0E00')
+    expect(body.colorText).toBe('#F5DEB3')
+    expect(body.colorAccent).toBe('#DAA520')
+    expect(body.fontHeading).toBe('Cinzel')
+    expect(body.fontBody).toBe('Rye')
+    await app.close()
+  })
+
+  it('returns fallback defaults when color/font not configured', async () => {
+    const { app } = await createAndLogin()
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/games/realm-of-shadows/public',
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.colorPrimary).toBe('#6366f1')
+    expect(body.colorBackground).toBe('#0f0f1a')
+    expect(body.fontHeading).toBe('Inter')
+    expect(body.fontBody).toBe('Inter')
+    await app.close()
+  })
+})
+
 describe('GET /games hides inactive games', () => {
   it('excludes inactive games from public list', async () => {
     const { app, token, gameId } = await createAndLogin(`hidden-owner-${Date.now()}@example.com`)

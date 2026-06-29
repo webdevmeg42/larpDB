@@ -379,6 +379,13 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
           welcomeMessage: siteConfig.welcomeMessage,
           showDirectory: siteConfig.showDirectory,
           codex: siteConfig.codex,
+          colorPrimary: siteConfig.colorPrimary,
+          colorSecondary: siteConfig.colorSecondary,
+          colorBackground: siteConfig.colorBackground,
+          colorText: siteConfig.colorText,
+          colorAccent: siteConfig.colorAccent,
+          fontHeading: siteConfig.fontHeading,
+          fontBody: siteConfig.fontBody,
         })
         .from(game)
         .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
@@ -415,6 +422,13 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         bannerUrl: row.bannerUrl ?? null,
         welcomeMessage: row.welcomeMessage ?? null,
         showDirectory: row.showDirectory ?? false,
+        colorPrimary: row.colorPrimary ?? '#6366f1',
+        colorSecondary: row.colorSecondary ?? '#a78bfa',
+        colorBackground: row.colorBackground ?? '#0f0f1a',
+        colorText: row.colorText ?? '#ffffff',
+        colorAccent: row.colorAccent ?? '#f59e0b',
+        fontHeading: row.fontHeading ?? 'Inter',
+        fontBody: row.fontBody ?? 'Inter',
         ...socials,
         ...(additionalWebsites ? { additionalWebsites } : {}),
       })
