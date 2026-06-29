@@ -29,21 +29,15 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 export default function PublicStorePage() {
   const params = useParams<{ slug: string }>()
   const [data, setData] = useState<StoreData | null>(null)
-  const [larpName, setLarpName] = useState('')
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
     async function load() {
       try {
-        const [publicRes, storeRes] = await Promise.all([
-          fetch(`${API_BASE}/games/${params.slug}/public`),
-          fetch(`${API_BASE}/games/${params.slug}/store`),
-        ])
-        if (publicRes.status === 404 || storeRes.status === 404) { setNotFound(true); return }
-        const pub = await publicRes.json() as { siteTitle: string }
+        const storeRes = await fetch(`${API_BASE}/games/${params.slug}/store`)
+        if (storeRes.status === 404) { setNotFound(true); return }
         const store = await storeRes.json() as StoreData
-        setLarpName(pub.siteTitle)
         setData(store)
       } catch {
         setNotFound(true)

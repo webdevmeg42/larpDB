@@ -16,21 +16,15 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 export default function ClassBuildsPage() {
   const params = useParams<{ slug: string }>()
   const [schemas, setSchemas] = useState<Schema[]>([])
-  const [larpName, setLarpName] = useState('')
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
     async function load() {
       try {
-        const [publicRes, schemasRes] = await Promise.all([
-          fetch(`${API_BASE}/games/${params.slug}/public`),
-          fetch(`${API_BASE}/games/${params.slug}/schemas/class`),
-        ])
-        if (publicRes.status === 404 || schemasRes.status === 404) { setNotFound(true); return }
-        const pub = await publicRes.json() as { siteTitle: string }
+        const schemasRes = await fetch(`${API_BASE}/games/${params.slug}/schemas/class`)
+        if (schemasRes.status === 404) { setNotFound(true); return }
         const data = await schemasRes.json() as Schema[]
-        setLarpName(pub.siteTitle)
         setSchemas(data)
       } catch {
         setNotFound(true)

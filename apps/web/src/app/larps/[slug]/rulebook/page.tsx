@@ -15,7 +15,6 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 export default function PublicRulebookPage() {
   const params = useParams<{ slug: string }>()
   const [data, setData] = useState<RulebookData | null>(null)
-  const [larpName, setLarpName] = useState('')
   const [activeId, setActiveId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -23,14 +22,9 @@ export default function PublicRulebookPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [publicRes, bookRes] = await Promise.all([
-          fetch(`${API_BASE}/games/${params.slug}/public`),
-          fetch(`${API_BASE}/games/${params.slug}/rulebook`),
-        ])
-        if (publicRes.status === 404 || bookRes.status === 404) { setNotFound(true); return }
-        const pub = await publicRes.json() as { siteTitle: string }
+        const bookRes = await fetch(`${API_BASE}/games/${params.slug}/rulebook`)
+        if (bookRes.status === 404) { setNotFound(true); return }
         const book = await bookRes.json() as RulebookData
-        setLarpName(pub.siteTitle)
         setData(book)
         if (book.chapters.length > 0) setActiveId(book.chapters[0].id)
       } catch {

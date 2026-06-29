@@ -10,21 +10,15 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 export default function CodexPage() {
   const params = useParams<{ slug: string }>()
   const [codex, setCodex] = useState<GameCodex | null>(null)
-  const [larpName, setLarpName] = useState('')
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
     async function load() {
       try {
-        const [publicRes, codexRes] = await Promise.all([
-          fetch(`${API_BASE}/games/${params.slug}/public`),
-          fetch(`${API_BASE}/games/${params.slug}/codex`),
-        ])
-        if (publicRes.status === 404 || codexRes.status === 404) { setNotFound(true); return }
-        const pub = await publicRes.json() as { siteTitle: string }
+        const codexRes = await fetch(`${API_BASE}/games/${params.slug}/codex`)
+        if (codexRes.status === 404) { setNotFound(true); return }
         const data = await codexRes.json() as GameCodex
-        setLarpName(pub.siteTitle)
         setCodex(data)
       } catch {
         setNotFound(true)
