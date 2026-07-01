@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useImageUpload } from '@/hooks/useImageUpload'
 import type { Game, SiteConfig } from '@larpdb/shared'
 
 type NewFormState = {
@@ -37,9 +36,6 @@ export default function NewLarpPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [titleError, setTitleError] = useState(false)
-
-  const logoUpload = useImageUpload((url) => set('logoUrl', url))
-  const bannerUpload = useImageUpload((url) => set('bannerUrl', url))
 
   if (user?.role !== 'owner') {
     return <div className="p-6 text-muted-foreground">Owner access required.</div>
@@ -78,6 +74,7 @@ export default function NewLarpPage() {
       router.replace(`/admin/site-config/${newGame.id}`)
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to create LARP'))
+    } finally {
       setSaving(false)
     }
   }
@@ -168,18 +165,10 @@ export default function NewLarpPage() {
                   onChange={e => set('logoUrl', e.target.value || null)}
                   placeholder="https://…"
                 />
-                <Button type="button" variant="outline" onClick={logoUpload.trigger} disabled={logoUpload.uploading}>
-                  {logoUpload.uploading ? 'Uploading…' : 'Upload'}
+                <Button type="button" variant="outline" disabled>
+                  Upload
                 </Button>
-                <input
-                  ref={logoUpload.inputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={e => { const f = e.target.files?.[0]; if (f) logoUpload.handleFile(f); e.target.value = '' }}
-                />
               </div>
-              {logoUpload.error && <p className="text-sm text-destructive">{logoUpload.error}</p>}
             </div>
             <div className="space-y-1">
               <Label>Banner URL</Label>
@@ -189,18 +178,10 @@ export default function NewLarpPage() {
                   onChange={e => set('bannerUrl', e.target.value || null)}
                   placeholder="https://…"
                 />
-                <Button type="button" variant="outline" onClick={bannerUpload.trigger} disabled={bannerUpload.uploading}>
-                  {bannerUpload.uploading ? 'Uploading…' : 'Upload'}
+                <Button type="button" variant="outline" disabled>
+                  Upload
                 </Button>
-                <input
-                  ref={bannerUpload.inputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={e => { const f = e.target.files?.[0]; if (f) bannerUpload.handleFile(f); e.target.value = '' }}
-                />
               </div>
-              {bannerUpload.error && <p className="text-sm text-destructive">{bannerUpload.error}</p>}
             </div>
             <div className="pt-4 border-t space-y-2">
               <Label className="text-sm font-medium">Landing Page</Label>
@@ -226,9 +207,9 @@ export default function NewLarpPage() {
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button
           type="submit"
-          disabled={saving || logoUpload.uploading || bannerUpload.uploading}
+          disabled={saving}
         >
-          {saving ? 'Creating…' : 'Save changes'}
+          {saving ? 'Creating…' : 'Create LARP'}
         </Button>
       </form>
     </div>
