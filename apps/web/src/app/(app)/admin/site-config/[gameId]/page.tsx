@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { api } from '@/lib/api'
-import { getErrorMessage } from '@/lib/utils'
+import { getErrorMessage, cn } from '@/lib/utils'
 import { setGameId } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import type { SiteConfig, GameCodex } from '@larpdb/shared'
+import type { SiteConfig, GameCodex, Game } from '@larpdb/shared'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import dynamic from 'next/dynamic'
 import CodexTab, { BrandingSection, type BrandingSectionRef } from '../_components/CodexTab'
@@ -45,13 +45,14 @@ type FormState = Partial<{
 export default function BuilderPage() {
   const params = useParams<{ gameId: string }>()
   const { user } = useAuth()
-  const { config, reload } = useSiteConfig()
+  const { config, game, reload } = useSiteConfig()
 
   const [form, setForm] = useState<FormState>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [isPublic, setIsPublic] = useState(true)
 
   const logoUpload = useImageUpload((url) => set('logoUrl', url))
   const bannerUpload = useImageUpload((url) => set('bannerUrl', url))
@@ -86,6 +87,11 @@ export default function BuilderPage() {
     })
   }, [config])
 
+  useEffect(() => {
+    if (game === null) return
+    setIsPublic(game.isPublic)
+  }, [game])
+
   if (user?.role !== 'owner') {
     return <div className="p-6 text-muted-foreground">Owner access required.</div>
   }
@@ -115,7 +121,10 @@ export default function BuilderPage() {
     setSaving(true)
     setError(null)
     try {
-      await api.patch<SiteConfig>('/config', form)
+      await Promise.all([
+        api.patch<SiteConfig>('/config', form),
+        api.patch<Game>(`/games/${params.gameId}`, { isPublic }),
+      ])
       if (brandingRef.current) {
         const socialData = brandingRef.current.getData()
         await saveCodexSection(socialData)
@@ -196,6 +205,35 @@ export default function BuilderPage() {
                       </p>
                     )
                   })()}
+                </div>
+                <div className="space-y-1">
+                  <Label>Visibility</Label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsPublic(true)}
+                      className={cn(
+                        'px-3 py-1 rounded text-sm border',
+                        isPublic
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'border-input text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      Public
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsPublic(false)}
+                      className={cn(
+                        'px-3 py-1 rounded text-sm border',
+                        !isPublic
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'border-input text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      Private
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <Label>Logo URL</Label>
@@ -282,7 +320,7 @@ export default function BuilderPage() {
             </Card>
 
               </form>
-              <BrandingSection ref={brandingRef} codex={config?.codex ?? {}} onSave={saveCodexSection} />
+              <BrandingSection ref={brandingRef} codex={config?.codex ?? {}} />
               {Object.keys(validationErrors).length > 0 && (
                 <p className="text-sm text-destructive">
                   Please fill out the following required fields:{' '}
