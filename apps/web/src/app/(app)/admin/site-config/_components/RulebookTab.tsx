@@ -17,6 +17,7 @@ export default function RulebookTab({ config, reload }: Props) {
   const [chapters, setChapters] = useState<RulebookChapter[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
+  const [titleError, setTitleError] = useState(false)
   const [linkValue, setLinkValue] = useState('')
 
   useEffect(() => {
@@ -41,6 +42,7 @@ export default function RulebookTab({ config, reload }: Props) {
     const ch = chapters.find(c => c.id === selectedId)
     editor.commands.setContent(ch?.content ?? '')
     setEditingTitle(ch?.title ?? '')
+    setTitleError(false)
   }, [selectedId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function patchChapters(updated: RulebookChapter[]) {
@@ -102,6 +104,10 @@ export default function RulebookTab({ config, reload }: Props) {
 
   async function saveChapter() {
     if (!selectedId || !editor) return
+    if (!editingTitle.trim()) {
+      setTitleError(true)
+      return
+    }
     const updated = chapters.map(c =>
       c.id === selectedId ? { ...c, title: editingTitle, content: editor.getHTML() } : c,
     )
@@ -253,22 +259,27 @@ export default function RulebookTab({ config, reload }: Props) {
           <>
             <div>
               <div style={{ fontSize: '11px', color: '#111827', fontWeight: 500, marginBottom: '3px' }}>
-                Chapter title
+                Chapter title <span style={{ color: '#dc2626' }}>*</span>
               </div>
               <input
                 value={editingTitle}
-                onChange={e => setEditingTitle(e.target.value)}
+                onChange={e => { setEditingTitle(e.target.value); setTitleError(false) }}
                 style={{
                   fontSize: '13px',
                   fontWeight: 600,
                   width: '100%',
                   boxSizing: 'border-box',
                   color: '#2563eb',
-                  border: '1px solid #e2e8f0',
+                  border: titleError ? '1px solid #dc2626' : '1px solid #e2e8f0',
                   borderRadius: '4px',
                   padding: '4px 8px',
                 }}
               />
+              {titleError && (
+                <div style={{ fontSize: '11px', color: '#dc2626', marginTop: '3px' }}>
+                  Chapter title is required
+                </div>
+              )}
             </div>
 
             {/* Toolbar */}

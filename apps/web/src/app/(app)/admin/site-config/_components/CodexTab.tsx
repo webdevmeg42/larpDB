@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { api } from '@/lib/api'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +16,13 @@ interface Props {
   reload: () => void
 }
 
+interface SectionProps {
+  codex: GameCodex
+}
+
+type SectionResult = { valid: true; data: Partial<GameCodex> } | { valid: false; error: string }
+type SectionRef = { getData(): SectionResult }
+
 /** Build a GameCodex patch object that omits empty strings (exactOptionalPropertyTypes safe). */
 function pick(obj: Record<string, string>): Partial<GameCodex> {
   const result: Record<string, string> = {}
@@ -26,56 +34,71 @@ function pick(obj: Record<string, string>): Partial<GameCodex> {
 
 export default function CodexTab({ config, reload }: Props) {
   const [codex, setCodex] = useState<GameCodex>({})
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [validationSummary, setValidationSummary] = useState<string[]>([])
+
+  const gameSettingRef = useRef<SectionRef>(null)
+  const levelingRef = useRef<SectionRef>(null)
+  const logisticsRef = useRef<SectionRef>(null)
+  const peopleRef = useRef<SectionRef>(null)
+  const legalRef = useRef<SectionRef>(null)
+  const extrasRef = useRef<SectionRef>(null)
 
   useEffect(() => {
     if (!config) return
     setCodex(config.codex ?? {})
   }, [config])
 
-  async function saveSection(updates: Partial<GameCodex>) {
-    const merged = { ...codex, ...updates }
-    await api.patch<SiteConfig>('/config', { codex: merged })
-    setCodex(merged)
-    reload()
-  }
-
-  return (
-    <div className="space-y-6">
-      <GameSettingSection codex={codex} onSave={saveSection} />
-      <LevelingSystemSection codex={codex} onSave={saveSection} />
-      <LogisticsSection codex={codex} onSave={saveSection} />
-      <PeopleSection codex={codex} onSave={saveSection} />
-      <LegalSection codex={codex} onSave={saveSection} />
-      <ExtrasSection codex={codex} onSave={saveSection} />
-    </div>
-  )
-}
-
-interface SectionProps {
-  codex: GameCodex
-  onSave: (updates: Partial<GameCodex>) => Promise<void>
-}
-
-function useSectionSave(onSave: SectionProps['onSave']) {
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-
-  async function handleSubmit(e: React.FormEvent, updates: Partial<GameCodex>) {
-    e.preventDefault()
+  async function handleSave() {
+    const sections = [gameSettingRef, levelingRef, logisticsRef, peopleRef, legalRef, extrasRef]
+    const results = sections.map(r => r.current?.getData() ?? { valid: true as const, data: {} })
+    const errors = results.filter((r): r is { valid: false; error: string } => !r.valid).map(r => r.error)
+    if (errors.length > 0) {
+      setValidationSummary(errors)
+      return
+    }
+    setValidationSummary([])
+    const data = results.map(r => r.valid ? r.data : {})
+    const merged = { ...codex, ...Object.assign({}, ...data) }
     setSaving(true)
+    setError(null)
     try {
-      await onSave(updates)
+      await api.patch<SiteConfig>('/config', { codex: merged })
+      setCodex(merged)
+      reload()
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      setError(getErrorMessage(err, 'Save failed'))
     } finally {
       setSaving(false)
     }
   }
 
-  return { saving, saved, handleSubmit }
+  return (
+    <div className="space-y-6">
+      <GameSettingSection ref={gameSettingRef} codex={codex} />
+      <LevelingSystemSection ref={levelingRef} codex={codex} />
+      <LogisticsSection ref={logisticsRef} codex={codex} />
+      <PeopleSection ref={peopleRef} codex={codex} />
+      <LegalSection ref={legalRef} codex={codex} />
+      <ExtrasSection ref={extrasRef} codex={codex} />
+      {validationSummary.length > 0 && (
+        <p className="text-sm text-destructive">
+          Please fill out the following required fields: {validationSummary.join(', ')}
+        </p>
+      )}
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <Button onClick={handleSave} disabled={saving}>
+        {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
+      </Button>
+    </div>
+  )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
       <Label>{label}</Label>
@@ -200,132 +223,136 @@ export const BrandingSection = forwardRef<BrandingSectionRef, SectionProps>(
 
 const EMPTY_FACTION: Faction = { name: '', description: '' }
 
-function GameSettingSection({ codex, onSave }: SectionProps) {
-  const [form, setForm] = useState({
-    genre: '',
-    tone: '',
-    worldLore: '',
-    safetyMechanics: '',
-    contentWarnings: '',
-  })
-  const [factionCount, setFactionCount] = useState(1)
-  const [factions, setFactions] = useState<Faction[]>([{ ...EMPTY_FACTION }])
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-
-  useEffect(() => {
-    setForm({
-      genre: codex.genre ?? '',
-      tone: codex.tone ?? '',
-      worldLore: codex.worldLore ?? '',
-      safetyMechanics: codex.safetyMechanics ?? '',
-      contentWarnings: codex.contentWarnings ?? '',
+const GameSettingSection = forwardRef<SectionRef, SectionProps>(
+  function GameSettingSection({ codex }, ref) {
+    const [form, setForm] = useState({
+      genre: '',
+      tone: '',
+      worldLore: '',
+      safetyMechanics: '',
+      contentWarnings: '',
     })
-    // Handle legacy freeform string or new structured array
-    const raw = codex.factions as Faction[] | string | undefined
-    if (Array.isArray(raw) && raw.length > 0) {
-      setFactions(raw)
-      setFactionCount(raw.length)
-    } else if (typeof raw === 'string' && raw) {
-      setFactions([{ name: '', description: raw }])
-      setFactionCount(1)
-    } else {
-      setFactions([{ ...EMPTY_FACTION }])
-      setFactionCount(1)
-    }
-  }, [codex])
+    const [factionCount, setFactionCount] = useState(1)
+    const [factions, setFactions] = useState<Faction[]>([{ ...EMPTY_FACTION }])
+    const [safetyError, setSafetyError] = useState(false)
 
-  function changeFactionCount(n: number) {
-    setFactionCount(n)
-    setFactions(prev =>
-      n > prev.length
-        ? [...prev, ...Array.from({ length: n - prev.length }, () => ({ ...EMPTY_FACTION }))]
-        : prev.slice(0, n),
+    useEffect(() => {
+      setForm({
+        genre: codex.genre ?? '',
+        tone: codex.tone ?? '',
+        worldLore: codex.worldLore ?? '',
+        safetyMechanics: codex.safetyMechanics ?? '',
+        contentWarnings: codex.contentWarnings ?? '',
+      })
+      // Handle legacy freeform string or new structured array
+      const raw = codex.factions as Faction[] | string | undefined
+      if (Array.isArray(raw) && raw.length > 0) {
+        setFactions(raw)
+        setFactionCount(raw.length)
+      } else if (typeof raw === 'string' && raw) {
+        setFactions([{ name: '', description: raw }])
+        setFactionCount(1)
+      } else {
+        setFactions([{ ...EMPTY_FACTION }])
+        setFactionCount(1)
+      }
+    }, [codex])
+
+    useImperativeHandle(ref, () => ({
+      getData() {
+        if (!form.safetyMechanics.trim()) {
+          setSafetyError(true)
+          return { valid: false as const, error: 'Safety mechanics in use' }
+        }
+        return { valid: true as const, data: { ...pick(form), factions } }
+      }
+    }), [form, factions])
+
+    function changeFactionCount(n: number) {
+      setFactionCount(n)
+      setFactions(prev =>
+        n > prev.length
+          ? [...prev, ...Array.from({ length: n - prev.length }, () => ({ ...EMPTY_FACTION }))]
+          : prev.slice(0, n),
+      )
+    }
+
+    function updateFaction(i: number, patch: Partial<Faction>) {
+      setFactions(prev => prev.map((f, idx) => idx === i ? { ...f, ...patch } : f))
+    }
+
+    return (
+      <Card>
+        <CardHeader><CardTitle>The Game &amp; Setting</CardTitle></CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Field label="Genre">
+              <Input value={form.genre} onChange={e => setForm(f => ({ ...f, genre: e.target.value }))} placeholder="high fantasy, post-apocalyptic" />
+            </Field>
+            <Field label="Tone">
+              <Input value={form.tone} onChange={e => setForm(f => ({ ...f, tone: e.target.value }))} placeholder="gritty, epic, comedic" />
+            </Field>
+            <Field label="World / lore overview">
+              <Textarea rows={10} value={form.worldLore} onChange={e => setForm(f => ({ ...f, worldLore: e.target.value }))} placeholder="Setting primer for new players" />
+            </Field>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Label>Factions, houses, or groups</Label>
+                <select
+                  value={factionCount}
+                  onChange={e => changeFactionCount(parseInt(e.target.value, 10))}
+                  className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                >
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-3">
+                {factions.map((faction, i) => (
+                  <div key={i} className="rounded-md border p-4 space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {factionCount > 1 ? `Group ${i + 1}` : 'Group'}
+                    </p>
+                    <Field label="Name">
+                      <Input
+                        value={faction.name}
+                        onChange={e => updateFaction(i, { name: e.target.value })}
+                        placeholder="e.g. The Iron Brotherhood"
+                      />
+                    </Field>
+                    <Field label="Description">
+                      <Textarea
+                        rows={2}
+                        value={faction.description}
+                        onChange={e => updateFaction(i, { description: e.target.value })}
+                        placeholder="1–2 sentences players will see when choosing this group"
+                      />
+                    </Field>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Field label={<>Safety mechanics in use <span className="text-destructive">*</span></>}>
+              <Input
+                value={form.safetyMechanics}
+                onChange={e => { setForm(f => ({ ...f, safetyMechanics: e.target.value })); setSafetyError(false) }}
+                placeholder="X-card, BRAKE/GAS, Lookdown"
+                className={safetyError ? 'border-destructive' : ''}
+              />
+              {safetyError && <p className="text-xs text-destructive">Safety mechanics in use is required</p>}
+            </Field>
+            <Field label="Content warnings">
+              <Textarea rows={4} value={form.contentWarnings} onChange={e => setForm(f => ({ ...f, contentWarnings: e.target.value }))} />
+            </Field>
+          </div>
+        </CardContent>
+      </Card>
     )
   }
-
-  function updateFaction(i: number, patch: Partial<Faction>) {
-    setFactions(prev => prev.map((f, idx) => idx === i ? { ...f, ...patch } : f))
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      await onSave({ ...pick(form), factions })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader><CardTitle>The Game &amp; Setting</CardTitle></CardHeader>
-      <CardContent>
-        <form onSubmit={e => void handleSubmit(e)} className="space-y-4">
-          <Field label="Genre">
-            <Input value={form.genre} onChange={e => setForm(f => ({ ...f, genre: e.target.value }))} placeholder="high fantasy, post-apocalyptic" />
-          </Field>
-          <Field label="Tone">
-            <Input value={form.tone} onChange={e => setForm(f => ({ ...f, tone: e.target.value }))} placeholder="gritty, epic, comedic" />
-          </Field>
-          <Field label="World / lore overview">
-            <Textarea rows={10} value={form.worldLore} onChange={e => setForm(f => ({ ...f, worldLore: e.target.value }))} placeholder="Setting primer for new players" />
-          </Field>
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <Label>Factions, houses, or groups</Label>
-              <select
-                value={factionCount}
-                onChange={e => changeFactionCount(parseInt(e.target.value, 10))}
-                className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-              >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-3">
-              {factions.map((faction, i) => (
-                <div key={i} className="rounded-md border p-4 space-y-3">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {factionCount > 1 ? `Group ${i + 1}` : 'Group'}
-                  </p>
-                  <Field label="Name">
-                    <Input
-                      value={faction.name}
-                      onChange={e => updateFaction(i, { name: e.target.value })}
-                      placeholder="e.g. The Iron Brotherhood"
-                    />
-                  </Field>
-                  <Field label="Description">
-                    <Textarea
-                      rows={2}
-                      value={faction.description}
-                      onChange={e => updateFaction(i, { description: e.target.value })}
-                      placeholder="1–2 sentences players will see when choosing this group"
-                    />
-                  </Field>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <Field label="Safety mechanics in use">
-            <Input value={form.safetyMechanics} onChange={e => setForm(f => ({ ...f, safetyMechanics: e.target.value }))} placeholder="X-card, BRAKE/GAS, Lookdown" />
-          </Field>
-          <Field label="Content warnings">
-            <Textarea rows={4} value={form.contentWarnings} onChange={e => setForm(f => ({ ...f, contentWarnings: e.target.value }))} />
-          </Field>
-          <Button type="submit" disabled={saving}>{saving ? 'Saving…' : saved ? 'Saved!' : 'Save'}</Button>
-        </form>
-      </CardContent>
-    </Card>
-  )
-}
+)
 
 const LEVELING_SYSTEMS: {
   value: LevelingSystemType
@@ -404,357 +431,360 @@ function computeCumulativeXP(
   }
 }
 
-function LevelingSystemSection({ codex, onSave }: SectionProps) {
-  const [system, setSystem] = useState<LevelingSystemType | ''>('')
-  const [maxLevelStr, setMaxLevelStr] = useState('')
-  const [baseLevelStr, setBaseLevelStr] = useState('')
-  const [linearIncrementStr, setLinearIncrementStr] = useState('')
-  const [flatCostStr, setFlatCostStr] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [systemError, setSystemError] = useState(false)
-  const [showModal, setShowModal] = useState(false)
-  const [levelIncrease, setLevelIncrease] = useState({ from: 0, to: 0 })
+const LevelingSystemSection = forwardRef<SectionRef, SectionProps>(
+  function LevelingSystemSection({ codex }, ref) {
+    const [system, setSystem] = useState<LevelingSystemType | ''>('')
+    const [maxLevelStr, setMaxLevelStr] = useState('')
+    const [baseLevelStr, setBaseLevelStr] = useState('')
+    const [linearIncrementStr, setLinearIncrementStr] = useState('')
+    const [flatCostStr, setFlatCostStr] = useState('')
+    const [systemError, setSystemError] = useState(false)
+    const [showModal, setShowModal] = useState(false)
+    const [levelIncrease, setLevelIncrease] = useState({ from: 0, to: 0 })
+    const prevMaxLevelRef = useRef<number | null>(null)
 
-  useEffect(() => {
-    setSystem(codex.levelingSystem ?? '')
-    setMaxLevelStr(codex.maxLevel?.toString() ?? '')
-    setBaseLevelStr(codex.baseLevel?.toString() ?? '')
-    setLinearIncrementStr(codex.linearIncrement?.toString() ?? '')
-    setFlatCostStr(codex.flatCost?.toString() ?? '')
-  }, [codex])
+    useEffect(() => {
+      setSystem(codex.levelingSystem ?? '')
+      setMaxLevelStr(codex.maxLevel?.toString() ?? '')
+      setBaseLevelStr(codex.baseLevel?.toString() ?? '')
+      setLinearIncrementStr(codex.linearIncrement?.toString() ?? '')
+      setFlatCostStr(codex.flatCost?.toString() ?? '')
+    }, [codex])
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-    if (!system) {
-      setSystemError(true)
-      return
-    }
-    setSaving(true)
-    try {
-      const prevMax = codex.maxLevel ?? 0
-      const newMax = maxLevelStr ? parseInt(maxLevelStr, 10) : undefined
-      const newBaseLevel = baseLevelStr ? parseInt(baseLevelStr, 10) : undefined
-      const updates: Partial<GameCodex> = {}
-      if (system) updates.levelingSystem = system
-      if (newMax !== undefined) updates.maxLevel = newMax
-      if (newBaseLevel !== undefined) updates.baseLevel = newBaseLevel
-      if (system === 'linear' && linearIncrementStr) updates.linearIncrement = parseInt(linearIncrementStr, 10)
-      if (system === 'flat' && flatCostStr) updates.flatCost = parseInt(flatCostStr, 10)
-      await onSave(updates)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-      if (newMax && prevMax > 0 && newMax > prevMax) {
-        setLevelIncrease({ from: prevMax, to: newMax })
-        setShowModal(true)
+    // Detect max level increases after save to prompt GM to add new build content
+    useEffect(() => {
+      const curr = codex.maxLevel ?? 0
+      if (prevMaxLevelRef.current !== null) {
+        const prev = prevMaxLevelRef.current
+        if (prev > 0 && curr > prev) {
+          setLevelIncrease({ from: prev, to: curr })
+          setShowModal(true)
+        }
       }
-    } finally {
-      setSaving(false)
-    }
-  }
+      prevMaxLevelRef.current = curr
+    }, [codex.maxLevel])
 
-  return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Leveling System <span className="text-destructive text-base font-normal">*</span></CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={e => void handleSave(e)} className="space-y-6">
-            <div className="space-y-4">
-              {LEVELING_SYSTEMS.map(opt => (
-                <label key={opt.value} className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="levelingSystem"
-                    value={opt.value}
-                    checked={system === opt.value}
-                    onChange={() => { setSystem(opt.value); setSystemError(false) }}
-                    className="mt-1 h-4 w-4 shrink-0 accent-primary"
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium leading-none mb-1">{opt.label}</p>
-                    <p className="text-xs font-mono text-muted-foreground mb-0.5">{opt.costs}</p>
-                    <p className="text-xs text-muted-foreground">{opt.description}</p>
-                    {opt.value === 'linear' && system === 'linear' && (
-                      <div className="mt-3 space-y-1" onClick={e => e.stopPropagation()}>
-                        <Label className="text-xs">Fixed XP increment per level</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={linearIncrementStr}
-                          onChange={e => setLinearIncrementStr(e.target.value)}
-                          placeholder="5"
-                          className="max-w-[120px] h-8 text-sm"
-                        />
-                        <p className="text-xs text-muted-foreground">e.g. 5 → costs 5, 10, 15, 20…</p>
-                      </div>
-                    )}
-                    {opt.value === 'flat' && system === 'flat' && (
-                      <div className="mt-3 space-y-1" onClick={e => e.stopPropagation()}>
-                        <Label className="text-xs">XP cost per level</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={flatCostStr}
-                          onChange={e => setFlatCostStr(e.target.value)}
-                          placeholder="10"
-                          className="max-w-[120px] h-8 text-sm"
-                        />
-                        <p className="text-xs text-muted-foreground">e.g. 10 → same cost every level</p>
-                      </div>
-                    )}
-                  </div>
-                </label>
-              ))}
-            </div>
-            {systemError && (
-              <p className="text-xs text-destructive">Please select a leveling system</p>
-            )}
+    useImperativeHandle(ref, () => ({
+      getData() {
+        if (!system) {
+          setSystemError(true)
+          return { valid: false as const, error: 'Leveling System' }
+        }
+        const updates: Partial<GameCodex> = {}
+        updates.levelingSystem = system
+        const newMax = maxLevelStr ? parseInt(maxLevelStr, 10) : undefined
+        if (newMax !== undefined) updates.maxLevel = newMax
+        const newBaseLevel = baseLevelStr ? parseInt(baseLevelStr, 10) : undefined
+        if (newBaseLevel !== undefined) updates.baseLevel = newBaseLevel
+        if (system === 'linear' && linearIncrementStr) updates.linearIncrement = parseInt(linearIncrementStr, 10)
+        if (system === 'flat' && flatCostStr) updates.flatCost = parseInt(flatCostStr, 10)
+        return { valid: true as const, data: updates }
+      }
+    }), [system, maxLevelStr, baseLevelStr, linearIncrementStr, flatCostStr])
 
-            {(() => {
-              const levelCap = maxLevelStr ? Math.min(parseInt(maxLevelStr, 10), 100) : 20
-              const baseLevel = baseLevelStr ? parseInt(baseLevelStr, 10) : 0
-              const linInc = linearIncrementStr ? parseInt(linearIncrementStr, 10) : 0
-              const flatC = flatCostStr ? parseInt(flatCostStr, 10) : 0
-              const baseLevelXP = computeCumulativeXP(system, baseLevel, linInc, flatC)
-              const needsParam = baseLevel > 0 && (
-                (system === 'linear' && !linInc) || (system === 'flat' && !flatC)
-              )
-              return (
-                <div className="flex flex-wrap gap-8 pt-2 border-t">
-                  <div className="space-y-1">
-                    <Label>Max level</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={maxLevelStr}
-                      onChange={e => setMaxLevelStr(e.target.value)}
-                      placeholder="e.g. 10"
-                      className="max-w-[120px]"
+    return (
+      <>
+        <Card>
+          <CardHeader>
+            <CardTitle>Leveling System <span className="text-destructive text-base font-normal">*</span></CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div className="space-y-4">
+                {LEVELING_SYSTEMS.map(opt => (
+                  <label key={opt.value} className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="levelingSystem"
+                      value={opt.value}
+                      checked={system === opt.value}
+                      onChange={() => { setSystem(opt.value); setSystemError(false) }}
+                      className="mt-1 h-4 w-4 shrink-0 accent-primary"
                     />
-                    <p className="text-xs text-muted-foreground">Highest level a character can reach.</p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Base level</Label>
-                    <select
-                      value={baseLevelStr}
-                      onChange={e => setBaseLevelStr(e.target.value)}
-                      className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-                    >
-                      <option value="">—</option>
-                      {Array.from({ length: levelCap }, (_, i) => i + 1).map(n => (
-                        <option key={n} value={n}>{n}</option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-muted-foreground">
-                      {baseLevelXP !== null
-                        ? `${baseLevelXP.toLocaleString()} XP to reach this level`
-                        : needsParam
-                          ? 'Set the parameter above to see XP'
-                          : !system && baseLevel > 0
-                            ? 'Select a leveling system to see XP'
-                            : 'Starting level for new characters.'}
-                    </p>
-                  </div>
-                </div>
-              )
-            })()}
+                    <div className="flex-1">
+                      <p className="text-sm font-medium leading-none mb-1">{opt.label}</p>
+                      <p className="text-xs font-mono text-muted-foreground mb-0.5">{opt.costs}</p>
+                      <p className="text-xs text-muted-foreground">{opt.description}</p>
+                      {opt.value === 'linear' && system === 'linear' && (
+                        <div className="mt-3 space-y-1" onClick={e => e.stopPropagation()}>
+                          <Label className="text-xs">Fixed XP increment per level</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={linearIncrementStr}
+                            onChange={e => setLinearIncrementStr(e.target.value)}
+                            placeholder="5"
+                            className="max-w-[120px] h-8 text-sm"
+                          />
+                          <p className="text-xs text-muted-foreground">e.g. 5 → costs 5, 10, 15, 20…</p>
+                        </div>
+                      )}
+                      {opt.value === 'flat' && system === 'flat' && (
+                        <div className="mt-3 space-y-1" onClick={e => e.stopPropagation()}>
+                          <Label className="text-xs">XP cost per level</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={flatCostStr}
+                            onChange={e => setFlatCostStr(e.target.value)}
+                            placeholder="10"
+                            className="max-w-[120px] h-8 text-sm"
+                          />
+                          <p className="text-xs text-muted-foreground">e.g. 10 → same cost every level</p>
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                ))}
+              </div>
+              {systemError && (
+                <p className="text-xs text-destructive">Please select a leveling system</p>
+              )}
 
-            <Button type="submit" disabled={saving}>
-              {saving ? 'Saving…' : saved ? 'Saved!' : 'Save'}
-            </Button>
-          </form>
+              {(() => {
+                const levelCap = maxLevelStr ? Math.min(parseInt(maxLevelStr, 10), 100) : 20
+                const baseLevel = baseLevelStr ? parseInt(baseLevelStr, 10) : 0
+                const linInc = linearIncrementStr ? parseInt(linearIncrementStr, 10) : 0
+                const flatC = flatCostStr ? parseInt(flatCostStr, 10) : 0
+                const baseLevelXP = computeCumulativeXP(system, baseLevel, linInc, flatC)
+                const needsParam = baseLevel > 0 && (
+                  (system === 'linear' && !linInc) || (system === 'flat' && !flatC)
+                )
+                return (
+                  <div className="flex flex-wrap gap-8 pt-2 border-t">
+                    <div className="space-y-1">
+                      <Label>Max level</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={maxLevelStr}
+                        onChange={e => setMaxLevelStr(e.target.value)}
+                        placeholder="e.g. 10"
+                        className="max-w-[120px]"
+                      />
+                      <p className="text-xs text-muted-foreground">Highest level a character can reach.</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Base level</Label>
+                      <select
+                        value={baseLevelStr}
+                        onChange={e => setBaseLevelStr(e.target.value)}
+                        className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+                      >
+                        <option value="">—</option>
+                        {Array.from({ length: levelCap }, (_, i) => i + 1).map(n => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-muted-foreground">
+                        {baseLevelXP !== null
+                          ? `${baseLevelXP.toLocaleString()} XP to reach this level`
+                          : needsParam
+                            ? 'Set the parameter above to see XP'
+                            : !system && baseLevel > 0
+                              ? 'Select a leveling system to see XP'
+                              : 'Starting level for new characters.'}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Dialog open={showModal} onClose={() => setShowModal(false)}>
+          <DialogTitle>Max level increased</DialogTitle>
+          <DialogDescription>
+            You raised the max level from {levelIncrease.from} to {levelIncrease.to}.
+            Remember to add new spells, attacks, and abilities to your class builds
+            for levels {levelIncrease.from + 1} through {levelIncrease.to}.
+          </DialogDescription>
+          <div className="flex justify-end">
+            <Button onClick={() => setShowModal(false)}>Got it</Button>
+          </div>
+        </Dialog>
+      </>
+    )
+  }
+)
+
+const LogisticsSection = forwardRef<SectionRef, SectionProps>(
+  function LogisticsSection({ codex }, ref) {
+    const [form, setForm] = useState({
+      registrationInfo: '',
+      whatToBring: '',
+      whatProvided: '',
+      ticketTiers: '',
+      cancellationPolicy: '',
+    })
+
+    useEffect(() => {
+      setForm({
+        registrationInfo: codex.registrationInfo ?? '',
+        whatToBring: codex.whatToBring ?? '',
+        whatProvided: codex.whatProvided ?? '',
+        ticketTiers: codex.ticketTiers ?? '',
+        cancellationPolicy: codex.cancellationPolicy ?? '',
+      })
+    }, [codex])
+
+    useImperativeHandle(ref, () => ({
+      getData() { return { valid: true as const, data: pick(form) } }
+    }), [form])
+
+    return (
+      <Card>
+        <CardHeader><CardTitle>Logistics</CardTitle></CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Field label="How to register / create a character">
+              <Textarea rows={4} value={form.registrationInfo} onChange={e => setForm(f => ({ ...f, registrationInfo: e.target.value }))} />
+            </Field>
+            <Field label="What to bring">
+              <Textarea rows={6} value={form.whatToBring} onChange={e => setForm(f => ({ ...f, whatToBring: e.target.value }))} placeholder="Costume requirements, weapon policies, camping gear…" />
+            </Field>
+            <Field label="What's provided">
+              <Textarea rows={4} value={form.whatProvided} onChange={e => setForm(f => ({ ...f, whatProvided: e.target.value }))} placeholder="Meals, lodging, loaner gear…" />
+            </Field>
+            <Field label="Ticket tiers + prices">
+              <Textarea rows={6} value={form.ticketTiers} onChange={e => setForm(f => ({ ...f, ticketTiers: e.target.value }))} />
+            </Field>
+            <Field label="Cancellation / refund policy">
+              <Textarea rows={4} value={form.cancellationPolicy} onChange={e => setForm(f => ({ ...f, cancellationPolicy: e.target.value }))} />
+            </Field>
+          </div>
         </CardContent>
       </Card>
+    )
+  }
+)
 
-      <Dialog open={showModal} onClose={() => setShowModal(false)}>
-        <DialogTitle>Max level increased</DialogTitle>
-        <DialogDescription>
-          You raised the max level from {levelIncrease.from} to {levelIncrease.to}.
-          Remember to add new spells, attacks, and abilities to your class builds
-          for levels {levelIncrease.from + 1} through {levelIncrease.to}.
-        </DialogDescription>
-        <div className="flex justify-end">
-          <Button onClick={() => setShowModal(false)}>Got it</Button>
-        </div>
-      </Dialog>
-    </>
-  )
-}
-
-function LogisticsSection({ codex, onSave }: SectionProps) {
-  const [form, setForm] = useState({
-    registrationInfo: '',
-    whatToBring: '',
-    whatProvided: '',
-    ticketTiers: '',
-    cancellationPolicy: '',
-  })
-  const { saving, saved, handleSubmit } = useSectionSave(onSave)
-
-  useEffect(() => {
-    setForm({
-      registrationInfo: codex.registrationInfo ?? '',
-      whatToBring: codex.whatToBring ?? '',
-      whatProvided: codex.whatProvided ?? '',
-      ticketTiers: codex.ticketTiers ?? '',
-      cancellationPolicy: codex.cancellationPolicy ?? '',
+const PeopleSection = forwardRef<SectionRef, SectionProps>(
+  function PeopleSection({ codex }, ref) {
+    const [form, setForm] = useState({
+      organizerTeam: '',
+      contactEmail: '',
+      npcCall: '',
     })
-  }, [codex])
 
-  return (
-    <Card>
-      <CardHeader><CardTitle>Logistics</CardTitle></CardHeader>
-      <CardContent>
-        <form
-          onSubmit={e => void handleSubmit(e, pick(form))}
-          className="space-y-4"
-        >
-          <Field label="How to register / create a character">
-            <Textarea rows={4} value={form.registrationInfo} onChange={e => setForm(f => ({ ...f, registrationInfo: e.target.value }))} />
-          </Field>
-          <Field label="What to bring">
-            <Textarea rows={6} value={form.whatToBring} onChange={e => setForm(f => ({ ...f, whatToBring: e.target.value }))} placeholder="Costume requirements, weapon policies, camping gear…" />
-          </Field>
-          <Field label="What's provided">
-            <Textarea rows={4} value={form.whatProvided} onChange={e => setForm(f => ({ ...f, whatProvided: e.target.value }))} placeholder="Meals, lodging, loaner gear…" />
-          </Field>
-          <Field label="Ticket tiers + prices">
-            <Textarea rows={6} value={form.ticketTiers} onChange={e => setForm(f => ({ ...f, ticketTiers: e.target.value }))} />
-          </Field>
-          <Field label="Cancellation / refund policy">
-            <Textarea rows={4} value={form.cancellationPolicy} onChange={e => setForm(f => ({ ...f, cancellationPolicy: e.target.value }))} />
-          </Field>
-          <Button type="submit" disabled={saving}>{saving ? 'Saving…' : saved ? 'Saved!' : 'Save'}</Button>
-        </form>
-      </CardContent>
-    </Card>
-  )
-}
+    useEffect(() => {
+      setForm({
+        organizerTeam: codex.organizerTeam ?? '',
+        contactEmail: codex.contactEmail ?? '',
+        npcCall: codex.npcCall ?? '',
+      })
+    }, [codex])
 
-function PeopleSection({ codex, onSave }: SectionProps) {
-  const [form, setForm] = useState({
-    organizerTeam: '',
-    contactEmail: '',
-    npcCall: '',
-  })
-  const { saving, saved, handleSubmit } = useSectionSave(onSave)
+    useImperativeHandle(ref, () => ({
+      getData() { return { valid: true as const, data: pick(form) } }
+    }), [form])
 
-  useEffect(() => {
-    setForm({
-      organizerTeam: codex.organizerTeam ?? '',
-      contactEmail: codex.contactEmail ?? '',
-      npcCall: codex.npcCall ?? '',
+    return (
+      <Card>
+        <CardHeader><CardTitle>People &amp; Contact</CardTitle></CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Field label="Organizer / team names and roles">
+              <Textarea rows={4} value={form.organizerTeam} onChange={e => setForm(f => ({ ...f, organizerTeam: e.target.value }))} placeholder="Game Director, Logistics Lead, Head of Props…" />
+            </Field>
+            <Field label="Primary contact email">
+              <Input type="email" value={form.contactEmail} onChange={e => setForm(f => ({ ...f, contactEmail: e.target.value }))} />
+            </Field>
+            <Field label="NPC / volunteer call">
+              <Textarea rows={4} value={form.npcCall} onChange={e => setForm(f => ({ ...f, npcCall: e.target.value }))} placeholder="Perks for joining the crew…" />
+            </Field>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+)
+
+const LegalSection = forwardRef<SectionRef, SectionProps>(
+  function LegalSection({ codex }, ref) {
+    const [form, setForm] = useState({
+      ageRestrictions: '',
+      codeOfConduct: '',
+      liabilityWaiver: '',
     })
-  }, [codex])
 
-  return (
-    <Card>
-      <CardHeader><CardTitle>People &amp; Contact</CardTitle></CardHeader>
-      <CardContent>
-        <form
-          onSubmit={e => void handleSubmit(e, pick(form))}
-          className="space-y-4"
-        >
-          <Field label="Organizer / team names and roles">
-            <Textarea rows={4} value={form.organizerTeam} onChange={e => setForm(f => ({ ...f, organizerTeam: e.target.value }))} placeholder="Game Director, Logistics Lead, Head of Props…" />
-          </Field>
-          <Field label="Primary contact email">
-            <Input type="email" value={form.contactEmail} onChange={e => setForm(f => ({ ...f, contactEmail: e.target.value }))} />
-          </Field>
-          <Field label="NPC / volunteer call">
-            <Textarea rows={4} value={form.npcCall} onChange={e => setForm(f => ({ ...f, npcCall: e.target.value }))} placeholder="Perks for joining the crew…" />
-          </Field>
-          <Button type="submit" disabled={saving}>{saving ? 'Saving…' : saved ? 'Saved!' : 'Save'}</Button>
-        </form>
-      </CardContent>
-    </Card>
-  )
-}
+    useEffect(() => {
+      setForm({
+        ageRestrictions: codex.ageRestrictions ?? '',
+        codeOfConduct: codex.codeOfConduct ?? '',
+        liabilityWaiver: codex.liabilityWaiver ?? '',
+      })
+    }, [codex])
 
-function LegalSection({ codex, onSave }: SectionProps) {
-  const [form, setForm] = useState({
-    ageRestrictions: '',
-    codeOfConduct: '',
-    liabilityWaiver: '',
-  })
-  const { saving, saved, handleSubmit } = useSectionSave(onSave)
+    useImperativeHandle(ref, () => ({
+      getData() { return { valid: true as const, data: pick(form) } }
+    }), [form])
 
-  useEffect(() => {
-    setForm({
-      ageRestrictions: codex.ageRestrictions ?? '',
-      codeOfConduct: codex.codeOfConduct ?? '',
-      liabilityWaiver: codex.liabilityWaiver ?? '',
+    return (
+      <Card>
+        <CardHeader><CardTitle>Legal &amp; Housekeeping</CardTitle></CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Field label="Age restrictions">
+              <Input value={form.ageRestrictions} onChange={e => setForm(f => ({ ...f, ageRestrictions: e.target.value }))} placeholder="18+, 16+ with guardian, all ages" />
+            </Field>
+            <Field label="Code of conduct">
+              <Textarea rows={8} value={form.codeOfConduct} onChange={e => setForm(f => ({ ...f, codeOfConduct: e.target.value }))} />
+            </Field>
+            <Field label="Liability waiver">
+              <Textarea rows={4} value={form.liabilityWaiver} onChange={e => setForm(f => ({ ...f, liabilityWaiver: e.target.value }))} placeholder="Confirmed? Link? Handled at check-in?" />
+            </Field>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+)
+
+const ExtrasSection = forwardRef<SectionRef, SectionProps>(
+  function ExtrasSection({ codex }, ref) {
+    const [form, setForm] = useState({
+      faq: '',
+      testimonials: '',
+      sponsors: '',
+      anythingElse: '',
     })
-  }, [codex])
 
-  return (
-    <Card>
-      <CardHeader><CardTitle>Legal &amp; Housekeeping</CardTitle></CardHeader>
-      <CardContent>
-        <form
-          onSubmit={e => void handleSubmit(e, pick(form))}
-          className="space-y-4"
-        >
-          <Field label="Age restrictions">
-            <Input value={form.ageRestrictions} onChange={e => setForm(f => ({ ...f, ageRestrictions: e.target.value }))} placeholder="18+, 16+ with guardian, all ages" />
-          </Field>
-          <Field label="Code of conduct">
-            <Textarea rows={8} value={form.codeOfConduct} onChange={e => setForm(f => ({ ...f, codeOfConduct: e.target.value }))} />
-          </Field>
-          <Field label="Liability waiver">
-            <Textarea rows={4} value={form.liabilityWaiver} onChange={e => setForm(f => ({ ...f, liabilityWaiver: e.target.value }))} placeholder="Confirmed? Link? Handled at check-in?" />
-          </Field>
-          <Button type="submit" disabled={saving}>{saving ? 'Saving…' : saved ? 'Saved!' : 'Save'}</Button>
-        </form>
-      </CardContent>
-    </Card>
-  )
-}
+    useEffect(() => {
+      setForm({
+        faq: codex.faq ?? '',
+        testimonials: codex.testimonials ?? '',
+        sponsors: codex.sponsors ?? '',
+        anythingElse: codex.anythingElse ?? '',
+      })
+    }, [codex])
 
-function ExtrasSection({ codex, onSave }: SectionProps) {
-  const [form, setForm] = useState({
-    faq: '',
-    testimonials: '',
-    sponsors: '',
-    anythingElse: '',
-  })
-  const { saving, saved, handleSubmit } = useSectionSave(onSave)
+    useImperativeHandle(ref, () => ({
+      getData() { return { valid: true as const, data: pick(form) } }
+    }), [form])
 
-  useEffect(() => {
-    setForm({
-      faq: codex.faq ?? '',
-      testimonials: codex.testimonials ?? '',
-      sponsors: codex.sponsors ?? '',
-      anythingElse: codex.anythingElse ?? '',
-    })
-  }, [codex])
-
-  return (
-    <Card>
-      <CardHeader><CardTitle>Optional Extras</CardTitle></CardHeader>
-      <CardContent>
-        <form
-          onSubmit={e => void handleSubmit(e, pick(form))}
-          className="space-y-4"
-        >
-          <Field label="FAQ">
-            <Textarea rows={8} value={form.faq} onChange={e => setForm(f => ({ ...f, faq: e.target.value }))} placeholder="Questions you always get asked" />
-          </Field>
-          <Field label="Quotes / testimonials">
-            <Textarea rows={6} value={form.testimonials} onChange={e => setForm(f => ({ ...f, testimonials: e.target.value }))} />
-          </Field>
-          <Field label="Sponsors or partners">
-            <Textarea rows={4} value={form.sponsors} onChange={e => setForm(f => ({ ...f, sponsors: e.target.value }))} />
-          </Field>
-          <Field label="Anything else">
-            <Textarea rows={4} value={form.anythingElse} onChange={e => setForm(f => ({ ...f, anythingElse: e.target.value }))} />
-          </Field>
-          <Button type="submit" disabled={saving}>{saving ? 'Saving…' : saved ? 'Saved!' : 'Save'}</Button>
-        </form>
-      </CardContent>
-    </Card>
-  )
-}
+    return (
+      <Card>
+        <CardHeader><CardTitle>Optional Extras</CardTitle></CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <Field label="FAQ">
+              <Textarea rows={8} value={form.faq} onChange={e => setForm(f => ({ ...f, faq: e.target.value }))} placeholder="Questions you always get asked" />
+            </Field>
+            <Field label="Quotes / testimonials">
+              <Textarea rows={6} value={form.testimonials} onChange={e => setForm(f => ({ ...f, testimonials: e.target.value }))} />
+            </Field>
+            <Field label="Sponsors or partners">
+              <Textarea rows={4} value={form.sponsors} onChange={e => setForm(f => ({ ...f, sponsors: e.target.value }))} />
+            </Field>
+            <Field label="Anything else">
+              <Textarea rows={4} value={form.anythingElse} onChange={e => setForm(f => ({ ...f, anythingElse: e.target.value }))} />
+            </Field>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+)
