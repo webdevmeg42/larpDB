@@ -57,7 +57,7 @@ export default function LoginPage() {
             )}
             {isSignUp && (
               <div className="space-y-1">
-                <Label htmlFor="displayName">Display name</Label>
+                <Label htmlFor="displayName">Username</Label>
                 <Input
                   id="displayName"
                   type="text"

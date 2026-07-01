@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,7 +9,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import type { SiteConfig, GameCodex, LevelingSystemType, Faction, AdditionalWebsite } from '@larpdb/shared'
-import { DatePicker } from '@/components/ui/date-picker'
 
 interface Props {
   config: SiteConfig | null
@@ -44,7 +43,6 @@ export default function CodexTab({ config, reload }: Props) {
     <div className="space-y-6">
       <GameSettingSection codex={codex} onSave={saveSection} />
       <LevelingSystemSection codex={codex} onSave={saveSection} />
-      <CharactersSection codex={codex} onSave={saveSection} />
       <LogisticsSection codex={codex} onSave={saveSection} />
       <PeopleSection codex={codex} onSave={saveSection} />
       <LegalSection codex={codex} onSave={saveSection} />
@@ -99,112 +97,106 @@ const SOCIAL_PLATFORMS: { key: keyof GameCodex; label: string; placeholder: stri
   { key: 'socialDiscord', label: 'Discord', placeholder: 'https://discord.gg/invite-code' },
 ]
 
-export function BrandingSection({ codex, onSave }: SectionProps) {
-  type SocialForm = Record<string, string>
-  const [form, setForm] = useState<SocialForm>({})
-  const [websites, setWebsites] = useState<AdditionalWebsite[]>([{ ...EMPTY_WEBSITE }])
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+export type BrandingSectionRef = { getData: () => Partial<GameCodex> }
 
-  useEffect(() => {
-    const next: SocialForm = {}
-    for (const p of SOCIAL_PLATFORMS) next[p.key] = (codex[p.key] as string | undefined) ?? ''
-    setForm(next)
-    const raw = codex.additionalWebsites
-    setWebsites(Array.isArray(raw) && raw.length > 0 ? raw : [{ ...EMPTY_WEBSITE }])
-  }, [codex])
+export const BrandingSection = forwardRef<BrandingSectionRef, SectionProps>(
+  function BrandingSection({ codex }, ref) {
+    type SocialForm = Record<string, string>
+    const [form, setForm] = useState<SocialForm>({})
+    const [websites, setWebsites] = useState<AdditionalWebsite[]>([{ ...EMPTY_WEBSITE }])
 
-  function updateWebsite(i: number, patch: Partial<AdditionalWebsite>) {
-    setWebsites(prev => prev.map((w, idx) => idx === i ? { ...w, ...patch } : w))
-  }
+    useEffect(() => {
+      const next: SocialForm = {}
+      for (const p of SOCIAL_PLATFORMS) next[p.key] = (codex[p.key] as string | undefined) ?? ''
+      setForm(next)
+      const raw = codex.additionalWebsites
+      setWebsites(Array.isArray(raw) && raw.length > 0 ? raw : [{ ...EMPTY_WEBSITE }])
+    }, [codex])
 
-  function addWebsite() {
-    setWebsites(prev => [...prev, { ...EMPTY_WEBSITE }])
-  }
-
-  function removeWebsite(i: number) {
-    setWebsites(prev => prev.length === 1 ? [{ ...EMPTY_WEBSITE }] : prev.filter((_, idx) => idx !== i))
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      const updates: Partial<GameCodex> = {}
-      for (const p of SOCIAL_PLATFORMS) {
-        if (form[p.key]) (updates as Record<string, unknown>)[p.key] = form[p.key]
+    useImperativeHandle(ref, () => ({
+      getData() {
+        const updates: Partial<GameCodex> = {}
+        for (const p of SOCIAL_PLATFORMS) {
+          if (form[p.key]) (updates as Record<string, unknown>)[p.key] = form[p.key]
+        }
+        const filledWebsites = websites.filter(w => w.url.trim())
+        if (filledWebsites.length > 0) updates.additionalWebsites = filledWebsites
+        return updates
       }
-      const filledWebsites = websites.filter(w => w.url.trim())
-      if (filledWebsites.length > 0) updates.additionalWebsites = filledWebsites
-      await onSave(updates)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } finally {
-      setSaving(false)
+    }), [form, websites])
+
+    function updateWebsite(i: number, patch: Partial<AdditionalWebsite>) {
+      setWebsites(prev => prev.map((w, idx) => idx === i ? { ...w, ...patch } : w))
     }
-  }
 
-  return (
-    <Card>
-      <CardHeader><CardTitle>Branding &amp; Social Media</CardTitle></CardHeader>
-      <CardContent>
-        <form onSubmit={e => void handleSubmit(e)} className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {SOCIAL_PLATFORMS.map(p => (
-              <Field key={p.key} label={p.label}>
-                <Input
-                  value={form[p.key] ?? ''}
-                  onChange={e => setForm(f => ({ ...f, [p.key]: e.target.value }))}
-                  placeholder={p.placeholder}
-                  type="url"
-                />
-              </Field>
-            ))}
-          </div>
+    function addWebsite() {
+      setWebsites(prev => [...prev, { ...EMPTY_WEBSITE }])
+    }
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Additional websites</Label>
-              <button
-                type="button"
-                onClick={addWebsite}
-                className="text-xs text-primary underline"
-              >
-                + Add another
-              </button>
+    function removeWebsite(i: number) {
+      setWebsites(prev => prev.length === 1 ? [{ ...EMPTY_WEBSITE }] : prev.filter((_, idx) => idx !== i))
+    }
+
+    return (
+      <Card>
+        <CardHeader><CardTitle>Branding &amp; Social Media</CardTitle></CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {SOCIAL_PLATFORMS.map(p => (
+                <Field key={p.key} label={p.label}>
+                  <Input
+                    value={form[p.key] ?? ''}
+                    onChange={e => setForm(f => ({ ...f, [p.key]: e.target.value }))}
+                    placeholder={p.placeholder}
+                    type="url"
+                  />
+                </Field>
+              ))}
             </div>
-            {websites.map((w, i) => (
-              <div key={i} className="flex gap-2 items-start">
-                <Input
-                  value={w.label}
-                  onChange={e => updateWebsite(i, { label: e.target.value })}
-                  placeholder="Label (e.g. Our Blog)"
-                  className="w-36 shrink-0"
-                />
-                <Input
-                  value={w.url}
-                  onChange={e => updateWebsite(i, { url: e.target.value })}
-                  placeholder="https://…"
-                  type="url"
-                />
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Additional websites</Label>
                 <button
                   type="button"
-                  onClick={() => removeWebsite(i)}
-                  className="text-muted-foreground hover:text-destructive text-sm mt-2 shrink-0"
-                  aria-label="Remove"
+                  onClick={addWebsite}
+                  className="text-xs text-primary underline"
                 >
-                  ✕
+                  + Add another
                 </button>
               </div>
-            ))}
+              {websites.map((w, i) => (
+                <div key={i} className="flex gap-2 items-start">
+                  <Input
+                    value={w.label}
+                    onChange={e => updateWebsite(i, { label: e.target.value })}
+                    placeholder="Label (e.g. Our Blog)"
+                    className="w-36 shrink-0"
+                  />
+                  <Input
+                    value={w.url}
+                    onChange={e => updateWebsite(i, { url: e.target.value })}
+                    placeholder="https://…"
+                    type="url"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeWebsite(i)}
+                    className="text-muted-foreground hover:text-destructive text-sm mt-2 shrink-0"
+                    aria-label="Remove"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
-
-          <Button type="submit" disabled={saving}>{saving ? 'Saving…' : saved ? 'Saved!' : 'Save'}</Button>
-        </form>
-      </CardContent>
-    </Card>
-  )
-}
+        </CardContent>
+      </Card>
+    )
+  }
+)
 
 const EMPTY_FACTION: Faction = { name: '', description: '' }
 
@@ -420,6 +412,7 @@ function LevelingSystemSection({ codex, onSave }: SectionProps) {
   const [flatCostStr, setFlatCostStr] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [systemError, setSystemError] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [levelIncrease, setLevelIncrease] = useState({ from: 0, to: 0 })
 
@@ -433,6 +426,10 @@ function LevelingSystemSection({ codex, onSave }: SectionProps) {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
+    if (!system) {
+      setSystemError(true)
+      return
+    }
     setSaving(true)
     try {
       const prevMax = codex.maxLevel ?? 0
@@ -459,7 +456,9 @@ function LevelingSystemSection({ codex, onSave }: SectionProps) {
   return (
     <>
       <Card>
-        <CardHeader><CardTitle>Leveling System</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Leveling System <span className="text-destructive text-base font-normal">*</span></CardTitle>
+        </CardHeader>
         <CardContent>
           <form onSubmit={e => void handleSave(e)} className="space-y-6">
             <div className="space-y-4">
@@ -470,7 +469,7 @@ function LevelingSystemSection({ codex, onSave }: SectionProps) {
                     name="levelingSystem"
                     value={opt.value}
                     checked={system === opt.value}
-                    onChange={() => setSystem(opt.value)}
+                    onChange={() => { setSystem(opt.value); setSystemError(false) }}
                     className="mt-1 h-4 w-4 shrink-0 accent-primary"
                   />
                   <div className="flex-1">
@@ -509,6 +508,9 @@ function LevelingSystemSection({ codex, onSave }: SectionProps) {
                 </label>
               ))}
             </div>
+            {systemError && (
+              <p className="text-xs text-destructive">Please select a leveling system</p>
+            )}
 
             {(() => {
               const levelCap = maxLevelStr ? Math.min(parseInt(maxLevelStr, 10), 100) : 20
@@ -582,69 +584,22 @@ function LevelingSystemSection({ codex, onSave }: SectionProps) {
   )
 }
 
-function CharactersSection({ codex, onSave }: SectionProps) {
-  const [form, setForm] = useState({
-    registrationInfo: '',
-    rulebookLink: '',
-    classesInfo: '',
-    prebuiltCharacters: '',
-  })
-  const { saving, saved, handleSubmit } = useSectionSave(onSave)
-
-  useEffect(() => {
-    setForm({
-      registrationInfo: codex.registrationInfo ?? '',
-      rulebookLink: codex.rulebookLink ?? '',
-      classesInfo: codex.classesInfo ?? '',
-      prebuiltCharacters: codex.prebuiltCharacters ?? '',
-    })
-  }, [codex])
-
-  return (
-    <Card>
-      <CardHeader><CardTitle>Characters &amp; Participation</CardTitle></CardHeader>
-      <CardContent>
-        <form
-          onSubmit={e => void handleSubmit(e, pick(form))}
-          className="space-y-4"
-        >
-          <Field label="How to register / create a character">
-            <Textarea rows={4} value={form.registrationInfo} onChange={e => setForm(f => ({ ...f, registrationInfo: e.target.value }))} />
-          </Field>
-          <Field label="Rulebook link">
-            <Input value={form.rulebookLink} onChange={e => setForm(f => ({ ...f, rulebookLink: e.target.value }))} placeholder="https://…" />
-          </Field>
-          <Field label="Available classes, skills, or archetypes">
-            <Textarea rows={6} value={form.classesInfo} onChange={e => setForm(f => ({ ...f, classesInfo: e.target.value }))} />
-          </Field>
-          <Field label="Pre-built characters available">
-            <Textarea rows={3} value={form.prebuiltCharacters} onChange={e => setForm(f => ({ ...f, prebuiltCharacters: e.target.value }))} />
-          </Field>
-          <Button type="submit" disabled={saving}>{saving ? 'Saving…' : saved ? 'Saved!' : 'Save'}</Button>
-        </form>
-      </CardContent>
-    </Card>
-  )
-}
-
 function LogisticsSection({ codex, onSave }: SectionProps) {
   const [form, setForm] = useState({
+    registrationInfo: '',
     whatToBring: '',
     whatProvided: '',
     ticketTiers: '',
-    registrationOpenDate: '',
-    registrationCloseDate: '',
     cancellationPolicy: '',
   })
   const { saving, saved, handleSubmit } = useSectionSave(onSave)
 
   useEffect(() => {
     setForm({
+      registrationInfo: codex.registrationInfo ?? '',
       whatToBring: codex.whatToBring ?? '',
       whatProvided: codex.whatProvided ?? '',
       ticketTiers: codex.ticketTiers ?? '',
-      registrationOpenDate: codex.registrationOpenDate ?? '',
-      registrationCloseDate: codex.registrationCloseDate ?? '',
       cancellationPolicy: codex.cancellationPolicy ?? '',
     })
   }, [codex])
@@ -657,6 +612,9 @@ function LogisticsSection({ codex, onSave }: SectionProps) {
           onSubmit={e => void handleSubmit(e, pick(form))}
           className="space-y-4"
         >
+          <Field label="How to register / create a character">
+            <Textarea rows={4} value={form.registrationInfo} onChange={e => setForm(f => ({ ...f, registrationInfo: e.target.value }))} />
+          </Field>
           <Field label="What to bring">
             <Textarea rows={6} value={form.whatToBring} onChange={e => setForm(f => ({ ...f, whatToBring: e.target.value }))} placeholder="Costume requirements, weapon policies, camping gear…" />
           </Field>
@@ -665,20 +623,6 @@ function LogisticsSection({ codex, onSave }: SectionProps) {
           </Field>
           <Field label="Ticket tiers + prices">
             <Textarea rows={6} value={form.ticketTiers} onChange={e => setForm(f => ({ ...f, ticketTiers: e.target.value }))} />
-          </Field>
-          <Field label="Registration open date">
-            <DatePicker
-              value={form.registrationOpenDate || undefined}
-              onChange={val => setForm(f => ({ ...f, registrationOpenDate: val ?? '' }))}
-              placeholder="Pick open date"
-            />
-          </Field>
-          <Field label="Registration close date">
-            <DatePicker
-              value={form.registrationCloseDate || undefined}
-              onChange={val => setForm(f => ({ ...f, registrationCloseDate: val ?? '' }))}
-              placeholder="Pick close date"
-            />
           </Field>
           <Field label="Cancellation / refund policy">
             <Textarea rows={4} value={form.cancellationPolicy} onChange={e => setForm(f => ({ ...f, cancellationPolicy: e.target.value }))} />
@@ -774,7 +718,6 @@ function ExtrasSection({ codex, onSave }: SectionProps) {
   const [form, setForm] = useState({
     faq: '',
     testimonials: '',
-    mediaLinks: '',
     sponsors: '',
     anythingElse: '',
   })
@@ -784,7 +727,6 @@ function ExtrasSection({ codex, onSave }: SectionProps) {
     setForm({
       faq: codex.faq ?? '',
       testimonials: codex.testimonials ?? '',
-      mediaLinks: codex.mediaLinks ?? '',
       sponsors: codex.sponsors ?? '',
       anythingElse: codex.anythingElse ?? '',
     })
@@ -803,9 +745,6 @@ function ExtrasSection({ codex, onSave }: SectionProps) {
           </Field>
           <Field label="Quotes / testimonials">
             <Textarea rows={6} value={form.testimonials} onChange={e => setForm(f => ({ ...f, testimonials: e.target.value }))} />
-          </Field>
-          <Field label="Photos / videos (links)">
-            <Textarea rows={3} value={form.mediaLinks} onChange={e => setForm(f => ({ ...f, mediaLinks: e.target.value }))} placeholder="Links to shared folders, drives, etc." />
           </Field>
           <Field label="Sponsors or partners">
             <Textarea rows={4} value={form.sponsors} onChange={e => setForm(f => ({ ...f, sponsors: e.target.value }))} />

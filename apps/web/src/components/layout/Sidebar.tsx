@@ -98,7 +98,7 @@ export function Sidebar() {
       <div className="border-t p-2">
         <div className="px-3 py-2">
           <p className="text-sm font-medium">{user.displayName}</p>
-          <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+          <p className="text-xs text-muted-foreground capitalize">{user.isSysAdmin ? 'System Admin' : user.role}</p>
         </div>
         <button
           onClick={logout}
