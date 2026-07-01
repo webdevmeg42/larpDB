@@ -4,7 +4,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import type { SiteConfig, Game } from '@larpdb/shared'
 import { api } from '@/lib/api'
 import { getGameId, setGameId, clearGameId } from '@/lib/auth'
-import type { ApiError } from '@larpdb/shared'
 
 interface SiteConfigContextValue {
   config: SiteConfig | null
@@ -35,12 +34,13 @@ export function SiteConfigProvider({ children }: { children: React.ReactNode }) 
           if (first) setGameId(first.id)
         }
 
+        let configFailed = false
         try {
           const cfg = await api.get<SiteConfig>('/config')
           setConfig(cfg)
-        } catch (err) {
-          if ((err as ApiError).status === 404) clearGameId()
+        } catch {
           setConfig(null)
+          configFailed = true
         }
 
         try {
@@ -48,6 +48,8 @@ export function SiteConfigProvider({ children }: { children: React.ReactNode }) 
           setGame(gameRow)
         } catch {
           setGame(null)
+          // Only clear gameId if config also failed — game truly doesn't exist
+          if (configFailed) clearGameId()
         }
       } catch {
         // network failure resolving game ID — config/game stay null
