@@ -1,17 +1,31 @@
 import type { FastifyPluginAsync } from 'fastify'
 import bcrypt from 'bcrypt'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { users } from '../db/schema.js'
+import { users, gameMembers } from '../db/schema.js'
 import { LoginInput, RegisterInput } from '@larpdb/shared'
 
+const ROLE_ORDER = { owner: 3, gm: 2, player: 1 } as const
+
+async function highestRole(userId: string): Promise<'owner' | 'gm' | 'player'> {
+  const rows = await db
+    .select({ role: gameMembers.role })
+    .from(gameMembers)
+    .where(and(eq(gameMembers.userId, userId), eq(gameMembers.status, 'active')))
+  return rows.reduce<'owner' | 'gm' | 'player'>((best, { role }) => {
+    return (ROLE_ORDER[role] ?? 0) > ROLE_ORDER[best] ? role : best
+  }, 'player')
+}
+
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
-  function signResponse(user: typeof users.$inferSelect) {
+  async function signResponse(user: typeof users.$inferSelect) {
+    const role = await highestRole(user.id)
     const token = fastify.jwt.sign({
       sub: user.id,
       email: user.email,
       displayName: user.displayName,
       isSysAdmin: user.isSysAdmin,
+      role,
     })
     const { passwordHash: _, ...safeUser } = user
     return { user: safeUser, token }
@@ -30,7 +44,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     const valid = await bcrypt.compare(password, user.passwordHash)
     if (!valid) return reply.status(401).send({ error: 'Invalid credentials' })
 
-    return reply.status(200).send(signResponse(user))
+    return reply.status(200).send(await signResponse(user))
   })
 
   fastify.post('/auth/register', async (request, reply) => {
@@ -47,6 +61,6 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     const [newUser] = await db.insert(users).values({ email, passwordHash, displayName }).returning()
     if (!newUser) throw new Error('Failed to create user')
 
-    return reply.status(201).send(signResponse(newUser))
+    return reply.status(201).send(await signResponse(newUser))
   })
 }

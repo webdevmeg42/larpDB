@@ -6,14 +6,14 @@ import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/layout/AppShell'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!user) router.replace('/login')
-  }, [user, router])
+    if (!loading && !user) router.replace('/login')
+  }, [user, loading, router])
 
-  if (!user) return null
+  if (loading || !user) return null
 
   return <AppShell>{children}</AppShell>
 }

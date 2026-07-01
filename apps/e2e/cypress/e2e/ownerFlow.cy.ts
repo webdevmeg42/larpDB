@@ -68,6 +68,11 @@ describe('Owner Flow', () => {
   
   after(() => {
     cy.visit('/larps')
-    cy.contains('body > div > main > div > div.rounded-lg.border.overflow-hidden > table > tbody > tr.border-b.last\:border-0.opacity-60 > td:nth-child(1) > div', '')
+    cy.contains('body > div > main > div > div.rounded-lg.border.overflow-hidden > table > tbody > tr.border-b.last\\:border-0.opacity-60 > td:nth-child(1) > div', larpName)
+      .closest('tr')
+      .find('button.text-xs.text-destructive.hover\\:underline')
+      .click()
+    cy.get('body > div > main > div > div.fixed.inset-0.z-50.flex.items-center.justify-center > div.relative.z-50.w-full.max-w-lg.rounded-lg.bg-background.p-6.shadow-lg > div > button.inline-flex.items-center.justify-center.whitespace-nowrap.rounded-md.text-sm.font-medium.ring-offset-background.transition-colors.focus-visible\\:outline-none.focus-visible\\:ring-2.focus-visible\\:ring-ring.focus-visible\\:ring-offset-2.disabled\\:pointer-events-none.disabled\\:opacity-50.bg-destructive.text-destructive-foreground.hover\\:bg-destructive\\/90.h-10.px-4.py-2')
+      .click()
   })
 })

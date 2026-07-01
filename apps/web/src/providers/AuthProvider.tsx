@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { JwtPayload } from '@/lib/auth'
 import { getCurrentUser, setToken, clearToken, decodeToken } from '@/lib/auth'
@@ -9,6 +9,7 @@ import type { LoginInput, RegisterInput } from '@larpdb/shared'
 
 interface AuthContextValue {
   user: JwtPayload | null
+  loading: boolean
   login: (input: LoginInput) => Promise<void>
   register: (input: RegisterInput) => Promise<void>
   logout: () => void
@@ -18,8 +19,14 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<JwtPayload | null>(() => getCurrentUser())
+  const [user, setUser] = useState<JwtPayload | null>(null)
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
+
+  useEffect(() => {
+    setUser(getCurrentUser())
+    setLoading(false)
+  }, [])
 
   const login = useCallback(async (input: LoginInput) => {
     const res = await api.post<{ token: string }>('/auth/login', input)
@@ -55,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, updateToken }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateToken }}>
       {children}
     </AuthContext.Provider>
   )

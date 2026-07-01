@@ -20,6 +20,7 @@ export default function LarpBuilderPage() {
   const [deleteTarget, setDeleteTarget] = useState<MyGame | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [rowError, setRowError] = useState<string | null>(null)
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -34,6 +35,11 @@ export default function LarpBuilderPage() {
     }
     void load()
   }, [])
+
+  const normalizedQuery = query.trim().toLowerCase()
+  const visibleGames = normalizedQuery
+    ? games.filter(g => g.name.toLowerCase().includes(normalizedQuery))
+    : games
 
   if (user?.role !== 'owner') {
     return <div className="p-6 text-muted-foreground">Owner access required.</div>
@@ -76,10 +82,21 @@ export default function LarpBuilderPage() {
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
       {rowError && <p className="text-sm text-destructive mb-4">{rowError}</p>}
 
+      <input
+        type="search"
+        aria-label="Search games by name"
+        placeholder="Search by name…"
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        className="w-full max-w-xs px-3 py-1.5 text-sm border rounded-md bg-background mb-4"
+      />
+
       {loading ? (
         <p className="text-muted-foreground">Loading…</p>
       ) : games.length === 0 ? (
         <p className="text-muted-foreground">No games yet. Build your first LARP!</p>
+      ) : visibleGames.length === 0 ? (
+        <p className="text-muted-foreground">No games match your search.</p>
       ) : (
         <div className="rounded-lg border overflow-hidden">
           <table className="w-full text-sm">
@@ -93,7 +110,7 @@ export default function LarpBuilderPage() {
               </tr>
             </thead>
             <tbody>
-              {games.map(g => (
+              {visibleGames.map(g => (
                 <tr
                   key={g.id}
                   className={cn('border-b last:border-0', g.status === 'inactive' && 'opacity-60')}
