@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { api } from '@/lib/api'
-import { getErrorMessage, cn } from '@/lib/utils'
+import { getErrorMessage } from '@/lib/utils'
 import { setGameId } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,13 +17,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { SiteConfig, GameCodex } from '@larpdb/shared'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import dynamic from 'next/dynamic'
-import CodexTab, { BrandingSection } from '../_components/CodexTab'
+import CodexTab, { BrandingSection, type BrandingSectionRef } from '../_components/CodexTab'
 import StoreTab from '../_components/StoreTab'
 import BuildsTab from '../_components/BuildsTab'
-import ThemePreview from '@/components/theme-preview/ThemePreview'
-import { PALETTES, type Palette } from '@/lib/palettes'
-import { FONTS } from '@/lib/fonts'
-import { getContrastColor } from '@/lib/contrast'
 
 const RulebookTab = dynamic(() => import('../_components/RulebookTab'), { ssr: false })
 
@@ -55,9 +51,11 @@ export default function BuilderPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   const logoUpload = useImageUpload((url) => set('logoUrl', url))
   const bannerUpload = useImageUpload((url) => set('bannerUrl', url))
+  const brandingRef = useRef<BrandingSectionRef>(null)
 
   useEffect(() => {
     setGameId(params.gameId)
@@ -94,18 +92,9 @@ export default function BuilderPage() {
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(f => ({ ...f, [key]: value }))
-  }
-
-  function applyPalette(palette: Palette) {
-    setForm(f => ({
-      ...f,
-      themeName: palette.id,
-      colorPrimary: palette.colorPrimary,
-      colorSecondary: palette.colorSecondary,
-      colorBackground: palette.colorBackground,
-      colorText: palette.colorText,
-      colorAccent: palette.colorAccent,
-    }))
+    if (validationErrors[key]) {
+      setValidationErrors(e => { const next = { ...e }; delete next[key]; return next })
+    }
   }
 
   async function saveCodexSection(updates: Partial<GameCodex>) {
@@ -116,11 +105,23 @@ export default function BuilderPage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
+    const errors: Record<string, string> = {}
+    if (!form.siteTitle?.trim()) errors.siteTitle = 'LARP Name is required'
+    if (!form.tagline?.trim()) errors.tagline = 'Tagline is required'
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors)
+      return
+    }
     setSaving(true)
     setError(null)
     try {
       await api.patch<SiteConfig>('/config', form)
-      reload()
+      if (brandingRef.current) {
+        const socialData = brandingRef.current.getData()
+        await saveCodexSection(socialData)
+      } else {
+        reload()
+      }
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (err: unknown) {
@@ -151,15 +152,22 @@ export default function BuilderPage() {
         </TabsList>
 
         <TabsContent value="branding">
-          <div className="grid grid-cols-[1fr_380px] gap-6 items-start">
-            <div className="space-y-6">
-              <form onSubmit={handleSave} className="space-y-6">
+          <div className="space-y-6">
+              <form id="branding-form" onSubmit={handleSave} className="space-y-6">
             <Card>
               <CardHeader><CardTitle>Identity</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1">
-                  <Label>LARP Name</Label>
-                  <Input value={form.siteTitle ?? ''} onChange={e => set('siteTitle', e.target.value)} maxLength={150} />
+                  <Label>LARP Name <span className="text-destructive">*</span></Label>
+                  <Input
+                    value={form.siteTitle ?? ''}
+                    onChange={e => set('siteTitle', e.target.value)}
+                    maxLength={150}
+                    className={validationErrors.siteTitle ? 'border-destructive' : ''}
+                  />
+                  {validationErrors.siteTitle && (
+                    <p className="text-xs text-destructive">{validationErrors.siteTitle}</p>
+                  )}
                   {(() => {
                     const len = (form.siteTitle ?? '').length
                     return (
@@ -170,8 +178,16 @@ export default function BuilderPage() {
                   })()}
                 </div>
                 <div className="space-y-1">
-                  <Label>Tagline</Label>
-                  <Input value={form.tagline ?? ''} onChange={e => set('tagline', e.target.value || null)} placeholder="Optional" maxLength={150} />
+                  <Label>Tagline <span className="text-destructive">*</span></Label>
+                  <Input
+                    value={form.tagline ?? ''}
+                    onChange={e => set('tagline', e.target.value || null)}
+                    maxLength={150}
+                    className={validationErrors.tagline ? 'border-destructive' : ''}
+                  />
+                  {validationErrors.tagline && (
+                    <p className="text-xs text-destructive">{validationErrors.tagline}</p>
+                  )}
                   {(() => {
                     const len = (form.tagline ?? '').length
                     return (
@@ -237,104 +253,6 @@ export default function BuilderPage() {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle>Theme</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-5 gap-2">
-                  {PALETTES.map(palette => {
-                    const isSelected = form.themeName === palette.id
-                    return (
-                      <button
-                        key={palette.id}
-                        type="button"
-                        onClick={() => applyPalette(palette)}
-                        title={palette.name}
-                        className={cn(
-                          'rounded-lg overflow-hidden border-2 transition-all',
-                          isSelected ? 'border-primary ring-2 ring-primary ring-offset-2' : 'border-transparent hover:border-border'
-                        )}
-                      >
-                        <div className="flex h-8">
-                          <div className="flex-1" style={{ background: palette.colorPrimary }} />
-                          <div className="flex-1" style={{ background: palette.colorSecondary }} />
-                          <div className="flex-1" style={{ background: palette.colorBackground }} />
-                          <div className="flex-1" style={{ background: palette.colorAccent }} />
-                        </div>
-                        <div
-                          className="px-1 py-0.5 text-center"
-                          style={{ background: palette.colorBackground, color: getContrastColor(palette.colorBackground) }}
-                        >
-                          <span className="text-[9px] font-medium leading-none block truncate">{palette.name}</span>
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-                {form.themeName && (
-                  <p className="text-xs text-muted-foreground">
-                    {PALETTES.find(p => p.id === form.themeName)?.emoji}{' '}
-                    {PALETTES.find(p => p.id === form.themeName)?.name} selected
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle>Typography</CardTitle></CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Heading Font</Label>
-                    <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
-                      {FONTS.map(font => {
-                        const isSelected = form.fontHeading === font.name
-                        return (
-                          <button
-                            key={font.id}
-                            type="button"
-                            onClick={() => set('fontHeading', font.name)}
-                            className={cn(
-                              'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
-                              isSelected
-                                ? 'bg-primary text-primary-foreground'
-                                : 'hover:bg-muted'
-                            )}
-                          >
-                            <span className="block font-medium" style={{ fontFamily: font.family }}>{font.name}</span>
-                            <span className="block text-xs opacity-70">{font.theme}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Body Font</Label>
-                    <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
-                      {FONTS.map(font => {
-                        const isSelected = form.fontBody === font.name
-                        return (
-                          <button
-                            key={font.id}
-                            type="button"
-                            onClick={() => set('fontBody', font.name)}
-                            className={cn(
-                              'w-full text-left px-3 py-2 rounded-md text-sm transition-colors',
-                              isSelected
-                                ? 'bg-primary text-primary-foreground'
-                                : 'hover:bg-muted'
-                            )}
-                          >
-                            <span className="block font-medium" style={{ fontFamily: font.family }}>{font.name}</span>
-                            <span className="block text-xs opacity-70">{font.theme}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
               <CardHeader><CardTitle>Content</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1">
@@ -363,16 +281,24 @@ export default function BuilderPage() {
               </CardContent>
             </Card>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" disabled={saving || logoUpload.uploading || bannerUpload.uploading}>
-              {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
-            </Button>
               </form>
-              <BrandingSection codex={config?.codex ?? {}} onSave={saveCodexSection} />
-            </div>
-            <div className="sticky top-6">
-              <ThemePreview form={form} />
-            </div>
+              <BrandingSection ref={brandingRef} codex={config?.codex ?? {}} onSave={saveCodexSection} />
+              {Object.keys(validationErrors).length > 0 && (
+                <p className="text-sm text-destructive">
+                  Please fill out the following required fields:{' '}
+                  {Object.keys(validationErrors)
+                    .map(k => ({ siteTitle: 'LARP Name', tagline: 'Tagline' })[k] ?? k)
+                    .join(', ')}
+                </p>
+              )}
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button
+                type="submit"
+                form="branding-form"
+                disabled={saving || logoUpload.uploading || bannerUpload.uploading}
+              >
+                {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
+              </Button>
           </div>
         </TabsContent>
 
