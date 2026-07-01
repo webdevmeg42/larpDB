@@ -17,11 +17,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { SiteConfig, GameCodex, Game } from '@larpdb/shared'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import dynamic from 'next/dynamic'
-import CodexTab, { BrandingSection, type BrandingSectionRef } from '../_components/CodexTab'
-import StoreTab from '../_components/StoreTab'
-import BuildsTab from '../_components/BuildsTab'
+import CodexTab, { BrandingSection, type BrandingSectionRef } from '../../_components/CodexTab'
+import StoreTab from '../../_components/StoreTab'
+import BuildsTab from '../../_components/BuildsTab'
 
-const RulebookTab = dynamic(() => import('../_components/RulebookTab'), { ssr: false })
+const RulebookTab = dynamic(() => import('../../_components/RulebookTab'), { ssr: false })
 
 type FormState = Partial<{
   siteTitle: string
@@ -43,7 +43,7 @@ type FormState = Partial<{
 }>
 
 export default function BuilderPage() {
-  const params = useParams<{ gameId: string }>()
+  const params = useParams<{ slug: string }>()
   const { user } = useAuth()
   const { config, game, reload } = useSiteConfig()
 
@@ -59,10 +59,10 @@ export default function BuilderPage() {
   const brandingRef = useRef<BrandingSectionRef>(null)
 
   useEffect(() => {
-    setGameId(params.gameId)
+    setGameId(params.slug)
     reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.gameId])
+  }, [params.slug])
 
   useEffect(() => {
     if (!config) return
@@ -123,7 +123,7 @@ export default function BuilderPage() {
     try {
       await Promise.all([
         api.patch<SiteConfig>('/config', form),
-        ...(isPublic !== null ? [api.patch<Game>(`/games/${params.gameId}`, { isPublic })] : []),
+        ...(isPublic !== null ? [api.patch<Game>(`/games/${params.slug}`, { isPublic })] : []),
       ])
       if (brandingRef.current) {
         const socialData = brandingRef.current.getData()
@@ -143,7 +143,7 @@ export default function BuilderPage() {
   return (
     <div className="p-6 max-w-6xl">
       <Link
-        href="/admin/site-config"
+        href="/larps"
         className="text-sm text-muted-foreground hover:text-foreground mb-4 inline-block"
       >
         ← Back to LARP Builder

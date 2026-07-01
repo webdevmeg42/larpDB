@@ -71,7 +71,7 @@ export default function NewLarpPage() {
       } catch {
         // PATCH /config failure is non-blocking — game exists, redirect to builder
       }
-      router.replace(`/admin/site-config/${newGame.id}`)
+      router.replace(`/larps/${newGame.id}/edit`)
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to create LARP'))
     } finally {
@@ -82,7 +82,7 @@ export default function NewLarpPage() {
   return (
     <div className="p-6 max-w-6xl">
       <Link
-        href="/admin/site-config"
+        href="/larps"
         className="text-sm text-muted-foreground hover:text-foreground mb-4 inline-block"
       >
         ← Back to LARP Builder

@@ -64,7 +64,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         sub: updated.id,
         email: updated.email,
         displayName: updated.displayName,
-        role: request.user.role,
+        isSysAdmin: updated.isSysAdmin,
       })
 
       return reply.send({ user: safeUser, token })

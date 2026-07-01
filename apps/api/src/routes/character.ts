@@ -323,22 +323,21 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       })
 
       // Auto-level: resolve the correct level for the new XP total and update if changed
+      // Fetch siteConfig and schemas in parallel — neither depends on the other
       try {
-        const [siteCfg] = await db
-          .select({ codex: siteConfig.codex })
-          .from(siteConfig)
-          .where(eq(siteConfig.gameId, gameId))
-          .limit(1)
+        const [[siteCfg], [raceSchema, classSchemaRow]] = await Promise.all([
+          db.select({ codex: siteConfig.codex }).from(siteConfig).where(eq(siteConfig.gameId, gameId)).limit(1),
+          Promise.all([
+            db.select().from(characterSchemas).where(eq(characterSchemas.id, character.schemaId)).limit(1),
+            character.classSchemaId
+              ? db.select().from(characterSchemas).where(eq(characterSchemas.id, character.classSchemaId)).limit(1)
+              : Promise.resolve([] as (typeof characterSchemas.$inferSelect)[]),
+          ]),
+        ])
 
         if (siteCfg?.codex) {
           const targetLevel = resolveLevelFromXp(newTotalXp, siteCfg.codex)
           if (targetLevel !== null) {
-            const [raceSchema, classSchemaRow] = await Promise.all([
-              db.select().from(characterSchemas).where(eq(characterSchemas.id, character.schemaId)).limit(1),
-              character.classSchemaId
-                ? db.select().from(characterSchemas).where(eq(characterSchemas.id, character.classSchemaId)).limit(1)
-                : Promise.resolve([] as (typeof characterSchemas.$inferSelect)[]),
-            ])
             const allFields = [...(raceSchema[0]?.fields ?? []), ...(classSchemaRow[0]?.fields ?? [])]
             const levelField = allFields.find(f => f.type === 'number' && f.label.toLowerCase() === 'level')
 
@@ -452,19 +451,16 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         .limit(1)
       if (!character) return reply.status(404).send({ error: 'Character not found' })
 
-      const [siteCfg] = await db
-        .select({ codex: siteConfig.codex })
-        .from(siteConfig)
-        .where(eq(siteConfig.gameId, gameId))
-        .limit(1)
-      if (!siteCfg?.codex) return reply.status(400).send({ error: 'No leveling system configured' })
-
-      const [raceSchema, classSchemaRow] = await Promise.all([
-        db.select().from(characterSchemas).where(eq(characterSchemas.id, character.schemaId)).limit(1),
-        character.classSchemaId
-          ? db.select().from(characterSchemas).where(eq(characterSchemas.id, character.classSchemaId)).limit(1)
-          : Promise.resolve([] as (typeof characterSchemas.$inferSelect)[]),
+      const [[siteCfg], [raceSchema, classSchemaRow]] = await Promise.all([
+        db.select({ codex: siteConfig.codex }).from(siteConfig).where(eq(siteConfig.gameId, gameId)).limit(1),
+        Promise.all([
+          db.select().from(characterSchemas).where(eq(characterSchemas.id, character.schemaId)).limit(1),
+          character.classSchemaId
+            ? db.select().from(characterSchemas).where(eq(characterSchemas.id, character.classSchemaId)).limit(1)
+            : Promise.resolve([] as (typeof characterSchemas.$inferSelect)[]),
+        ]),
       ])
+      if (!siteCfg?.codex) return reply.status(400).send({ error: 'No leveling system configured' })
       const allFields = [...(raceSchema[0]?.fields ?? []), ...(classSchemaRow[0]?.fields ?? [])]
       const levelField = allFields.find(f => f.type === 'number' && f.label.toLowerCase() === 'level')
       const currentLevel = levelField
@@ -511,19 +507,21 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         .limit(1)
       if (!character) return reply.status(404).send({ error: 'Character not found' })
 
-      const [spentRow] = await db
-        .select({ totalSpent: sql<number>`coalesce(sum(${xpTransactions.amount}), 0)::int` })
-        .from(xpTransactions)
-        .where(and(eq(xpTransactions.characterId, id), eq(xpTransactions.type, 'spend')))
+      // Fetch spent XP total and schemas in parallel — neither depends on the other
+      const [[spentRow], [raceSchema, classSchemaRow]] = await Promise.all([
+        db
+          .select({ totalSpent: sql<number>`coalesce(sum(${xpTransactions.amount}), 0)::int` })
+          .from(xpTransactions)
+          .where(and(eq(xpTransactions.characterId, id), eq(xpTransactions.type, 'spend'))),
+        Promise.all([
+          db.select().from(characterSchemas).where(eq(characterSchemas.id, character.schemaId)).limit(1),
+          character.classSchemaId
+            ? db.select().from(characterSchemas).where(eq(characterSchemas.id, character.classSchemaId)).limit(1)
+            : Promise.resolve([] as (typeof characterSchemas.$inferSelect)[]),
+        ]),
+      ])
 
       const totalSpent = spentRow?.totalSpent ?? 0
-
-      const [raceSchema, classSchemaRow] = await Promise.all([
-        db.select().from(characterSchemas).where(eq(characterSchemas.id, character.schemaId)).limit(1),
-        character.classSchemaId
-          ? db.select().from(characterSchemas).where(eq(characterSchemas.id, character.classSchemaId)).limit(1)
-          : Promise.resolve([] as (typeof characterSchemas.$inferSelect)[]),
-      ])
       const allFields = [...(raceSchema[0]?.fields ?? []), ...(classSchemaRow[0]?.fields ?? [])]
       const levelField = allFields.find(f => f.type === 'number' && f.label.toLowerCase() === 'level')
       const currentLevel = levelField

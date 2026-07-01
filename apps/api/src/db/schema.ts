@@ -127,6 +127,7 @@ export const xpTransactions = pgTable('xp_transactions', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   characterIdIdx: index('xp_transactions_character_id_idx').on(t.characterId),
+  characterIdTypeIdx: index('xp_transactions_character_id_type_idx').on(t.characterId, t.type),
 }))
 
 export const events = pgTable('events', {

@@ -1,17 +1,16 @@
 import type { FastifyPluginAsync } from 'fastify'
 import bcrypt from 'bcrypt'
-import { eq, and } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { users, gameMembers } from '../db/schema.js'
+import { users } from '../db/schema.js'
 import { LoginInput, RegisterInput } from '@larpdb/shared'
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
-  function signResponse(user: typeof users.$inferSelect, role: string) {
+  function signResponse(user: typeof users.$inferSelect) {
     const token = fastify.jwt.sign({
       sub: user.id,
       email: user.email,
       displayName: user.displayName,
-      role,
       isSysAdmin: user.isSysAdmin,
     })
     const { passwordHash: _, ...safeUser } = user
@@ -31,13 +30,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     const valid = await bcrypt.compare(password, user.passwordHash)
     if (!valid) return reply.status(401).send({ error: 'Invalid credentials' })
 
-    const [membership] = await db
-      .select({ role: gameMembers.role })
-      .from(gameMembers)
-      .where(and(eq(gameMembers.userId, user.id), eq(gameMembers.status, 'active')))
-      .limit(1)
-
-    return reply.status(200).send(signResponse(user, membership?.role ?? 'player'))
+    return reply.status(200).send(signResponse(user))
   })
 
   fastify.post('/auth/register', async (request, reply) => {
@@ -54,6 +47,6 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     const [newUser] = await db.insert(users).values({ email, passwordHash, displayName }).returning()
     if (!newUser) throw new Error('Failed to create user')
 
-    return reply.status(201).send(signResponse(newUser, 'player'))
+    return reply.status(201).send(signResponse(newUser))
   })
 }

@@ -70,7 +70,7 @@ export default function LarpBuilderPage() {
     <div className="p-6 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">LARP Builder</h1>
-        <Button onClick={() => router.push('/admin/site-config/new')}>+ Build New LARP</Button>
+        <Button onClick={() => router.push('/larps/new')}>+ Build New LARP</Button>
       </div>
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
@@ -119,7 +119,7 @@ export default function LarpBuilderPage() {
                     {g.role === 'owner' ? (
                       <div className="flex items-center justify-end gap-3">
                         <Link
-                          href={`/admin/site-config/${g.id}`}
+                          href={`/larps/${g.id}/edit`}
                           className="text-primary hover:underline text-xs"
                         >
                           Edit

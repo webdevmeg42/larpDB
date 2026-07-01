@@ -16,7 +16,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
     const [targetGame] = await db
       .select({ id: game.id })
       .from(game)
-      .where(eq(game.slug, slug))
+      .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
       .limit(1)
     if (!targetGame) return reply.status(404).send({ error: 'Game not found' })
 
@@ -138,7 +138,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.send(rows)
   })
 
-  // POST /posts/:postId/comments — auth only
+  // POST /posts/:postId/comments — auth + game membership
   fastify.post(
     '/posts/:postId/comments',
     { preHandler: [fastify.authenticate] },
@@ -147,11 +147,18 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
       const userId = request.user.sub
 
       const [post] = await db
-        .select({ id: posts.id })
+        .select({ id: posts.id, gameId: posts.gameId })
         .from(posts)
         .where(eq(posts.id, postId))
         .limit(1)
       if (!post) return reply.status(404).send({ error: 'Post not found' })
+
+      const [membership] = await db
+        .select({ id: gameMembers.id })
+        .from(gameMembers)
+        .where(and(eq(gameMembers.gameId, post.gameId), eq(gameMembers.userId, userId), eq(gameMembers.status, 'active')))
+        .limit(1)
+      if (!membership) return reply.status(403).send({ error: 'Must be a member of this game to comment' })
 
       const result = CreateCommentInput.safeParse(request.body)
       if (!result.success) {
@@ -212,7 +219,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
     },
   )
 
-  // POST /posts/:postId/like — auth, idempotent toggle
+  // POST /posts/:postId/like — auth + game membership, idempotent toggle
   fastify.post(
     '/posts/:postId/like',
     { preHandler: [fastify.authenticate] },
@@ -221,11 +228,18 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
       const userId = request.user.sub
 
       const [post] = await db
-        .select({ id: posts.id })
+        .select({ id: posts.id, gameId: posts.gameId })
         .from(posts)
         .where(eq(posts.id, postId))
         .limit(1)
       if (!post) return reply.status(404).send({ error: 'Post not found' })
+
+      const [membership] = await db
+        .select({ id: gameMembers.id })
+        .from(gameMembers)
+        .where(and(eq(gameMembers.gameId, post.gameId), eq(gameMembers.userId, userId), eq(gameMembers.status, 'active')))
+        .limit(1)
+      if (!membership) return reply.status(403).send({ error: 'Must be a member of this game to like posts' })
 
       const [existing] = await db
         .select()

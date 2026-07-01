@@ -310,26 +310,16 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
 
       await db.transaction(async (tx) => {
         // larp_subscriptions, posts, comments, and post_likes are handled by DB-level CASCADE on game_id FK
-        const gameEvents = await tx
-          .select({ id: events.id })
-          .from(events)
-          .where(eq(events.gameId, id))
-        const eventIds = gameEvents.map(e => e.id)
+        // Use subqueries to avoid loading all IDs into memory for large games
+        const eventSubquery = tx.select({ id: events.id }).from(events).where(eq(events.gameId, id))
+        const charSubquery = tx.select({ id: characters.id }).from(characters).where(eq(characters.gameId, id))
 
-        const gameChars = await tx
-          .select({ id: characters.id })
-          .from(characters)
-          .where(eq(characters.gameId, id))
-        const charIds = gameChars.map(c => c.id)
-
-        if (eventIds.length > 0) {
-          await tx.delete(purchases).where(inArray(purchases.eventId, eventIds))
-          await tx.delete(storeItems).where(inArray(storeItems.eventId, eventIds))
-          await tx.delete(eventRegistrations).where(inArray(eventRegistrations.eventId, eventIds))
-        }
-        if (charIds.length > 0) {
-          await tx.delete(xpTransactions).where(inArray(xpTransactions.characterId, charIds))
-        }
+        await Promise.all([
+          tx.delete(purchases).where(inArray(purchases.eventId, eventSubquery)),
+          tx.delete(storeItems).where(inArray(storeItems.eventId, eventSubquery)),
+          tx.delete(eventRegistrations).where(inArray(eventRegistrations.eventId, eventSubquery)),
+          tx.delete(xpTransactions).where(inArray(xpTransactions.characterId, charSubquery)),
+        ])
 
         await tx.delete(characters).where(eq(characters.gameId, id))
         await tx.delete(events).where(eq(events.gameId, id))
@@ -359,8 +349,27 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/config', async (request, reply) => {
     const gameId = request.headers['x-game-id'] as string | undefined
     if (!gameId) return reply.status(400).send({ error: 'X-Game-Id header required' })
-    const [gameRow] = await db.select({ id: game.id }).from(game).where(and(eq(game.id, gameId), eq(game.isPublic, true))).limit(1)
-    if (!gameRow) return reply.status(404).send({ error: 'Site config not found' })
+
+    // Optional auth: authenticated members can access private game configs
+    let isMember = false
+    try {
+      await request.jwtVerify()
+      const userId = request.user.sub
+      const [membership] = await db
+        .select({ id: gameMembers.id })
+        .from(gameMembers)
+        .where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId), eq(gameMembers.status, 'active')))
+        .limit(1)
+      if (membership) isMember = true
+    } catch {
+      // Not authenticated — fall through to public check
+    }
+
+    if (!isMember) {
+      const [gameRow] = await db.select({ id: game.id }).from(game).where(and(eq(game.id, gameId), eq(game.isPublic, true))).limit(1)
+      if (!gameRow) return reply.status(404).send({ error: 'Site config not found' })
+    }
+
     const [configRow] = await db.select().from(siteConfig).where(eq(siteConfig.gameId, gameId)).limit(1)
     if (!configRow) return reply.status(404).send({ error: 'Site config not found' })
     return reply.send(configRow)

@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { and, eq, desc, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { events, eventRegistrations } from '../db/schema.js'
+import { events, eventRegistrations, characters } from '../db/schema.js'
 import { CreateEventInput, UpdateEventInput, RegisterForEventInput, UpdateRegistrationInput } from '@larpdb/shared'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 
@@ -131,6 +131,15 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
 
       const result = RegisterForEventInput.safeParse(request.body)
       if (!result.success) return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
+
+      if (result.data.characterId) {
+        const [char] = await db
+          .select({ id: characters.id })
+          .from(characters)
+          .where(and(eq(characters.id, result.data.characterId), eq(characters.gameId, gameId), eq(characters.userId, userId)))
+          .limit(1)
+        if (!char) return reply.status(403).send({ error: 'Character does not belong to you' })
+      }
 
       let newStatus: 'pending' | 'waitlist' = 'pending'
       if (event.maxPlayers !== null) {

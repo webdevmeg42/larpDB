@@ -16,6 +16,7 @@ export default function RulebookTab({ config, reload }: Props) {
   const [codex, setCodex] = useState<GameCodex>({})
   const [chapters, setChapters] = useState<RulebookChapter[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [pendingId, setPendingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [titleError, setTitleError] = useState(false)
   const [linkValue, setLinkValue] = useState('')
@@ -58,15 +59,14 @@ export default function RulebookTab({ config, reload }: Props) {
     }
   }
 
-  async function addChapter() {
+  function addChapter() {
     const id = crypto.randomUUID()
-    const newChapter: RulebookChapter = {
-      id,
-      title: 'New chapter',
-      content: '',
-      order: chapters.length,
-    }
-    await patchChapters([...chapters, newChapter])
+    setPendingId(id)
+    setSelectedId(id)
+  }
+
+  function selectChapter(id: string) {
+    if (pendingId && id !== pendingId) setPendingId(null)
     setSelectedId(id)
   }
 
@@ -103,18 +103,31 @@ export default function RulebookTab({ config, reload }: Props) {
   }
 
   async function saveChapter() {
-    if (!selectedId || !editor) return
+    if (!editor) return
     if (!editingTitle.trim()) {
       setTitleError(true)
       return
     }
-    const updated = chapters.map(c =>
-      c.id === selectedId ? { ...c, title: editingTitle, content: editor.getHTML() } : c,
-    )
-    await patchChapters(updated)
+    if (pendingId) {
+      const newChapter: RulebookChapter = {
+        id: pendingId,
+        title: editingTitle.trim(),
+        content: editor.getHTML(),
+        order: chapters.length,
+      }
+      await patchChapters([...chapters, newChapter])
+      setPendingId(null)
+    } else {
+      if (!selectedId) return
+      const updated = chapters.map(c =>
+        c.id === selectedId ? { ...c, title: editingTitle.trim(), content: editor.getHTML() } : c,
+      )
+      await patchChapters(updated)
+    }
   }
 
   const selectedChapter = chapters.find(c => c.id === selectedId) ?? null
+  const isEditingPending = pendingId !== null && selectedId === pendingId
 
   const toolbarBtn = (
     label: string,
@@ -188,7 +201,7 @@ export default function RulebookTab({ config, reload }: Props) {
           {chapters.map(ch => (
             <div
               key={ch.id}
-              onClick={() => setSelectedId(ch.id)}
+              onClick={() => selectChapter(ch.id)}
               style={{
                 background: '#fff',
                 border: '1px solid #e2e8f0',
@@ -224,18 +237,36 @@ export default function RulebookTab({ config, reload }: Props) {
               </div>
             </div>
           ))}
+          {isEditingPending && (
+            <div
+              style={{
+                background: '#fff',
+                border: '1px solid #e2e8f0',
+                borderLeft: '3px solid #2563eb',
+                borderRadius: '4px',
+                padding: '6px 8px',
+                marginBottom: '4px',
+                cursor: 'default',
+              }}
+            >
+              <span style={{ fontSize: '11px', color: '#9ca3af', fontStyle: 'italic' }}>
+                {chapters.length + 1}. New chapter…
+              </span>
+            </div>
+          )}
           <button
             type="button"
             onClick={addChapter}
+            disabled={isEditingPending}
             style={{
               fontSize: '11px',
               padding: '4px 8px',
               width: '100%',
-              background: '#2563eb',
+              background: isEditingPending ? '#93c5fd' : '#2563eb',
               color: '#fff',
               border: 'none',
               borderRadius: '4px',
-              cursor: 'pointer',
+              cursor: isEditingPending ? 'not-allowed' : 'pointer',
               marginTop: '4px',
             }}
           >
@@ -255,7 +286,7 @@ export default function RulebookTab({ config, reload }: Props) {
         flexDirection: 'column',
         gap: '8px',
       }}>
-        {selectedChapter ? (
+        {selectedChapter || isEditingPending ? (
           <>
             <div>
               <div style={{ fontSize: '11px', color: '#111827', fontWeight: 500, marginBottom: '3px' }}>
@@ -296,6 +327,7 @@ export default function RulebookTab({ config, reload }: Props) {
               {toolbarBtn('I', () => editor?.chain().focus().toggleItalic().run(), !!editor?.isActive('italic'), { fontStyle: 'italic' })}
               {toolbarBtn('U', () => editor?.chain().focus().toggleUnderline().run(), !!editor?.isActive('underline'), { textDecoration: 'underline' })}
               <span style={{ color: '#d1d5db', margin: '0 2px' }}>|</span>
+              {toolbarBtn('Body', () => editor?.chain().focus().setParagraph().run(), !!editor?.isActive('paragraph'))}
               {toolbarBtn('H2', () => editor?.chain().focus().toggleHeading({ level: 2 }).run(), !!editor?.isActive('heading', { level: 2 }))}
               {toolbarBtn('H3', () => editor?.chain().focus().toggleHeading({ level: 3 }).run(), !!editor?.isActive('heading', { level: 3 }))}
               <span style={{ color: '#d1d5db', margin: '0 2px' }}>|</span>
