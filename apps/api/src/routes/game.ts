@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { eq, count, and, or, inArray } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
+import { z } from 'zod'
 import { db } from '../db/index.js'
 import {
   game,
@@ -236,6 +237,46 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const [updated] = await db
         .update(game)
         .set({ status: result.data.status })
+        .where(eq(game.id, id))
+        .returning()
+
+      if (!updated) return reply.status(404).send({ error: 'Game not found' })
+      return reply.send(updated)
+    },
+  )
+
+  fastify.patch(
+    '/games/:id',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+      const userId = request.user.sub
+
+      const [member] = await db
+        .select()
+        .from(gameMembers)
+        .where(
+          and(
+            eq(gameMembers.gameId, id),
+            eq(gameMembers.userId, userId),
+            eq(gameMembers.status, 'active'),
+          ),
+        )
+        .limit(1)
+
+      if (!member || member.role !== 'owner') {
+        return reply.status(403).send({ error: 'Owner role required' })
+      }
+
+      const schema = z.object({ isPublic: z.boolean() })
+      const result = schema.safeParse(request.body)
+      if (!result.success) {
+        return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
+      }
+
+      const [updated] = await db
+        .update(game)
+        .set({ isPublic: result.data.isPublic })
         .where(eq(game.id, id))
         .returning()
 
