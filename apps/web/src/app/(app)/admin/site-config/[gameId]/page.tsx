@@ -123,7 +123,7 @@ export default function BuilderPage() {
     try {
       await Promise.all([
         api.patch<SiteConfig>('/config', form),
-        api.patch<Game>(`/games/${params.gameId}`, { isPublic: isPublic! }),
+        ...(isPublic !== null ? [api.patch<Game>(`/games/${params.gameId}`, { isPublic })] : []),
       ])
       if (brandingRef.current) {
         const socialData = brandingRef.current.getData()
@@ -333,7 +333,7 @@ export default function BuilderPage() {
               <Button
                 type="submit"
                 form="branding-form"
-                disabled={saving || logoUpload.uploading || bannerUpload.uploading || isPublic === null}
+                disabled={saving || logoUpload.uploading || bannerUpload.uploading}
               >
                 {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
               </Button>
