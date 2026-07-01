@@ -52,7 +52,7 @@ export default function BuilderPage() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
-  const [isPublic, setIsPublic] = useState(true)
+  const [isPublic, setIsPublic] = useState<boolean | null>(null)
 
   const logoUpload = useImageUpload((url) => set('logoUrl', url))
   const bannerUpload = useImageUpload((url) => set('bannerUrl', url))
@@ -123,7 +123,7 @@ export default function BuilderPage() {
     try {
       await Promise.all([
         api.patch<SiteConfig>('/config', form),
-        api.patch<Game>(`/games/${params.gameId}`, { isPublic }),
+        api.patch<Game>(`/games/${params.gameId}`, { isPublic: isPublic! }),
       ])
       if (brandingRef.current) {
         const socialData = brandingRef.current.getData()
@@ -214,7 +214,7 @@ export default function BuilderPage() {
                       onClick={() => setIsPublic(true)}
                       className={cn(
                         'px-3 py-1 rounded text-sm border',
-                        isPublic
+                        isPublic === true
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'border-input text-muted-foreground hover:text-foreground',
                       )}
@@ -226,7 +226,7 @@ export default function BuilderPage() {
                       onClick={() => setIsPublic(false)}
                       className={cn(
                         'px-3 py-1 rounded text-sm border',
-                        !isPublic
+                        isPublic === false
                           ? 'bg-primary text-primary-foreground border-primary'
                           : 'border-input text-muted-foreground hover:text-foreground',
                       )}
@@ -333,7 +333,7 @@ export default function BuilderPage() {
               <Button
                 type="submit"
                 form="branding-form"
-                disabled={saving || logoUpload.uploading || bannerUpload.uploading}
+                disabled={saving || logoUpload.uploading || bannerUpload.uploading || isPublic === null}
               >
                 {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
               </Button>
