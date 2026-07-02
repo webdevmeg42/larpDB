@@ -17,6 +17,7 @@ import {
   HeartPulse,
   Swords,
   Wand2,
+  Languages,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -24,7 +25,7 @@ const ALL_FIELD_TYPES: { type: SchemaFieldType; label: string; icon: LucideIcon 
   { type: 'text', label: 'Text', icon: Type },
   { type: 'longtext', label: 'Long Text', icon: AlignLeft },
   { type: 'number', label: 'Number', icon: Hash },
-  { type: 'select', label: 'Select', icon: List },
+  { type: 'select', label: 'Dropdown Select', icon: List },
   { type: 'multiselect', label: 'Multi-select', icon: CheckSquare },
   { type: 'toggle', label: 'Toggle', icon: ToggleLeft },
   { type: 'statblock', label: 'Stat Block', icon: BarChart2 },
@@ -34,16 +35,19 @@ const ALL_FIELD_TYPES: { type: SchemaFieldType; label: string; icon: LucideIcon 
   { type: 'personality', label: 'Personality', icon: Heart },
   { type: 'features', label: 'Features', icon: Sparkles },
   { type: 'influences', label: 'Influences', icon: Globe },
+  { type: 'languages', label: 'Languages', icon: Languages },
   { type: 'hitpoints', label: 'Hit Points', icon: HeartPulse },
   { type: 'attacks', label: 'Attacks', icon: Swords },
   { type: 'spells', label: 'Spells', icon: Wand2 },
 ]
 
 const RACE_AVAILABLE: SchemaFieldType[] = [
-  'text', 'longtext', 'number', 'select', 'multiselect', 'toggle', 'statblock', 'section',
-  'equipment', 'appearance', 'personality', 'features', 'influences',
+  'text', 'longtext', 'number', 'select', 'multiselect', 'toggle', 'statblock',
+  'equipment', 'appearance', 'personality', 'features', 'influences', 'languages',
 ]
-const RACE_RECOMMENDED: SchemaFieldType[] = ['appearance', 'personality', 'features', 'influences', 'equipment', 'select', 'multiselect', 'longtext', 'section']
+const RACE_RECOMMENDED: SchemaFieldType[] = [
+  'appearance', 'personality', 'features', 'influences', 'languages', 'equipment',
+]
 
 const CLASS_AVAILABLE: SchemaFieldType[] = [
   'text', 'longtext', 'number', 'select', 'multiselect', 'toggle', 'statblock', 'section',
@@ -51,8 +55,12 @@ const CLASS_AVAILABLE: SchemaFieldType[] = [
 ]
 const CLASS_RECOMMENDED: SchemaFieldType[] = ['hitpoints', 'attacks', 'spells', 'statblock', 'features', 'multiselect', 'number', 'section']
 
+const SELF_LABELED: Set<SchemaFieldType> = new Set([
+  'equipment', 'appearance', 'personality', 'features', 'influences', 'languages',
+])
+
 interface FieldPaletteProps {
-  onAdd: (type: SchemaFieldType) => void
+  onAdd: (type: SchemaFieldType, defaultLabel?: string) => void
   schemaType?: CharacterSchemaType
 }
 
@@ -95,7 +103,7 @@ export function FieldPalette({ onAdd, schemaType }: FieldPaletteProps) {
             variant="ghost"
             size="sm"
             className="w-full justify-start gap-2"
-            onClick={() => onAdd(type)}
+            onClick={() => onAdd(type, SELF_LABELED.has(type) ? label : undefined)}
           >
             <Icon className="h-4 w-4" />
             {label}
