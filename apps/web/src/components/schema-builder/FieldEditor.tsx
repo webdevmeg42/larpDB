@@ -679,7 +679,7 @@ export function FieldEditor({ field, onChange, schemaType }: FieldEditorProps) {
       <div className="p-4 space-y-4">
         <div>
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-            {field.type} field
+            {field.type === 'select' ? 'Dropdown Select' : field.type} field
           </p>
         </div>
 
@@ -789,14 +789,15 @@ export function FieldEditor({ field, onChange, schemaType }: FieldEditorProps) {
         )}
 
         {field.type === 'influences' && (
-          <>
-            <Row label="Influence slots (0 – 10)">
-              <Input type="number" min={0} max={10} value={field.influenceSlots ?? ''} onChange={e => update({ influenceSlots: e.target.value ? Number(e.target.value) : undefined } as Partial<SchemaField>)} className="h-8 text-sm max-w-[100px]" />
-            </Row>
-            <Row label="Language slots (0 – 10)">
-              <Input type="number" min={0} max={10} value={field.languageSlots ?? ''} onChange={e => update({ languageSlots: e.target.value ? Number(e.target.value) : undefined } as Partial<SchemaField>)} className="h-8 text-sm max-w-[100px]" />
-            </Row>
-          </>
+          <Row label="Influence slots (0 – 10)">
+            <Input type="number" min={0} max={10} value={field.influenceSlots ?? ''} onChange={e => update({ influenceSlots: e.target.value ? Number(e.target.value) : undefined } as Partial<SchemaField>)} className="h-8 text-sm max-w-[100px]" />
+          </Row>
+        )}
+
+        {field.type === 'languages' && (
+          <Row label="Language slots (0 – 10)">
+            <Input type="number" min={0} max={10} value={field.languageSlots ?? ''} onChange={e => update({ languageSlots: e.target.value ? Number(e.target.value) : undefined } as Partial<SchemaField>)} className="h-8 text-sm max-w-[100px]" />
+          </Row>
         )}
 
         {field.type === 'appearance' && (
