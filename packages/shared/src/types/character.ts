@@ -11,6 +11,7 @@ export type SchemaFieldType =
   | 'personality'
   | 'features'
   | 'influences'
+  | 'languages'
   | 'appearance'
   | 'hitpoints'
   | 'attacks'

@@ -45,7 +45,7 @@ export const StatBlockStatSchema = z.object({
 export const SchemaFieldSchema = z.object({
   id: z.string().uuid(),
   label: z.string().min(1).max(200),
-  type: z.enum(['text', 'longtext', 'number', 'select', 'multiselect', 'toggle', 'statblock', 'section', 'equipment', 'personality', 'features', 'influences', 'appearance', 'hitpoints', 'attacks', 'spells']),
+  type: z.enum(['text', 'longtext', 'number', 'select', 'multiselect', 'toggle', 'statblock', 'section', 'equipment', 'personality', 'features', 'influences', 'languages', 'appearance', 'hitpoints', 'attacks', 'spells']),
   required: z.boolean(),
   order: z.number().int().min(0),
   locked: z.boolean().optional(),
