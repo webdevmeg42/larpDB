@@ -6,11 +6,13 @@ import { schemaTemplates } from '../db/schema.js'
 export const schemaTemplateRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/schema-templates',
-    { preHandler: [fastify.requireGameContext] },
+    { preHandler: [fastify.authenticate] },
     async (request, reply) => {
-      const { gameId } = request.gameContext
+      const gameId = request.headers['x-game-id'] as string | undefined
       const rows = await db.select().from(schemaTemplates)
-        .where(or(isNull(schemaTemplates.gameId), eq(schemaTemplates.gameId, gameId)))
+        .where(gameId
+          ? or(isNull(schemaTemplates.gameId), eq(schemaTemplates.gameId, gameId))
+          : isNull(schemaTemplates.gameId))
       return reply.send(rows)
     },
   )
