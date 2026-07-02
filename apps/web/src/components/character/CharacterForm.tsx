@@ -321,6 +321,35 @@ function FormField({
         </div>
       )
     }
+    case 'languages': {
+      const data = (value as { languages?: string[] }) ?? {}
+      const languageCount = field.languageSlots ?? 3
+
+      function updateSlot(idx: number, val: string) {
+        const arr = [...(data.languages ?? [])]
+        arr[idx] = val
+        onFieldChange({ ...data, languages: arr })
+      }
+
+      return (
+        <div className="space-y-2">
+          <Label>
+            {field.label || 'Languages'}
+            {field.required && <span className="text-destructive ml-1">*</span>}
+          </Label>
+          {Array.from({ length: languageCount }, (_, i) => (
+            <Input
+              key={i}
+              id={`${field.id}-lang-${i}`}
+              value={data.languages?.[i] ?? ''}
+              onChange={e => updateSlot(i, e.target.value)}
+              placeholder={`Language ${i + 1}…`}
+              className="text-sm"
+            />
+          ))}
+        </div>
+      )
+    }
     default:
       return null
   }
