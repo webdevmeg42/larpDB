@@ -91,8 +91,8 @@ function initLockedFields(schemaType: CharacterSchemaType | undefined, initialFi
   })
 }
 
-function makeDefaultField(type: SchemaFieldType, order: number): SchemaField {
-  const base = { id: uuidv4(), label: '', type, required: false, order }
+function makeDefaultField(type: SchemaFieldType, order: number, defaultLabel = ''): SchemaField {
+  const base = { id: uuidv4(), label: defaultLabel, type, required: false, order }
   switch (type) {
     case 'select':
     case 'multiselect':
@@ -108,7 +108,9 @@ function makeDefaultField(type: SchemaFieldType, order: number): SchemaField {
     case 'features':
       return { ...base, featureSlots: 3 } as SchemaField
     case 'influences':
-      return { ...base, influenceSlots: 2, languageSlots: 3 } as SchemaField
+      return { ...base, influenceSlots: 2 } as SchemaField
+    case 'languages':
+      return { ...base, languageSlots: 3 } as SchemaField
     case 'appearance':
       return { ...base } as SchemaField
     case 'hitpoints':
@@ -171,8 +173,8 @@ export function SchemaBuilder({
     fields.find(f => f.id === selectedId) ??
     null
 
-  const addField = useCallback((type: SchemaFieldType) => {
-    const field = makeDefaultField(type, fields.length)
+  const addField = useCallback((type: SchemaFieldType, defaultLabel?: string) => {
+    const field = makeDefaultField(type, fields.length, defaultLabel)
     setFields(prev => [...prev, field])
     setSelectedId(field.id)
   }, [fields.length])
@@ -197,6 +199,12 @@ export function SchemaBuilder({
   async function handleSave() {
     setSaveError(null)
     try {
+      const unlabeledField = fields.find(f => !f.label.trim())
+      if (unlabeledField) {
+        setSaveError('All fields must have a label before saving.')
+        return
+      }
+
       const allFields: SchemaField[] = [
         ...lockedFields.map((f, i) => ({ ...f, order: i })),
         ...fields.map((f, i) => ({ ...f, order: lockedFields.length + i })),
