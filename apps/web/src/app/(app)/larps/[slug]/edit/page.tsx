@@ -195,7 +195,7 @@ export default function BuilderPage() {
                     className={validationErrors.tagline ? 'border-destructive' : ''}
                   />
                   {validationErrors.tagline && (
-                    <p className="text-xs text-destructive">{validationErrors.tagline}</p>
+                    <p data-testid="tagline-error" className="text-xs text-destructive">{validationErrors.tagline}</p>
                   )}
                   {(() => {
                     const len = (form.tagline ?? '').length
@@ -322,7 +322,7 @@ export default function BuilderPage() {
               </form>
               <BrandingSection ref={brandingRef} codex={config?.codex ?? {}} />
               {Object.keys(validationErrors).length > 0 && (
-                <p className="text-sm text-destructive">
+                <p data-testid="form-error-banner" className="text-sm text-destructive">
                   Please fill out the following required fields:{' '}
                   {Object.keys(validationErrors)
                     .map(k => ({ siteTitle: 'LARP Name', tagline: 'Tagline' })[k] ?? k)
