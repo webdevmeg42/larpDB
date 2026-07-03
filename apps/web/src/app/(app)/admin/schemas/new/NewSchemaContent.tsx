@@ -39,6 +39,7 @@ export default function NewSchemaContent() {
     const rawFields = selected ? selected.fields : []
     const fields = rawFields.filter(f => {
       if (f.type === 'statblock' && f.label === 'Core Stats') return false
+      if (schemaType === 'race' && f.type === 'statblock') return false
       if (schemaType === 'race' && f.type === 'number' && f.label.toLowerCase() === 'level') return false
       return true
     })
@@ -56,8 +57,10 @@ export default function NewSchemaContent() {
         type: schemaType,
       })
       router.push(`/admin/schemas/${schema.id}`)
-    } finally {
+      // Don't reset isSaving — keep the button disabled until navigation completes
+    } catch (err) {
       setIsSaving(false)
+      throw err
     }
   }
 
@@ -95,19 +98,21 @@ export default function NewSchemaContent() {
         <div className="space-y-1">
           <Label>{isRace ? 'Race name' : 'Class name'}</Label>
           <Input
+            data-testid="schema-name-input"
             value={name}
             onChange={e => { setName(e.target.value); setNameError('') }}
             placeholder={isRace ? 'e.g. Elf' : 'e.g. Wizard'}
             className="max-w-sm"
             onKeyDown={e => { if (e.key === 'Enter') handleStartBuilding() }}
           />
-          {nameError && <p className="text-xs text-destructive mt-1">{nameError}</p>}
+          {nameError && <p data-testid="schema-name-error" className="text-xs text-destructive mt-1">{nameError}</p>}
         </div>
 
         <div>
           <p className="text-sm font-medium mb-3">Start from template (optional)</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Card
+              data-testid="template-card"
               className={`cursor-pointer transition-colors ${!selected ? 'ring-2 ring-primary' : 'hover:bg-muted/50'}`}
               onClick={() => setSelected(null)}
             >
@@ -119,6 +124,7 @@ export default function NewSchemaContent() {
             {templates.map(t => (
               <Card
                 key={t.id}
+                data-testid="template-card"
                 className={`cursor-pointer transition-colors ${selected?.id === t.id ? 'ring-2 ring-primary' : 'hover:bg-muted/50'}`}
                 onClick={() => { if (!name.trim()) { setNameError('Name is required') } setSelected(t) }}
               >
@@ -131,7 +137,7 @@ export default function NewSchemaContent() {
           </div>
         </div>
 
-        <Button onClick={handleStartBuilding} disabled={!name.trim()}>
+        <Button data-testid="start-building-btn" onClick={handleStartBuilding} disabled={!name.trim()}>
           Start building
         </Button>
       </div>
