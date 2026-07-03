@@ -86,7 +86,7 @@ export default function CodexTab({ config, reload }: Props) {
       <LegalSection ref={legalRef} codex={codex} />
       <ExtrasSection ref={extrasRef} codex={codex} />
       {validationSummary.length > 0 && (
-        <p className="text-sm text-destructive">
+        <p data-testid="form-error-banner" className="text-sm text-destructive">
           Please fill out the following required fields: {validationSummary.join(', ')}
         </p>
       )}
@@ -342,7 +342,7 @@ const GameSettingSection = forwardRef<SectionRef, SectionProps>(
                 placeholder="X-card, BRAKE/GAS, Lookdown"
                 className={safetyError ? 'border-destructive' : ''}
               />
-              {safetyError && <p className="text-xs text-destructive">Safety mechanics in use is required</p>}
+              {safetyError && <p data-testid="safety-error" className="text-xs text-destructive">Safety mechanics in use is required</p>}
             </Field>
             <Field label="Content warnings">
               <Textarea rows={4} value={form.contentWarnings} onChange={e => setForm(f => ({ ...f, contentWarnings: e.target.value }))} />
@@ -494,6 +494,7 @@ const LevelingSystemSection = forwardRef<SectionRef, SectionProps>(
                 {LEVELING_SYSTEMS.map(opt => (
                   <label key={opt.value} className="flex items-start gap-3 cursor-pointer">
                     <input
+                      data-testid={`leveling-radio-${opt.value}`}
                       type="radio"
                       name="levelingSystem"
                       value={opt.value}
@@ -538,7 +539,7 @@ const LevelingSystemSection = forwardRef<SectionRef, SectionProps>(
                 ))}
               </div>
               {systemError && (
-                <p className="text-xs text-destructive">Please select a leveling system</p>
+                <p data-testid="leveling-error" className="text-xs text-destructive">Please select a leveling system</p>
               )}
 
               {(() => {
