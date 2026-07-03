@@ -96,13 +96,14 @@ export default function NewLarpPage() {
             <div className="space-y-1">
               <Label>LARP Name <span className="text-destructive">*</span></Label>
               <Input
+                data-testid="larp-name-input"
                 value={form.siteTitle}
                 onChange={e => set('siteTitle', e.target.value)}
                 maxLength={150}
                 placeholder="Realm of Shadows"
                 className={titleError ? 'border-destructive' : ''}
               />
-              {titleError && <p className="text-xs text-destructive">LARP Name is required</p>}
+              {titleError && <p data-testid="larp-name-error" className="text-xs text-destructive">LARP Name is required</p>}
               {(() => {
                 const len = form.siteTitle.length
                 return (
@@ -144,6 +145,7 @@ export default function NewLarpPage() {
                   Public
                 </button>
                 <button
+                  data-testid="visibility-private-btn"
                   type="button"
                   onClick={() => set('isPublic', false)}
                   className={cn(
