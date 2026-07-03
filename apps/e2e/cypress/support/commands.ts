@@ -46,6 +46,27 @@ Cypress.Commands.add('logout', () => {
   })
 })
 
+Cypress.Commands.add('schemaBuilderAddField', (testId: string, expectedLabel?: string) => {
+  cy.get(`[data-testid="${testId}"]`).click()
+  if (expectedLabel) {
+    cy.get('[data-testid="field-label-input"]').should('have.value', expectedLabel)
+  }
+})
+
+Cypress.Commands.add('schemaBuilderSave', (expectError?: string) => {
+  cy.get('[data-testid="schema-save-btn"]').click()
+  if (expectError) {
+    cy.get('[data-testid="schema-save-error"]')
+      .should('be.visible')
+      .and('contain', expectError)
+  }
+})
+
+Cypress.Commands.add('schemaBuilderLabelField', (label: string) => {
+  cy.get('[data-testid="field-list"]').contains('(Unnamed').click()
+  cy.get('[data-testid="field-label-input"]').clear().type(label)
+})
+
 declare global {
   namespace Cypress {
     interface Chainable {
@@ -53,6 +74,9 @@ declare global {
       loginOwner(): Chainable<void>
       loginUser(email: string, password: string): Chainable<void>
       logout(): Chainable<void>
+      schemaBuilderAddField(testId: string, expectedLabel?: string): Chainable<void>
+      schemaBuilderSave(expectError?: string): Chainable<void>
+      schemaBuilderLabelField(label: string): Chainable<void>
     }
   }
 }
