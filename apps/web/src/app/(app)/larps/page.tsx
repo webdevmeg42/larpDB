@@ -83,6 +83,7 @@ export default function LarpBuilderPage() {
       {rowError && <p className="text-sm text-destructive mb-4">{rowError}</p>}
 
       <input
+        data-testid="games-search-input"
         type="search"
         aria-label="Search games by name"
         placeholder="Search by name…"
@@ -150,6 +151,7 @@ export default function LarpBuilderPage() {
                         </button>
                         <span className="text-muted-foreground">|</span>
                         <button
+                          data-testid="delete-larp-btn"
                           onClick={() => setDeleteTarget(g)}
                           className="text-xs text-destructive hover:underline"
                         >
@@ -177,7 +179,7 @@ export default function LarpBuilderPage() {
           <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={() => void handleDelete()} disabled={deleting}>
+          <Button data-testid="confirm-delete-btn" variant="destructive" onClick={() => void handleDelete()} disabled={deleting}>
             {deleting ? 'Deleting…' : 'Delete'}
           </Button>
         </div>
