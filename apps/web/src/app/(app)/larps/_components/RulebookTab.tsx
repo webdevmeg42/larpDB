@@ -307,7 +307,7 @@ export default function RulebookTab({ config, reload }: Props) {
                 }}
               />
               {titleError && (
-                <div style={{ fontSize: '11px', color: '#dc2626', marginTop: '3px' }}>
+                <div data-testid="chapter-title-error" style={{ fontSize: '11px', color: '#dc2626', marginTop: '3px' }}>
                   Chapter title is required
                 </div>
               )}
