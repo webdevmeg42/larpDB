@@ -56,11 +56,13 @@ function SortableFieldItem({
   isSelected,
   onSelect,
   onDelete,
+  isUnlabeled,
 }: {
   field: SchemaField
   isSelected: boolean
   onSelect: () => void
   onDelete: () => void
+  isUnlabeled?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: field.id })
@@ -77,7 +79,11 @@ function SortableFieldItem({
       style={style}
       className={cn(
         'flex items-center gap-2 rounded-md border bg-background p-2 cursor-pointer transition-colors',
-        isSelected ? 'ring-2 ring-primary border-primary' : 'hover:bg-muted/50',
+        isSelected
+          ? 'ring-2 ring-primary border-primary'
+          : isUnlabeled
+            ? 'border-destructive hover:bg-muted/50'
+            : 'hover:bg-muted/50',
       )}
       onClick={onSelect}
     >
@@ -113,9 +119,10 @@ interface FieldListProps {
   onSelect: (id: string) => void
   onReorder: (fields: SchemaField[]) => void
   onDelete: (id: string) => void
+  highlightUnlabeled?: boolean
 }
 
-export function FieldList({ fields, lockedFields = [], selectedId, onSelect, onReorder, onDelete }: FieldListProps) {
+export function FieldList({ fields, lockedFields = [], selectedId, onSelect, onReorder, onDelete, highlightUnlabeled }: FieldListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -141,7 +148,7 @@ export function FieldList({ fields, lockedFields = [], selectedId, onSelect, onR
   }
 
   return (
-    <div className="space-y-1">
+    <div data-testid="field-list" className="space-y-1">
       {lockedFields.map(field => (
         <LockedFieldItem
           key={field.id}
@@ -166,6 +173,7 @@ export function FieldList({ fields, lockedFields = [], selectedId, onSelect, onR
                   isSelected={selectedId === field.id}
                   onSelect={() => onSelect(field.id)}
                   onDelete={() => onDelete(field.id)}
+                  isUnlabeled={!!highlightUnlabeled && !field.label.trim()}
                 />
               ))}
             </div>

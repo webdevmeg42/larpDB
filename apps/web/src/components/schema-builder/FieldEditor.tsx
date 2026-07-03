@@ -10,11 +10,13 @@ import { useSiteConfig } from '@/hooks/useSiteConfig'
 import type { SchemaField, SchemaFieldOption, StatBlockStat, StatLevelEntry, HitPointEntry, AttackEntry, SpellEntry, CharacterSchemaType } from '@larpdb/shared'
 import { Lock, Trash2, Plus } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
+import { cn } from '@/lib/utils'
 
 interface FieldEditorProps {
   field: SchemaField
   onChange: (field: SchemaField) => void
   schemaType?: CharacterSchemaType
+  highlightUnlabeled?: boolean
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -94,7 +96,7 @@ function getLevelingSystemLabel(sys: string): string {
   }
 }
 
-export function FieldEditor({ field, onChange, schemaType }: FieldEditorProps) {
+export function FieldEditor({ field, onChange, schemaType, highlightUnlabeled }: FieldEditorProps) {
   const { config } = useSiteConfig()
   const maxLevel = config?.codex?.maxLevel ?? 20
 
@@ -707,10 +709,11 @@ export function FieldEditor({ field, onChange, schemaType }: FieldEditorProps) {
 
         <Row label="Label">
           <Input
+            data-testid="field-label-input"
             value={field.label}
             onChange={e => update({ label: e.target.value })}
             placeholder="Field label"
-            className="h-8 text-sm"
+            className={cn('h-8 text-sm', highlightUnlabeled && !field.label.trim() && 'border-destructive focus-visible:ring-destructive')}
           />
         </Row>
 

@@ -167,6 +167,7 @@ export function SchemaBuilder({
   })
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveAttempted, setSaveAttempted] = useState(false)
 
   const selectedField =
     lockedFields.find(f => f.id === selectedId) ??
@@ -201,6 +202,7 @@ export function SchemaBuilder({
     try {
       const unlabeledField = fields.find(f => !f.label.trim())
       if (unlabeledField) {
+        setSaveAttempted(true)
         setSaveError('All fields must have a label before saving.')
         return
       }
@@ -237,6 +239,7 @@ export function SchemaBuilder({
         }
       }
 
+      setSaveAttempted(false)
       await onSave(name, allFields)
     } catch (err: unknown) {
       setSaveError(getErrorMessage(err, 'Save failed'))
@@ -259,13 +262,13 @@ export function SchemaBuilder({
           placeholder="Schema name"
         />
         <div className="ml-auto flex items-center gap-2">
-          {saveError && <span className="text-sm text-destructive">{saveError}</span>}
+          {saveError && <span data-testid="schema-save-error" className="text-sm text-destructive">{saveError}</span>}
           {!isActive && !!schemaId && (
-            <Button variant="outline" onClick={() => void onActivate()} disabled={isSaving}>
+            <Button data-testid="schema-activate-btn" variant="outline" onClick={() => void onActivate()} disabled={isSaving}>
               Activate
             </Button>
           )}
-          <Button onClick={() => void handleSave()} disabled={isSaving}>
+          <Button data-testid="schema-save-btn" onClick={() => void handleSave()} disabled={isSaving}>
             {isSaving ? 'Saving…' : 'Save'}
           </Button>
         </div>
@@ -295,6 +298,7 @@ export function SchemaBuilder({
                 onSelect={setSelectedId}
                 onReorder={reorderFields}
                 onDelete={deleteField}
+                highlightUnlabeled={saveAttempted}
               />
             </div>
           </div>
@@ -318,7 +322,7 @@ export function SchemaBuilder({
         {/* Field editor */}
         <div className="w-72 shrink-0 overflow-y-auto">
           {selectedField ? (
-            <FieldEditor field={selectedField} onChange={updateField} schemaType={schemaType} />
+            <FieldEditor field={selectedField} onChange={updateField} schemaType={schemaType} highlightUnlabeled={saveAttempted} />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground p-4 text-center">
               Select a field to edit its properties

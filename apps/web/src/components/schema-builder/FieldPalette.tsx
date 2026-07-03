@@ -100,6 +100,7 @@ export function FieldPalette({ onAdd, schemaType }: FieldPaletteProps) {
         {recommendedFields.map(({ type, label, icon: Icon }) => (
           <Button
             key={type}
+            data-testid={`palette-btn-${type}`}
             variant="ghost"
             size="sm"
             className="w-full justify-start gap-2"
@@ -116,6 +117,7 @@ export function FieldPalette({ onAdd, schemaType }: FieldPaletteProps) {
           {otherFields.map(({ type, label, icon: Icon }) => (
             <Button
               key={type}
+              data-testid={`palette-btn-${type}`}
               variant="ghost"
               size="sm"
               className="w-full justify-start gap-2 text-muted-foreground"
