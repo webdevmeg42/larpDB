@@ -25,10 +25,10 @@ export default function NewSchemaContent() {
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    api.get<SchemaTemplate[]>('/schema-templates')
+    api.get<SchemaTemplate[]>(`/schema-templates?type=${schemaType}`)
       .then(setTemplates)
       .catch(() => {})
-  }, [])
+  }, [schemaType])
 
   if (user?.role !== 'owner') {
     return <div className="p-6 text-muted-foreground">Owner access required.</div>
