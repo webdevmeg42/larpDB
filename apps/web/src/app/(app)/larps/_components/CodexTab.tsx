@@ -91,7 +91,7 @@ export default function CodexTab({ config, reload }: Props) {
         </p>
       )}
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button onClick={handleSave} disabled={saving}>
+      <Button data-testid="save-changes-btn" onClick={handleSave} disabled={saving}>
         {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
       </Button>
     </div>

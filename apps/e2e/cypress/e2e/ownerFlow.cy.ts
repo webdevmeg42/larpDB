@@ -12,6 +12,9 @@ const sel = {
   tabCodex: '[data-testid="tab-codex"]',
   tabRulebook: '[data-testid="tab-rulebook"]',
   tabRaceBuilds: '[data-testid="tab-race-builds"]',
+  tabClassBuilds: '[data-testid="tab-class-builds"]',
+  // branding/codex save button
+  saveChangesBtn: '[data-testid="save-changes-btn"]',
   // branding tab
   formErrorBanner: '[data-testid="form-error-banner"]',
   taglineError: '[data-testid="tagline-error"]',
@@ -25,8 +28,23 @@ const sel = {
   newRaceLink: '[data-testid="new-race-link"]',
   newClassLink: '[data-testid="new-class-link"]',
   noLevelingWarning: '[data-testid="no-leveling-warning"]',
-  // new schema page
-  templateCard: '[data-testid="template-card"]',
+  // new schema page — generic (matches all cards)
+  templateCard: '[data-testid^="template-card"]',
+  // race templates
+  templateCardBlank: '[data-testid="template-card-blank"]',
+  templateCardFantasyAdventure: '[data-testid="template-card-fantasy-adventure"]',
+  templateCardSciFiOperative: '[data-testid="template-card-sci-fi-operative"]',
+  templateCardModernThriller: '[data-testid="template-card-modern-thriller"]',
+  templateCardHorrorSurvivor: '[data-testid="template-card-horror-survivor"]',
+  templateCardPostApocalyptic: '[data-testid="template-card-post-apocalyptic"]',
+  // class templates
+  templateCardWarrior: '[data-testid="template-card-warrior"]',
+  templateCardDruid: '[data-testid="template-card-druid"]',
+  templateCardWizard: '[data-testid="template-card-wizard"]',
+  templateCardSorcerer: '[data-testid="template-card-sorcerer"]',
+  templateCardMedic: '[data-testid="template-card-medic"]',
+  templateCardBerserker: '[data-testid="template-card-berserker"]',
+  templateCardPaladin: '[data-testid="template-card-paladin"]',
   schemaNameInput: '[data-testid="schema-name-input"]',
   schemaNameError: '[data-testid="schema-name-error"]',
   startBuildingBtn: '[data-testid="start-building-btn"]',
@@ -56,14 +74,14 @@ describe('Owner Flow', () => {
     cy.contains('button', 'Create LARP').click()
 
     cy.get(sel.tabBranding).should('be.visible')
-    cy.contains('button', 'Save changes').click()
+    cy.get(sel.saveChangesBtn).click()
     cy.get(sel.formErrorBanner)
       .should('be.visible').and('contain', 'Tagline')
     cy.get(sel.taglineError)
       .scrollIntoView().should('be.visible').and('contain', 'Tagline is required')
 
     cy.get(sel.tabCodex).click()
-    cy.contains('button', 'Save changes').click()
+    cy.get(sel.saveChangesBtn).click()
     cy.get(sel.formErrorBanner)
       .should('be.visible').and('contain', 'Safety mechanics in use, Leveling System')
     cy.get(sel.safetyError)
@@ -89,12 +107,12 @@ describe('Owner Flow', () => {
     cy.get(sel.tabCodex).click()
     cy.get('input[placeholder="X-card, BRAKE/GAS, Lookdown"]').type('X-card')
     cy.get(sel.levelingRadioPercentage).click()
-    cy.contains('button', 'Save changes').click()
+    cy.get(sel.saveChangesBtn).click()
 
     cy.get(sel.tabRaceBuilds).click()
     cy.get(sel.newRaceLink).click()
 
-    cy.get(sel.templateCard).eq(1).click()
+    cy.get(sel.templateCardFantasyAdventure).click()
     cy.get(sel.schemaNameError)
       .should('be.visible').and('contain', 'Name is required')
 

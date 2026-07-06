@@ -333,6 +333,7 @@ export default function BuilderPage() {
               <Button
                 type="submit"
                 form="branding-form"
+                data-testid="save-changes-btn"
                 disabled={saving || logoUpload.uploading || bannerUpload.uploading}
               >
                 {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
