@@ -57,6 +57,7 @@ const CLASS_RECOMMENDED: SchemaFieldType[] = ['hitpoints', 'attacks', 'spells', 
 
 const SELF_LABELED: Set<SchemaFieldType> = new Set([
   'equipment', 'appearance', 'personality', 'features', 'influences', 'languages',
+  'hitpoints', 'attacks', 'spells',
 ])
 
 interface FieldPaletteProps {
