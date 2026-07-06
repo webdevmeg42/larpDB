@@ -108,6 +108,7 @@ export interface SchemaTemplate {
   description: string | null
   fields: SchemaField[]
   isBuiltin: boolean
+  type: 'race' | 'class' | null
 }
 
 export interface GmCondition {
