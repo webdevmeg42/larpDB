@@ -155,6 +155,54 @@ describe('Owner Flow', () => {
     cy.url().should('include', '/admin/schemas')
   })
 
+  it('Owner can build a class with all common fields pre-populated', () => {
+    cy.get(sel.tabClassBuilds).click()
+    cy.get(sel.newClassLink).click()
+
+    // Click Warrior before entering name → triggers name validation
+    cy.get(sel.templateCardWarrior).click()
+    cy.get(sel.schemaNameError)
+      .should('be.visible').and('contain', 'Name is required')
+
+    cy.get(sel.schemaNameInput).click().type(`Warrior ${larpName}`)
+    cy.get(sel.startBuildingBtn).click()
+
+    // Add common fields — labels auto-populate on click, then one save (POST)
+    cy.schemaBuilderAddField('palette-btn-hitpoints', 'Hit Points')
+    cy.schemaBuilderAddField('palette-btn-attacks', 'Attacks')
+    cy.schemaBuilderAddField('palette-btn-spells', 'Spells')
+    cy.schemaBuilderAddField('palette-btn-features', 'Features')
+    cy.schemaBuilderSave()
+
+    // schema-activate-btn only renders on the edit page (schemaId is a real UUID)
+    // — this is the navigation guard; Cypress retries until it appears
+    cy.get(sel.schemaActivateBtn)
+
+    // Add all OTHER fields unlabeled, then one save to trigger validation error (PATCH)
+    cy.schemaBuilderAddField('palette-btn-statblock')
+    cy.schemaBuilderAddField('palette-btn-multiselect')
+    cy.schemaBuilderAddField('palette-btn-number')
+    cy.schemaBuilderAddField('palette-btn-section')
+    cy.schemaBuilderAddField('palette-btn-text')
+    cy.schemaBuilderAddField('palette-btn-longtext')
+    cy.schemaBuilderAddField('palette-btn-select')
+    cy.schemaBuilderAddField('palette-btn-toggle')
+    cy.schemaBuilderSave('All fields must have a label before saving.')
+
+    // Label all 8 unlabeled fields, then one passing save (PATCH)
+    cy.schemaBuilderLabelField(`${larpName} testClass`)
+    cy.schemaBuilderLabelField(`${larpName} testClass`)
+    cy.schemaBuilderLabelField(`${larpName} testClass`)
+    cy.schemaBuilderLabelField(`${larpName} testClass`)
+    cy.schemaBuilderLabelField(`${larpName} testClass`)
+    cy.schemaBuilderLabelField(`${larpName} testClass`)
+    cy.schemaBuilderLabelField(`${larpName} testClass`)
+    cy.schemaBuilderLabelField(`${larpName} testClass`)
+    cy.schemaBuilderSave()
+
+    cy.url().should('include', '/admin/schemas')
+  })
+
   after(() => {
     cy.visit('/larps')
     // Wait for the owner view to render (h1 only appears after useAuth resolves to owner role).
