@@ -2,6 +2,42 @@ import { testDateTime } from '../support/helpers'
 
 const larpName = `Cypress ownerFlow Test ${testDateTime(new Date())}`
 
+const sel = {
+  // new larp form
+  visibilityPrivateBtn: '[data-testid="visibility-private-btn"]',
+  larpNameInput: '[data-testid="larp-name-input"]',
+  larpNameError: '[data-testid="larp-name-error"]',
+  // edit tabs
+  tabBranding: '[data-testid="tab-branding"]',
+  tabCodex: '[data-testid="tab-codex"]',
+  tabRulebook: '[data-testid="tab-rulebook"]',
+  tabRaceBuilds: '[data-testid="tab-race-builds"]',
+  // branding tab
+  formErrorBanner: '[data-testid="form-error-banner"]',
+  taglineError: '[data-testid="tagline-error"]',
+  // codex tab
+  safetyError: '[data-testid="safety-error"]',
+  levelingError: '[data-testid="leveling-error"]',
+  levelingRadioPercentage: '[data-testid="leveling-radio-percentage"]',
+  // rulebook tab
+  chapterTitleError: '[data-testid="chapter-title-error"]',
+  // race/class builds tab
+  newRaceLink: '[data-testid="new-race-link"]',
+  newClassLink: '[data-testid="new-class-link"]',
+  noLevelingWarning: '[data-testid="no-leveling-warning"]',
+  // new schema page
+  templateCard: '[data-testid="template-card"]',
+  schemaNameInput: '[data-testid="schema-name-input"]',
+  schemaNameError: '[data-testid="schema-name-error"]',
+  startBuildingBtn: '[data-testid="start-building-btn"]',
+  // schema builder
+  schemaActivateBtn: '[data-testid="schema-activate-btn"]',
+  // larps list
+  gamesSearchInput: '[data-testid="games-search-input"]',
+  deleteLarpBtn: '[data-testid="delete-larp-btn"]',
+  confirmDeleteBtn: '[data-testid="confirm-delete-btn"]',
+}
+
 describe('Owner Flow', () => {
   before(() => {
     cy.loginOwner()
@@ -11,59 +47,59 @@ describe('Owner Flow', () => {
     cy.contains('LARP Builder').click()
     cy.contains('Build New LARP').click()
 
-    cy.get('[data-testid="visibility-private-btn"]').click()
+    cy.get(sel.visibilityPrivateBtn).click()
     cy.contains('button', 'Create LARP').click()
-    cy.get('[data-testid="larp-name-error"]')
+    cy.get(sel.larpNameError)
       .should('be.visible').and('contain', 'LARP Name is required')
 
-    cy.get('[data-testid="larp-name-input"]').type(larpName)
+    cy.get(sel.larpNameInput).type(larpName)
     cy.contains('button', 'Create LARP').click()
 
-    cy.contains('Branding').should('be.visible')
+    cy.get(sel.tabBranding).should('be.visible')
     cy.contains('button', 'Save changes').click()
-    cy.get('[data-testid="form-error-banner"]')
+    cy.get(sel.formErrorBanner)
       .should('be.visible').and('contain', 'Tagline')
-    cy.get('[data-testid="tagline-error"]')
+    cy.get(sel.taglineError)
       .scrollIntoView().should('be.visible').and('contain', 'Tagline is required')
 
-    cy.contains('The Codex').click()
+    cy.get(sel.tabCodex).click()
     cy.contains('button', 'Save changes').click()
-    cy.get('[data-testid="form-error-banner"]')
+    cy.get(sel.formErrorBanner)
       .should('be.visible').and('contain', 'Safety mechanics in use, Leveling System')
-    cy.get('[data-testid="safety-error"]')
+    cy.get(sel.safetyError)
       .scrollIntoView().should('be.visible').and('contain', 'Safety mechanics in use is required')
-    cy.get('[data-testid="leveling-error"]')
+    cy.get(sel.levelingError)
       .scrollIntoView().should('be.visible').and('contain', 'Please select a leveling system')
 
-    cy.contains('button', 'Rulebook').click()
+    cy.get(sel.tabRulebook).click()
     cy.contains('+ Add chapter').click()
     cy.contains('button', 'Save chapter').click()
-    cy.get('[data-testid="chapter-title-error"]')
+    cy.get(sel.chapterTitleError)
       .scrollIntoView().should('be.visible').and('contain', 'Chapter title is required')
   })
 
   it('Owner can build a race with all common fields pre-populated', () => {
-    cy.contains('Race Builds').click()
-    cy.get('[data-testid="new-race-link"]').click()
+    cy.get(sel.tabRaceBuilds).click()
+    cy.get(sel.newRaceLink).click()
 
-    cy.get('[data-testid="no-leveling-warning"]')
+    cy.get(sel.noLevelingWarning)
       .should('be.visible')
       .and('contain', 'No leveling system selected.')
 
-    cy.contains('The Codex').click()
+    cy.get(sel.tabCodex).click()
     cy.get('input[placeholder="X-card, BRAKE/GAS, Lookdown"]').type('X-card')
-    cy.get('[data-testid="leveling-radio-percentage"]').click()
+    cy.get(sel.levelingRadioPercentage).click()
     cy.contains('button', 'Save changes').click()
 
-    cy.contains('Race Builds').click()
-    cy.get('[data-testid="new-race-link"]').click()
+    cy.get(sel.tabRaceBuilds).click()
+    cy.get(sel.newRaceLink).click()
 
-    cy.get('[data-testid="template-card"]').first().click()
-    cy.get('[data-testid="schema-name-error"]')
+    cy.get(sel.templateCard).eq(1).click()
+    cy.get(sel.schemaNameError)
       .should('be.visible').and('contain', 'Name is required')
 
-    cy.get('[data-testid="schema-name-input"]').click().type(larpName)
-    cy.get('[data-testid="start-building-btn"]').click()
+    cy.get(sel.schemaNameInput).click().type(larpName)
+    cy.get(sel.startBuildingBtn).click()
 
     // Add common fields — labels auto-populate on click, then one save (POST)
     cy.schemaBuilderAddField('palette-btn-equipment', 'Equipment')
@@ -76,7 +112,7 @@ describe('Owner Flow', () => {
 
     // schema-activate-btn only renders on the edit page (schemaId is a real UUID)
     // — this is the navigation guard; Cypress retries until it appears
-    cy.get('[data-testid="schema-activate-btn"]')
+    cy.get(sel.schemaActivateBtn)
 
     // Add all OTHER fields unlabeled, then one save to trigger validation error (PATCH)
     cy.schemaBuilderAddField('palette-btn-text')
@@ -103,10 +139,10 @@ describe('Owner Flow', () => {
 
   after(() => {
     cy.visit('/larps')
-    // No .should('be.visible') — avoids $el.css stale DOM error during React re-render retry.
-    // .type() implicitly waits for actionable state.
-    cy.get('[data-testid="games-search-input"]', { timeout: 10000 }).type(larpName)
-    cy.get('[data-testid="delete-larp-btn"]').first().click()
-    cy.get('[data-testid="confirm-delete-btn"]').click()
+    // Wait for the owner view to render (h1 only appears after useAuth resolves to owner role).
+    cy.contains('h1', 'LARP Builder')
+    cy.get(sel.gamesSearchInput).type(larpName)
+    cy.get(sel.deleteLarpBtn).first().click()
+    cy.get(sel.confirmDeleteBtn).click()
   })
 })

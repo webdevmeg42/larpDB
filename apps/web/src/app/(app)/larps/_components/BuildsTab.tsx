@@ -134,7 +134,7 @@ export default function BuildsTab({ type, hasLevelingSystem }: BuildsTabProps) {
           )}
         </div>
         <Link
-          data-testid="new-race-link"
+          data-testid={`new-${type}-link`}
           href={hasLevelingSystem ? `/admin/schemas/new?type=${type}` : '#'}
           className={buttonVariants({ size: 'sm', variant: hasLevelingSystem ? 'default' : 'outline' })}
           aria-disabled={!hasLevelingSystem}

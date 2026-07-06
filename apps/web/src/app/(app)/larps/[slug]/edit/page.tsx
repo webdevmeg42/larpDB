@@ -152,12 +152,12 @@ export default function BuilderPage() {
 
       <Tabs defaultValue="branding">
         <TabsList className="mb-6">
-          <TabsTrigger value="branding">Branding</TabsTrigger>
-          <TabsTrigger value="codex">The Codex</TabsTrigger>
-          <TabsTrigger value="rulebook">Rulebook</TabsTrigger>
-          <TabsTrigger value="store">The Store</TabsTrigger>
-          <TabsTrigger value="race-builds">Race Builds</TabsTrigger>
-          <TabsTrigger value="class-builds">Class Builds</TabsTrigger>
+          <TabsTrigger value="branding" data-testid="tab-branding">Branding</TabsTrigger>
+          <TabsTrigger value="codex" data-testid="tab-codex">The Codex</TabsTrigger>
+          <TabsTrigger value="rulebook" data-testid="tab-rulebook">Rulebook</TabsTrigger>
+          <TabsTrigger value="store" data-testid="tab-store">The Store</TabsTrigger>
+          <TabsTrigger value="race-builds" data-testid="tab-race-builds">Race Builds</TabsTrigger>
+          <TabsTrigger value="class-builds" data-testid="tab-class-builds">Class Builds</TabsTrigger>
         </TabsList>
 
         <TabsContent value="branding">

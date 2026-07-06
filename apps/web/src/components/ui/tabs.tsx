@@ -33,7 +33,7 @@ function TabsList({ children, className }: { children: React.ReactNode; classNam
   )
 }
 
-function TabsTrigger({ value, children, className }: { value: string; children: React.ReactNode; className?: string }) {
+function TabsTrigger({ value, children, className, ...rest }: { value: string; children: React.ReactNode; className?: string } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const { activeTab, setActiveTab } = useTabs()
   return (
     <button
@@ -44,6 +44,7 @@ function TabsTrigger({ value, children, className }: { value: string; children: 
         activeTab === value && 'bg-background text-foreground shadow-sm',
         className,
       )}
+      {...rest}
     >
       {children}
     </button>

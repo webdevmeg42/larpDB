@@ -35,7 +35,6 @@ export default function SchemaBuilderPage({ params }: { params: { id: string } }
         `/character-schemas/${params.id}`,
         { name, fields },
       )
-      router.replace(`/admin/schemas/${updated.id}`)
       setSchema(updated)
     } finally {
       setIsSaving(false)
