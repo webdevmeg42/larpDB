@@ -535,7 +535,8 @@ describe('GET /my-characters', () => {
       },
     })
 
-    // Set up a second game (different owner) — reuse the same playerToken by subscribing
+    // Set up a second game (different owner) — all app instances share the same test DB,
+    // so gameId2 is visible when we subscribe via the first app instance
     const { gameId: gameId2 } = await createAndLogin('mcowner2@test.com')
 
     await app.inject({
