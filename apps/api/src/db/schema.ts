@@ -81,6 +81,7 @@ export const schemaTemplates = pgTable('schema_templates', {
   description: text('description'),
   fields: jsonb('fields').notNull().$type<SchemaField[]>(),
   isBuiltin: boolean('is_builtin').notNull().default(false),
+  type: text('type'),
 })
 
 export const characterSchemas = pgTable('character_schemas', {
