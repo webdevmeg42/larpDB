@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { eq, desc, and, sql } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { characters, characterSchemas, siteConfig, xpTransactions, eventRegistrations, purchases } from '../db/schema.js'
+import { characters, characterSchemas, siteConfig, xpTransactions, eventRegistrations, purchases, game, gameMembers } from '../db/schema.js'
 import { CreateCharacterInput, UpdateCharacterInput, AwardXPInput, SpendXPInput, GmDataInput, computeCumulativeXp } from '@larpdb/shared'
 import { validateCharacterData } from '../lib/validateCharacterData.js'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
@@ -600,6 +600,63 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
 
       return reply.send(updated)
     },
+  )
+
+  fastify.get(
+    '/my-characters',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const userId = request.user.sub
+
+      const rows = await db
+        .select({
+          gameId: game.id,
+          gameName: game.name,
+          gameSlug: game.slug,
+          gameStatus: game.status,
+          charId: characters.id,
+          charName: characters.name,
+          charTotalXp: characters.totalXp,
+          charIsActive: characters.isActive,
+        })
+        .from(gameMembers)
+        .innerJoin(game, eq(game.id, gameMembers.gameId))
+        .leftJoin(
+          characters,
+          and(eq(characters.gameId, game.id), eq(characters.userId, userId))
+        )
+        .where(and(eq(gameMembers.userId, userId), eq(gameMembers.status, 'active')))
+
+      const gameMap = new Map<string, {
+        id: string
+        name: string
+        slug: string
+        isActive: boolean
+        characters: { id: string; name: string; totalXp: number; isActive: boolean }[]
+      }>()
+
+      for (const row of rows) {
+        if (!gameMap.has(row.gameId)) {
+          gameMap.set(row.gameId, {
+            id: row.gameId,
+            name: row.gameName,
+            slug: row.gameSlug,
+            isActive: row.gameStatus === 'active',
+            characters: [],
+          })
+        }
+        if (row.charId) {
+          gameMap.get(row.gameId)!.characters.push({
+            id: row.charId,
+            name: row.charName!,
+            totalXp: row.charTotalXp ?? 0,
+            isActive: row.charIsActive ?? false,
+          })
+        }
+      }
+
+      return reply.send({ games: Array.from(gameMap.values()) })
+    }
   )
 
   fastify.delete(

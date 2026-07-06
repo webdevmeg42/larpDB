@@ -455,3 +455,117 @@ describe('PATCH /characters/:id', () => {
     await app.close()
   })
 })
+
+describe('GET /my-characters', () => {
+  it('returns games with 0 characters when user has not yet created any', async () => {
+    const { app, playerToken, gameId } = await setupWithActiveSchema()
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/my-characters',
+      headers: { authorization: `Bearer ${playerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const { games } = res.json()
+    expect(games).toHaveLength(1)
+    expect(games[0].id).toBe(gameId)
+    expect(games[0].characters).toHaveLength(0)
+    await app.close()
+  })
+
+  it('includes characters when they exist', async () => {
+    const { app, playerToken, schemaId, gameId } = await setupWithActiveSchema()
+
+    await app.inject({
+      method: 'POST',
+      url: '/characters',
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
+      payload: {
+        name: 'Aelindra',
+        raceSchemaId: schemaId,
+        data: {
+          '11111111-1111-1111-1111-111111111111': 'Ranger',
+          '22222222-2222-2222-2222-222222222222': 5,
+        },
+      },
+    })
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/my-characters',
+      headers: { authorization: `Bearer ${playerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const { games } = res.json()
+    expect(games[0].characters).toHaveLength(1)
+    expect(games[0].characters[0]).toMatchObject({
+      id: expect.any(String),
+      name: 'Aelindra',
+      totalXp: 0,
+      isActive: true,
+    })
+    await app.close()
+  })
+
+  it('returns 401 without authentication', async () => {
+    const { app } = await setupWithActiveSchema()
+    const res = await app.inject({ method: 'GET', url: '/my-characters' })
+    expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+
+  it('returns multiple games grouped correctly without cross-contaminating characters', async () => {
+    // Set up first game (owner1 + player)
+    const { app, playerToken, schemaId, gameId: gameId1 } = await setupWithActiveSchema()
+
+    // Create character in game 1
+    await app.inject({
+      method: 'POST',
+      url: '/characters',
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId1 },
+      payload: {
+        name: 'Aelindra',
+        raceSchemaId: schemaId,
+        data: {
+          '11111111-1111-1111-1111-111111111111': 'Ranger',
+          '22222222-2222-2222-2222-222222222222': 5,
+        },
+      },
+    })
+
+    // Set up a second game (different owner) — reuse the same playerToken by subscribing
+    const { gameId: gameId2 } = await createAndLogin('mcowner2@test.com')
+
+    await app.inject({
+      method: 'POST',
+      url: '/subscriptions',
+      headers: { authorization: `Bearer ${playerToken}` },
+      payload: { gameId: gameId2 },
+    })
+
+    // Call my-characters
+    const res = await app.inject({
+      method: 'GET',
+      url: '/my-characters',
+      headers: { authorization: `Bearer ${playerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const { games } = res.json()
+    expect(games).toHaveLength(2)
+
+    const g1 = games.find((g: { id: string }) => g.id === gameId1)
+    const g2 = games.find((g: { id: string }) => g.id === gameId2)
+
+    expect(g1).toBeDefined()
+    expect(g1.characters).toHaveLength(1)
+    expect(g1.characters[0].name).toBe('Aelindra')
+
+    expect(g2).toBeDefined()
+    expect(g2.characters).toHaveLength(0)
+
+    await app.close()
+  })
+})
