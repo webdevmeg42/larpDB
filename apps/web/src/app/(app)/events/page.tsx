@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
+import { setGameId } from '@/lib/auth'
 import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -31,6 +33,7 @@ function formatDate(iso: string): string {
 
 export default function EventsPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [games, setGames] = useState<GameWithEvents[]>([])
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -89,6 +92,7 @@ export default function EventsPage() {
       {/* Search bar */}
       <div className="relative max-w-md">
         <input
+          data-testid="events-search-input"
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -162,13 +166,14 @@ export default function EventsPage() {
                     {selectedGame.name}
                   </span>
                   {(selectedGame.role === 'owner' || selectedGame.role === 'gm') && (
-                    <Link
-                      href="/events/new"
+                    <button
+                      data-testid="new-event-btn"
+                      onClick={() => { setGameId(selectedGame.id); router.push('/events/new') }}
                       className={buttonVariants({ variant: 'default', size: 'sm' })}
                     >
                       <Plus className="h-4 w-4 mr-1" />
                       New Event
-                    </Link>
+                    </button>
                   )}
                 </div>
 
