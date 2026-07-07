@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { and, eq, desc, count } from 'drizzle-orm'
+import { and, eq, desc, count, inArray, asc } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { events, eventRegistrations, characters } from '../db/schema.js'
+import { events, eventRegistrations, characters, game, gameMembers } from '../db/schema.js'
 import { CreateEventInput, UpdateEventInput, RegisterForEventInput, UpdateRegistrationInput } from '@larpdb/shared'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 
@@ -15,6 +15,98 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
         ? await db.select().from(events).where(eq(events.gameId, gameId)).orderBy(desc(events.startAt))
         : await db.select().from(events).where(and(eq(events.gameId, gameId), eq(events.status, 'published'))).orderBy(desc(events.startAt))
       return reply.send(rows)
+    },
+  )
+
+  fastify.get(
+    '/my-events',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const userId = request.user.sub
+
+      // 1. Get all active game memberships for this user
+      const memberships = await db
+        .select({
+          gameId: game.id,
+          gameName: game.name,
+          role: gameMembers.role,
+        })
+        .from(gameMembers)
+        .innerJoin(game, eq(game.id, gameMembers.gameId))
+        .where(and(eq(gameMembers.userId, userId), eq(gameMembers.status, 'active')))
+
+      if (memberships.length === 0) return reply.send({ games: [] })
+
+      const gameIds = memberships.map(m => m.gameId)
+      const roleByGameId = new Map(memberships.map(m => [m.gameId, m.role]))
+
+      // 2. Get all events for those games, sorted by startAt ascending
+      const allEvents = await db
+        .select({
+          id: events.id,
+          gameId: events.gameId,
+          title: events.title,
+          startAt: events.startAt,
+          location: events.location,
+          status: events.status,
+        })
+        .from(events)
+        .where(inArray(events.gameId, gameIds))
+        .orderBy(asc(events.startAt))
+
+      // 3. Get user's registrations across all those events in one query
+      const eventIds = allEvents.map(e => e.id)
+      const registrations = eventIds.length > 0
+        ? await db
+            .select({ eventId: eventRegistrations.eventId, status: eventRegistrations.status })
+            .from(eventRegistrations)
+            .where(
+              and(
+                inArray(eventRegistrations.eventId, eventIds),
+                eq(eventRegistrations.userId, userId),
+              ),
+            )
+        : []
+
+      const regByEventId = new Map(registrations.map(r => [r.eventId, r.status]))
+
+      // 4. Assemble: group events by game, apply role-based status filter
+      const gameMap = new Map<string, {
+        id: string
+        name: string
+        role: string
+        events: {
+          id: string
+          title: string
+          startAt: string
+          location: string | null
+          status: string
+          userRegistration: { status: string } | null
+        }[]
+      }>()
+
+      for (const m of memberships) {
+        gameMap.set(m.gameId, { id: m.gameId, name: m.gameName, role: m.role, events: [] })
+      }
+
+      for (const evt of allEvents) {
+        const role = roleByGameId.get(evt.gameId)!
+        if (!gmOrOwner(role) && evt.status !== 'published') continue
+        const regStatus = regByEventId.get(evt.id)
+        gameMap.get(evt.gameId)!.events.push({
+          id: evt.id,
+          title: evt.title,
+          startAt: evt.startAt.toISOString(),
+          location: evt.location ?? null,
+          status: evt.status,
+          userRegistration: regStatus != null ? { status: regStatus } : null,
+        })
+      }
+
+      const games = Array.from(gameMap.values())
+        .sort((a, b) => a.name.localeCompare(b.name))
+
+      return reply.send({ games })
     },
   )
 

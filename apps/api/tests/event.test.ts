@@ -276,3 +276,98 @@ describe('POST /events/:id/archive', () => {
     await app.close()
   })
 })
+
+describe('GET /my-events', () => {
+  it('returns games with events and embedded registration status', async () => {
+    const { app, ownerToken, playerToken, gameId } = await setupOwnerAndGm()
+
+    // Create a published future event and register the player for it
+    const evtRes = await app.inject({
+      method: 'POST',
+      url: '/events',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { title: 'Upcoming Event', startAt: FUTURE_DATE },
+    })
+    const eventId = evtRes.json().id
+    await app.inject({
+      method: 'POST',
+      url: `/events/${eventId}/publish`,
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+    })
+    await app.inject({
+      method: 'POST',
+      url: `/events/${eventId}/register`,
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
+      payload: {},
+    })
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/my-events',
+      headers: { authorization: `Bearer ${playerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.games).toHaveLength(1)
+    const g = body.games[0]
+    expect(g.id).toBe(gameId)
+    expect(g.role).toBe('player')
+    expect(g.events).toHaveLength(1)
+    expect(g.events[0].title).toBe('Upcoming Event')
+    expect(g.events[0].userRegistration).not.toBeNull()
+    expect(g.events[0].userRegistration.status).toBe('pending')
+    await app.close()
+  })
+
+  it('players do not see draft events', async () => {
+    const { app, ownerToken, playerToken, gameId } = await setupOwnerAndGm()
+
+    // Draft event — not published
+    await app.inject({
+      method: 'POST',
+      url: '/events',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { title: 'Draft Event', startAt: FUTURE_DATE },
+    })
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/my-events',
+      headers: { authorization: `Bearer ${playerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const g = res.json().games[0]
+    expect(g.events).toHaveLength(0)
+    await app.close()
+  })
+
+  it('owners see draft events', async () => {
+    const { app, ownerToken, gameId } = await setupOwnerAndGm()
+
+    await app.inject({
+      method: 'POST',
+      url: '/events',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { title: 'Draft Event', startAt: FUTURE_DATE },
+    })
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/my-events',
+      headers: { authorization: `Bearer ${ownerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().games[0].events).toHaveLength(1)
+    await app.close()
+  })
+
+  it('returns 401 when not authenticated', async () => {
+    const { app } = await setupOwnerAndGm()
+    const res = await app.inject({ method: 'GET', url: '/my-events' })
+    expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+})
