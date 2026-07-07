@@ -7,16 +7,22 @@ import { api } from '@/lib/api'
 import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { PlusCircle } from 'lucide-react'
-import type { LarpEvent, EventRegistration } from '@larpdb/shared'
+import { Plus, X } from 'lucide-react'
 
-type EventBadge = 'Open' | 'Registered' | 'Waitlisted' | 'Cancelled'
+type EventWithReg = {
+  id: string
+  title: string
+  startAt: string
+  location: string | null
+  status: 'draft' | 'published' | 'archived'
+  userRegistration: { status: 'confirmed' | 'pending' | 'waitlist' | 'cancelled' } | null
+}
 
-function getEventBadge(reg: EventRegistration | undefined): EventBadge {
-  if (!reg) return 'Open'
-  if (reg.status === 'confirmed' || reg.status === 'pending') return 'Registered'
-  if (reg.status === 'waitlist') return 'Waitlisted'
-  return 'Cancelled'
+type GameWithEvents = {
+  id: string
+  name: string
+  role: 'owner' | 'gm' | 'player'
+  events: EventWithReg[]
 }
 
 function formatDate(iso: string): string {
@@ -25,101 +31,211 @@ function formatDate(iso: string): string {
 
 export default function EventsPage() {
   const { user } = useAuth()
-  const [events, setEvents] = useState<LarpEvent[]>([])
-  const [regMap, setRegMap] = useState<Record<string, EventRegistration | undefined>>({})
+  const [games, setGames] = useState<GameWithEvents[]>([])
+  const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
-    void (async () => {
-      try {
-        const evts = await api.get<LarpEvent[]>('/events')
-        setEvents(evts)
-        const regResults = await Promise.all(
-          evts.map(evt => api.get<EventRegistration[]>(`/events/${evt.id}/registrations`)),
-        )
-        const map: Record<string, EventRegistration | undefined> = {}
-        evts.forEach((evt, i) => {
-          const regs = regResults[i] ?? []
-          map[evt.id] = regs[0]
-        })
-        setRegMap(map)
-      } catch {
-        setError('Failed to load events. Please refresh.')
-      } finally {
-        setLoading(false)
-      }
-    })()
+    api
+      .get<{ games: GameWithEvents[] }>('/my-events')
+      .then(data => {
+        setGames(data.games)
+        if (data.games.length > 0) setSelectedGameId(data.games[0]!.id)
+      })
+      .catch(() => setGames([]))
+      .finally(() => setLoading(false))
   }, [user])
+
+  const today = new Date().toISOString()
+
+  const filteredGames = games.filter(
+    g =>
+      g.name.toLowerCase().includes(search.toLowerCase()) ||
+      g.events.some(e => e.title.toLowerCase().includes(search.toLowerCase())),
+  )
+
+  const selectedGame =
+    filteredGames.find(g => g.id === selectedGameId) ??
+    (selectedGameId === null ? (filteredGames[0] ?? null) : null)
+
+  const visibleEvents = selectedGame
+    ? search
+      ? selectedGame.events.filter(e =>
+          e.title.toLowerCase().includes(search.toLowerCase()),
+        )
+      : selectedGame.events.filter(e => e.startAt >= today && e.status !== 'archived')
+    : []
 
   if (!user) return null
 
-  const canCreate = user.role === 'owner' || user.role === 'gm'
+  if (loading) {
+    return <p className="p-6 text-muted-foreground">Loading…</p>
+  }
+
+  if (games.length === 0) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[40vh]">
+        <p className="text-muted-foreground">You haven&apos;t joined any LARPs yet.</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="p-6 max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Events</h1>
-        {canCreate && (
-          <Link
-            href="/events/new"
-            className={buttonVariants({ variant: 'default', size: 'sm' })}
+    <div className="p-6 flex flex-col gap-4">
+      <h1 className="text-2xl font-semibold">Events</h1>
+
+      {/* Search bar */}
+      <div className="relative max-w-md">
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search LARPs or events…"
+          aria-label="Search LARPs or events"
+          className="w-full px-4 py-2 rounded-md border border-border bg-card text-sm pr-10 focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            aria-label="Clear search"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
-            <PlusCircle className="mr-2 h-4 w-4" />
-            New Event
-          </Link>
+            <X className="h-4 w-4" />
+          </button>
         )}
       </div>
-      {loading ? (
-        <p className="text-muted-foreground">Loading…</p>
-      ) : error ? (
-        <p className="text-sm text-destructive">{error}</p>
-      ) : events.length === 0 ? (
-        <p className="text-muted-foreground">No upcoming events.</p>
-      ) : (
-        <Card>
+
+      {/* Master / detail panels */}
+      <div className="flex gap-4 min-h-[400px]">
+        {/* Left panel — LARP list */}
+        <Card className="w-64 shrink-0 overflow-hidden">
           <CardContent className="p-0">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-4 font-medium">Event</th>
-                  <th className="text-left p-4 font-medium">Date</th>
-                  <th className="text-left p-4 font-medium">Location</th>
-                  <th className="text-left p-4 font-medium">Status</th>
-                  <th className="p-4" />
-                </tr>
-              </thead>
-              <tbody>
-                {events.map(evt => {
-                  const badge = getEventBadge(regMap[evt.id])
-                  return (
-                    <tr key={evt.id} className="border-b last:border-0">
-                      <td className="p-4 font-medium">{evt.title}</td>
-                      <td className="p-4 text-muted-foreground">{formatDate(evt.startAt)}</td>
-                      <td className="p-4 text-muted-foreground">{evt.location ?? '—'}</td>
-                      <td className="p-4">
-                        {badge === 'Registered' && <Badge>Registered</Badge>}
-                        {badge === 'Waitlisted' && <Badge variant="secondary">Waitlisted</Badge>}
-                        {badge === 'Cancelled' && <Badge variant="outline">Cancelled</Badge>}
-                        {badge === 'Open' && <Badge variant="outline">Open</Badge>}
-                      </td>
-                      <td className="p-4">
-                        <Link
-                          href={`/events/${evt.id}`}
-                          className={buttonVariants({ variant: 'outline', size: 'sm' })}
-                        >
-                          View
-                        </Link>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <div className="px-3 py-2 bg-muted text-xs font-semibold text-muted-foreground border-b border-border uppercase tracking-wide">
+              Your LARPs
+            </div>
+            {filteredGames.length === 0 ? (
+              <p className="px-3 py-4 text-sm text-muted-foreground italic">
+                No results for &ldquo;{search}&rdquo;
+              </p>
+            ) : (
+              filteredGames.map(g => {
+                const upcomingCount = search
+                  ? g.events.filter(e => e.title.toLowerCase().includes(search.toLowerCase())).length
+                  : g.events.filter(e => e.startAt >= today && e.status !== 'archived').length
+                const hasUpcoming = upcomingCount > 0
+                return (
+                  <button
+                    key={g.id}
+                    onClick={() => setSelectedGameId(g.id)}
+                    className={`w-full text-left px-3 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors ${
+                      selectedGame?.id === g.id ? 'bg-muted' : ''
+                    }`}
+                  >
+                    <p
+                      className={`text-sm font-medium truncate ${
+                        !hasUpcoming ? 'text-muted-foreground italic' : ''
+                      }`}
+                    >
+                      {g.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {!hasUpcoming
+                        ? 'no upcoming events'
+                        : `${upcomingCount} event${upcomingCount === 1 ? '' : 's'}`}
+                    </p>
+                  </button>
+                )
+              })
+            )}
           </CardContent>
         </Card>
-      )}
+
+        {/* Right panel — event table */}
+        <Card className="flex-1 overflow-hidden">
+          <CardContent className="p-0 h-full">
+            {selectedGame ? (
+              <>
+                <div className="flex items-center justify-between px-4 py-2 bg-muted border-b border-border">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {selectedGame.name}
+                  </span>
+                  {(selectedGame.role === 'owner' || selectedGame.role === 'gm') && (
+                    <Link
+                      href="/events/new"
+                      className={buttonVariants({ variant: 'default', size: 'sm' })}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      New Event
+                    </Link>
+                  )}
+                </div>
+
+                {visibleEvents.length === 0 ? (
+                  <div className="flex items-center justify-center h-40">
+                    <p className="text-sm text-muted-foreground">No upcoming events.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                        <th className="px-4 py-2 font-medium">Title</th>
+                        <th className="px-4 py-2 font-medium">Date</th>
+                        <th className="px-4 py-2 font-medium">Location</th>
+                        <th className="px-4 py-2 font-medium">Registration</th>
+                        <th className="px-4 py-2 font-medium" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleEvents.map(evt => {
+                        const reg = evt.userRegistration
+                        return (
+                          <tr
+                            key={evt.id}
+                            className="border-b border-border last:border-b-0 hover:bg-muted/30"
+                          >
+                            <td className="px-4 py-3 font-medium">{evt.title}</td>
+                            <td className="px-4 py-3 text-muted-foreground">
+                              {formatDate(evt.startAt)}
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">
+                              {evt.location ?? '—'}
+                            </td>
+                            <td className="px-4 py-3">
+                              {reg === null ? (
+                                <Badge variant="outline">Open</Badge>
+                              ) : reg.status === 'confirmed' || reg.status === 'pending' ? (
+                                <Badge>Registered</Badge>
+                              ) : reg.status === 'waitlist' ? (
+                                <Badge variant="secondary">Waitlisted</Badge>
+                              ) : (
+                                <Badge variant="outline">Cancelled</Badge>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <Link
+                                href={`/events/${evt.id}`}
+                                className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                              >
+                                View
+                              </Link>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-40">
+                <p className="text-sm text-muted-foreground">Select a LARP to view events.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
