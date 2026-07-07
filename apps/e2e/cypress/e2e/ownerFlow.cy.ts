@@ -2,6 +2,7 @@ import { testDateTime } from '../support/helpers'
 
 const larpName = `Cypress ownerFlow Test ${testDateTime(new Date())}`
 let larpEditUrl = ''
+const characterName = `Character ${testDateTime(new Date())}`
 
 const sel = {
   // new larp form
@@ -55,6 +56,22 @@ const sel = {
   gamesSearchInput: '[data-testid="games-search-input"]',
   deleteLarpBtn: '[data-testid="delete-larp-btn"]',
   confirmDeleteBtn: '[data-testid="confirm-delete-btn"]',
+  // nav
+  navLarpBuilder: '[data-testid="nav-larp-builder"]',
+  // builds tab (race + class list)
+  buildsSearchInput: '[data-testid="builds-search-input"]',
+  buildsExpandBtn: '[data-testid="builds-expand-btn"]',
+  buildsActivateBtn: '[data-testid="builds-activate-btn"]',
+  // larps list — enable/disable toggle
+  enableLarpBtn:         '[data-testid="enable-larp-btn"]',
+  // my characters page
+  navMyCharacters:       '[data-testid="nav-my-characters"]',
+  charactersSearchInput: '[data-testid="characters-search-input"]',
+  newCharacterBtn:       '[data-testid="new-character-btn"]',
+  // character creation wizard
+  continueBtn:           '[data-testid="continue-btn"]',
+  createCharacterBtn:    '[data-testid="create-character-btn"]',
+  characterNameInput:    '#aaaaaaaa-0000-0000-0000-000000000001',
 }
 
 describe('Owner Flow', () => {
@@ -63,7 +80,7 @@ describe('Owner Flow', () => {
   })
 
   it('Owner cannot build an incorrect LARP', () => {
-    cy.contains('LARP Builder').click()
+    cy.get(sel.navLarpBuilder).click()
     cy.contains('Build New LARP').click()
 
     cy.get(sel.visibilityPrivateBtn).click()
@@ -155,6 +172,13 @@ describe('Owner Flow', () => {
     cy.schemaBuilderSave()
 
     cy.url().should('include', '/admin/schemas')
+
+    // Activate the race schema from the LARP Builder
+    cy.visit(larpEditUrl)
+    cy.get(sel.tabRaceBuilds).click()
+    cy.get(sel.buildsSearchInput).type(larpName)
+    cy.get(sel.buildsExpandBtn).first().click()
+    cy.get(sel.buildsActivateBtn).first().click()
   })
 
   it('Owner can build a class with all common fields pre-populated', () => {
@@ -204,6 +228,45 @@ describe('Owner Flow', () => {
     cy.schemaBuilderSave()
 
     cy.url().should('include', '/admin/schemas')
+
+    // Activate the class schema from the LARP Builder
+    cy.visit(larpEditUrl)
+    cy.get(sel.tabClassBuilds).click()
+    cy.get(sel.buildsSearchInput).type(larpName)
+    cy.get(sel.buildsExpandBtn).first().click()
+    cy.get(sel.buildsActivateBtn).first().click()
+  })
+
+  it('Owner can create a character', () => {
+    // Enable the LARP so isActive is true and New Character button is not disabled
+    cy.get(sel.navLarpBuilder).click()
+    cy.get(sel.gamesSearchInput).clear().type(larpName)
+    cy.get(sel.enableLarpBtn).first().click()
+    cy.get(sel.enableLarpBtn).first().should('contain', 'Disable')
+
+    // Navigate to My Characters and locate the LARP
+    cy.get(sel.navMyCharacters).click()
+    cy.get(sel.charactersSearchInput).type(larpName)
+    cy.get(sel.newCharacterBtn).first().click()
+
+    // Race step — Continue is disabled until a race is selected
+    cy.get(sel.continueBtn).should('be.disabled')
+    cy.contains('button', larpName).first().click()
+    cy.get(sel.continueBtn).click()
+
+    // Class step — Continue is disabled until a class is selected
+    cy.get(sel.continueBtn).should('be.disabled')
+    cy.contains('button', `Warrior ${larpName}`).first().click()
+    cy.get(sel.continueBtn).click()
+
+    // Character form: validate name required before submitting
+    cy.get(sel.createCharacterBtn).click()
+    cy.contains('Character name is required').should('be.visible')
+
+    // Fill in name and successfully create the character
+    cy.get(sel.characterNameInput).type(characterName)
+    cy.get(sel.createCharacterBtn).click()
+    cy.url().should('match', /\/characters\/[a-f0-9-]{36}/)
   })
 
   after(() => {
