@@ -11,16 +11,19 @@ export interface CharacterFormProps {
   values: Record<string, unknown>
   onChange: (values: Record<string, unknown>) => void
   mode: 'create' | 'edit'
+  errorFields?: Set<string>
 }
 
 function FormField({
   field,
   value,
   onFieldChange,
+  hasError,
 }: {
   field: SchemaField
   value: unknown
   onFieldChange: (value: unknown) => void
+  hasError?: boolean
 }) {
   switch (field.type) {
     case 'section':
@@ -40,6 +43,7 @@ function FormField({
             id={field.id}
             value={typeof value === 'string' ? value : ''}
             onChange={e => onFieldChange(e.target.value)}
+            className={hasError ? 'border-destructive ring-2 ring-destructive' : undefined}
           />
         </div>
       )
@@ -355,7 +359,7 @@ function FormField({
   }
 }
 
-export function CharacterForm({ fields, values, onChange, mode: _mode }: CharacterFormProps) {
+export function CharacterForm({ fields, values, onChange, mode: _mode, errorFields }: CharacterFormProps) {
   return (
     <div className="space-y-4">
       {fields.map(field => (
@@ -364,6 +368,7 @@ export function CharacterForm({ fields, values, onChange, mode: _mode }: Charact
           field={field}
           value={values[field.id]}
           onFieldChange={value => onChange({ ...values, [field.id]: value })}
+          {...(errorFields?.has(field.id) ? { hasError: true } : {})}
         />
       ))}
     </div>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
-import { setGameId } from '@/lib/auth'
+import { setGameId, getGameId } from '@/lib/auth'
 import { CharacterForm } from '@/components/character/CharacterForm'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -44,6 +44,7 @@ export default function NewCharacterPage() {
   const [formValues, setFormValues] = useState<Record<string, unknown>>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [nameError, setNameError] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -53,10 +54,30 @@ export default function NewCharacterPage() {
           g => g.status === 'active' || g.role === 'owner' || g.role === 'gm',
         )
         setGames(available)
-        if (available.length === 1 && available[0]) setSelectedGameId(available[0].id)
+        setGamesLoading(false)
+
+        const contextGameId = getGameId()
+        const preselected = contextGameId
+          ? (available.find(g => g.id === contextGameId) ?? null)
+          : available.length === 1
+            ? (available[0] ?? null)
+            : null
+
+        if (!preselected) return
+
+        setSelectedGameId(preselected.id)
+        setSchemasLoading(true)
+        setSchemasError(null)
+        api.get<CharacterSchema[]>('/character-schemas')
+          .then(schemas => {
+            setRaceSchemas(schemas.filter(s => s.isActive && s.type === 'race'))
+            setClassSchemas(schemas.filter(s => s.isActive && s.type === 'class'))
+            setStep('race')
+          })
+          .catch(() => setSchemasError('Failed to load schemas. Please try again.'))
+          .finally(() => setSchemasLoading(false))
       })
-      .catch(() => {})
-      .finally(() => setGamesLoading(false))
+      .catch(() => setGamesLoading(false))
   }, [user])
 
   function handleLarpContinue() {
@@ -76,15 +97,22 @@ export default function NewCharacterPage() {
 
   async function handleSubmit() {
     if (!selectedGameId) return
+
+    const nameVal = typeof formValues[CHARACTER_NAME_FIELD_ID] === 'string'
+      ? (formValues[CHARACTER_NAME_FIELD_ID] as string).trim()
+      : ''
+    if (!nameVal) {
+      setSubmitError('Character name is required')
+      setNameError(true)
+      return
+    }
+
     setSubmitting(true)
     setSubmitError(null)
     try {
       setGameId(selectedGameId)
-      const name = (typeof formValues[CHARACTER_NAME_FIELD_ID] === 'string'
-        ? (formValues[CHARACTER_NAME_FIELD_ID] as string).trim()
-        : '') || 'Unnamed Character'
       const character = await api.post<Character>('/characters', {
-        name,
+        name: nameVal,
         data: formValues,
         raceSchemaId: selectedRace?.id,
         classSchemaId: selectedClass?.id,
@@ -133,8 +161,9 @@ export default function NewCharacterPage() {
   }
 
   function isGmOnly(field: SchemaField): boolean {
+    const lbl = field.label.toLowerCase()
     return (
-      (field.type === 'number' && field.label.toLowerCase() === 'level') ||
+      (field.type === 'number' && (lbl === 'level' || lbl === 'hit points')) ||
       field.gmOnly === true
     )
   }
@@ -211,6 +240,7 @@ export default function NewCharacterPage() {
           )}
           <div className="flex gap-2">
             <Button
+              data-testid="continue-btn"
               onClick={() => setStep('class')}
               disabled={raceSchemas.length > 0 && !selectedRace}
             >
@@ -247,6 +277,7 @@ export default function NewCharacterPage() {
           )}
           <div className="flex gap-2">
             <Button
+              data-testid="continue-btn"
               onClick={() => setStep('form')}
               disabled={classSchemas.length > 0 && !selectedClass}
             >
@@ -272,15 +303,22 @@ export default function NewCharacterPage() {
             <CharacterForm
               fields={combinedFields}
               values={formValues}
-              onChange={setFormValues}
+              onChange={values => {
+                setFormValues(values)
+                if (nameError && typeof values[CHARACTER_NAME_FIELD_ID] === 'string' && (values[CHARACTER_NAME_FIELD_ID] as string).trim()) {
+                  setNameError(false)
+                  setSubmitError(null)
+                }
+              }}
               mode="create"
+              {...(nameError ? { errorFields: new Set([CHARACTER_NAME_FIELD_ID]) } : {})}
             />
           ) : (
             <p className="text-sm text-muted-foreground">No fields defined for this race/class combination.</p>
           )}
           {submitError && <p className="text-sm text-destructive">{submitError}</p>}
           <div className="flex gap-2">
-            <Button onClick={() => void handleSubmit()} disabled={submitting}>
+            <Button data-testid="create-character-btn" onClick={() => void handleSubmit()} disabled={submitting}>
               {submitting ? 'Creating…' : 'Create Character'}
             </Button>
             <Button variant="outline" onClick={() => setStep('class')}>Back</Button>

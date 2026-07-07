@@ -90,6 +90,7 @@ export default function CharactersPage() {
       {/* Search bar */}
       <div className="relative max-w-md">
         <input
+          data-testid="characters-search-input"
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -157,6 +158,7 @@ export default function CharactersPage() {
                     {selectedGame.name}
                   </span>
                   <Button
+                    data-testid="new-character-btn"
                     size="sm"
                     onClick={() => handleNewCharacter(selectedGame)}
                     disabled={!selectedGame.isActive}
@@ -171,6 +173,7 @@ export default function CharactersPage() {
                   <div className="flex flex-col items-center justify-center h-40 gap-3">
                     <p className="text-sm text-muted-foreground">No characters yet.</p>
                     <Button
+                      data-testid="new-character-btn"
                       size="sm"
                       onClick={() => handleNewCharacter(selectedGame)}
                       disabled={!selectedGame.isActive}
