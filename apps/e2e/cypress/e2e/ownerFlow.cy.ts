@@ -127,6 +127,7 @@ describe('Owner Flow', () => {
     cy.get('input[placeholder="X-card, BRAKE/GAS, Lookdown"]').type('X-card')
     cy.get(sel.levelingRadioPercentage).click()
     cy.get(sel.saveChangesBtn).click()
+    cy.get(sel.saveChangesBtn).should('contain', 'Saved!')
 
     cy.get(sel.tabRaceBuilds).click()
     cy.get(sel.newRaceLink).click()
@@ -247,6 +248,7 @@ describe('Owner Flow', () => {
     // Navigate to My Characters and locate the LARP
     cy.get(sel.navMyCharacters).click()
     cy.get(sel.charactersSearchInput).type(larpName)
+    cy.contains('button', larpName).first().click()
     cy.get(sel.newCharacterBtn).first().click()
 
     // Race step — Continue is disabled until a race is selected
@@ -271,9 +273,8 @@ describe('Owner Flow', () => {
 
   after(() => {
     cy.visit('/larps')
-    // Wait for the owner view to render (h1 only appears after useAuth resolves to owner role).
     cy.contains('h1', 'LARP Builder')
-    cy.get(sel.gamesSearchInput).type(larpName)
+    cy.get(sel.gamesSearchInput).clear().type(larpName)
     cy.get(sel.deleteLarpBtn).first().click()
     cy.get(sel.confirmDeleteBtn).click()
   })

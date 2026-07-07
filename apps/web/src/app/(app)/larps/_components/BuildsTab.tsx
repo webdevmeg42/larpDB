@@ -99,7 +99,7 @@ export default function BuildsTab({ type, hasLevelingSystem }: BuildsTabProps) {
           </Button>
         ) : (
           <>
-            <Button size="sm" onClick={() => void handleActivate(s.id)}>
+            <Button size="sm" data-testid="builds-activate-btn" onClick={() => void handleActivate(s.id)}>
               Activate
             </Button>
             <Button size="sm" variant="destructive" onClick={() => void handleDelete(s.id, s.name)}>
@@ -151,6 +151,7 @@ export default function BuildsTab({ type, hasLevelingSystem }: BuildsTabProps) {
           placeholder={`Search ${labelPlural} by name…`}
           value={query}
           onChange={e => setQuery(e.target.value)}
+          data-testid="builds-search-input"
           className="w-full max-w-xs px-3 py-1.5 text-sm border rounded-md bg-background"
         />
       )}
@@ -185,6 +186,7 @@ export default function BuildsTab({ type, hasLevelingSystem }: BuildsTabProps) {
                           {hasMultiple ? (
                             <button
                               onClick={() => toggleExpanded(name)}
+                              data-testid="builds-expand-btn"
                               className="flex items-center gap-1.5 hover:text-primary transition-colors text-left"
                             >
                               {isExpanded

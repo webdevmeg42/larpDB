@@ -53,7 +53,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       ]
 
       // Mirror the frontend: skip required-field validation for statblock, XP-gated,
-      // and GM-only fields (level) — these are not shown during creation.
+      // and GM-only fields (level, hit points) — these are not shown during creation.
       const creationFields = combinedFields.filter(f => {
         if (f.type === 'statblock') return false
         if (f.type === 'hitpoints' || f.type === 'attacks' || f.type === 'spells') return false
@@ -62,7 +62,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         if (f.xpCost !== undefined) return false
         if (f.options?.some((o: { xpCost?: number }) => o.xpCost !== undefined)) return false
         if (f.stats?.some((s: { xpCostPerPoint?: number }) => s.xpCostPerPoint !== undefined)) return false
-        if (f.type === 'number' && f.label.toLowerCase() === 'level') return false
+        if (f.type === 'number' && (f.label.toLowerCase() === 'level' || f.label.toLowerCase() === 'hit points')) return false
         return true
       })
       const validationErrors = validateCharacterData(creationFields, result.data.data)
