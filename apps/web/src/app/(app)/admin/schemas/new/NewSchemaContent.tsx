@@ -112,7 +112,7 @@ export default function NewSchemaContent() {
           <p className="text-sm font-medium mb-3">Start from template (optional)</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Card
-              data-testid="template-card"
+              data-testid="template-card-blank"
               className={`cursor-pointer transition-colors ${!selected ? 'ring-2 ring-primary' : 'hover:bg-muted/50'}`}
               onClick={() => setSelected(null)}
             >
@@ -124,7 +124,7 @@ export default function NewSchemaContent() {
             {templates.map(t => (
               <Card
                 key={t.id}
-                data-testid="template-card"
+                data-testid={`template-card-${t.name.toLowerCase().replace(/\s+/g, '-')}`}
                 className={`cursor-pointer transition-colors ${selected?.id === t.id ? 'ring-2 ring-primary' : 'hover:bg-muted/50'}`}
                 onClick={() => { if (!name.trim()) { setNameError('Name is required') } setSelected(t) }}
               >

@@ -1,6 +1,7 @@
 import { testDateTime } from '../support/helpers'
 
 const larpName = `Cypress ownerFlow Test ${testDateTime(new Date())}`
+let larpEditUrl = ''
 
 const sel = {
   // new larp form
@@ -74,6 +75,7 @@ describe('Owner Flow', () => {
     cy.contains('button', 'Create LARP').click()
 
     cy.get(sel.tabBranding).should('be.visible')
+    cy.url().then(url => { larpEditUrl = url })
     cy.get(sel.saveChangesBtn).click()
     cy.get(sel.formErrorBanner)
       .should('be.visible').and('contain', 'Tagline')
@@ -156,6 +158,7 @@ describe('Owner Flow', () => {
   })
 
   it('Owner can build a class with all common fields pre-populated', () => {
+    cy.visit(larpEditUrl)
     cy.get(sel.tabClassBuilds).click()
     cy.get(sel.newClassLink).click()
 
