@@ -1,5 +1,13 @@
 import { testDateTime } from '../support/helpers'
 
+function tomorrowDatetimeLocal(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  d.setHours(12, 0, 0, 0)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T12:00`
+}
+
 const larpName = `Cypress ownerFlow Test ${testDateTime(new Date())}`
 let larpEditUrl = ''
 const characterName = `Character ${testDateTime(new Date())}`
@@ -58,6 +66,7 @@ const sel = {
   confirmDeleteBtn: '[data-testid="confirm-delete-btn"]',
   // nav
   navLarpBuilder: '[data-testid="nav-larp-builder"]',
+  navEvents:      '[data-testid="nav-events"]',
   // builds tab (race + class list)
   buildsSearchInput: '[data-testid="builds-search-input"]',
   buildsExpandBtn: '[data-testid="builds-expand-btn"]',
@@ -72,6 +81,13 @@ const sel = {
   continueBtn:           '[data-testid="continue-btn"]',
   createCharacterBtn:    '[data-testid="create-character-btn"]',
   characterNameInput:    '#aaaaaaaa-0000-0000-0000-000000000001',
+  // events page
+  eventsSearchInput:     '[data-testid="events-search-input"]',
+  newEventBtn:           '[data-testid="new-event-btn"]',
+  // new event form
+  createEventBtn:        '[data-testid="create-event-btn"]',
+  eventTitleInput:       '#title',
+  eventStartAtInput:     '#startAt',
 }
 
 describe('Owner Flow', () => {
@@ -269,6 +285,23 @@ describe('Owner Flow', () => {
     cy.get(sel.characterNameInput).type(characterName)
     cy.get(sel.createCharacterBtn).click()
     cy.url().should('match', /\/characters\/[a-f0-9-]{36}/)
+  })
+
+  it('Owner can create an event', () => {
+    cy.get(sel.navEvents).click()
+    cy.get(sel.eventsSearchInput).type(larpName)
+    cy.contains('button', larpName).first().click()
+    cy.get(sel.newEventBtn).first().click()
+
+    cy.get(sel.createEventBtn).should('be.disabled')
+
+    cy.get(sel.eventTitleInput).type(`Event ${larpName}`)
+    cy.get(sel.createEventBtn).should('be.disabled')
+
+    cy.get(sel.eventStartAtInput).type(tomorrowDatetimeLocal())
+    cy.get(sel.createEventBtn).click()
+
+    cy.contains('h1', `Event ${larpName}`)
   })
 
   after(() => {
