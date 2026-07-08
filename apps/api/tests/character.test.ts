@@ -570,3 +570,175 @@ describe('GET /my-characters', () => {
     await app.close()
   })
 })
+
+async function setupOwnerAndGmForAdmin() {
+  const app = buildApp()
+  await app.ready()
+
+  const ownerRegRes = await app.inject({
+    method: 'POST', url: '/auth/register',
+    payload: { email: 'admincharowner@test.com', password: 'password123', displayName: 'Admin Owner' },
+  })
+  const { token: ownerToken } = ownerRegRes.json()
+
+  const gameRes = await app.inject({
+    method: 'POST', url: '/games',
+    headers: { authorization: `Bearer ${ownerToken}` },
+    payload: { name: 'Admin Test Game' },
+  })
+  const { id: gameId } = gameRes.json()
+
+  await app.inject({
+    method: 'PATCH', url: `/games/${gameId}/status`,
+    headers: { authorization: `Bearer ${ownerToken}` },
+    payload: { status: 'active' },
+  })
+
+  const gmRegRes = await app.inject({
+    method: 'POST', url: '/auth/register',
+    payload: { email: 'adminchargm@test.com', password: 'password123', displayName: 'Admin GM' },
+  })
+  const { token: gmToken, user: gmUser } = gmRegRes.json()
+
+  await app.inject({
+    method: 'POST', url: '/subscriptions',
+    headers: { authorization: `Bearer ${gmToken}` },
+    payload: { gameId },
+  })
+  await app.inject({
+    method: 'PATCH', url: `/games/${gameId}/members/${gmUser.id}`,
+    headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+    payload: { role: 'gm' },
+  })
+
+  const playerRegRes = await app.inject({
+    method: 'POST', url: '/auth/register',
+    payload: { email: 'admincharplayer@test.com', password: 'password123', displayName: 'Admin Player' },
+  })
+  const { token: playerToken } = playerRegRes.json()
+
+  await app.inject({
+    method: 'POST', url: '/subscriptions',
+    headers: { authorization: `Bearer ${playerToken}` },
+    payload: { gameId },
+  })
+
+  return { app, ownerToken, gmToken, playerToken, gameId }
+}
+
+describe('GET /admin-characters', () => {
+  it('owner sees games with characters including player name', async () => {
+    const { app, ownerToken, playerToken, gameId } = await setupOwnerAndGmForAdmin()
+
+    const schemaRes = await app.inject({
+      method: 'POST', url: '/character-schemas',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { name: 'Hero Sheet', fields: SIMPLE_FIELDS },
+    })
+    const schema = schemaRes.json()
+
+    await app.inject({
+      method: 'POST', url: `/character-schemas/${schema.id}/activate`,
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+    })
+
+    await app.inject({
+      method: 'POST', url: '/characters',
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
+      payload: { name: 'Aldric the Bold', raceSchemaId: schema.id, data: { '11111111-1111-1111-1111-111111111111': 'Warrior' } },
+    })
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin-characters',
+      headers: { authorization: `Bearer ${ownerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const { games } = res.json()
+    expect(games).toHaveLength(1)
+    expect(games[0].characters).toHaveLength(1)
+    expect(games[0].characters[0].name).toBe('Aldric the Bold')
+    expect(games[0].characters[0].playerName).toBe('Admin Player')
+    expect(games[0].characters[0].totalXp).toBe(0)
+    expect(games[0].characters[0].isActive).toBe(true)
+
+    await app.close()
+  })
+
+  it('GM sees games with characters', async () => {
+    const { app, ownerToken, gmToken, playerToken, gameId } = await setupOwnerAndGmForAdmin()
+
+    const schemaRes = await app.inject({
+      method: 'POST', url: '/character-schemas',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { name: 'Hero Sheet', fields: SIMPLE_FIELDS },
+    })
+    const schema = schemaRes.json()
+
+    await app.inject({
+      method: 'POST', url: `/character-schemas/${schema.id}/activate`,
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+    })
+
+    await app.inject({
+      method: 'POST', url: '/characters',
+      headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
+      payload: { name: 'Aldric the Bold', raceSchemaId: schema.id, data: { '11111111-1111-1111-1111-111111111111': 'Warrior' } },
+    })
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin-characters',
+      headers: { authorization: `Bearer ${gmToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const { games } = res.json()
+    expect(games).toHaveLength(1)
+    expect(games[0].characters).toHaveLength(1)
+
+    await app.close()
+  })
+
+  it('player gets empty games list', async () => {
+    const { app, playerToken } = await setupOwnerAndGmForAdmin()
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin-characters',
+      headers: { authorization: `Bearer ${playerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const { games } = res.json()
+    expect(games).toHaveLength(0)
+
+    await app.close()
+  })
+
+  it('returns 401 when not authenticated', async () => {
+    const { app } = await setupOwnerAndGmForAdmin()
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin-characters',
+    })
+
+    expect(res.statusCode).toBe(401)
+
+    await app.close()
+  })
+
+  it('game with no characters appears with empty characters array', async () => {
+    const { app, ownerToken } = await setupOwnerAndGmForAdmin()
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin-characters',
+      headers: { authorization: `Bearer ${ownerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const { games } = res.json()
+    expect(games).toHaveLength(1)
+    expect(games[0].characters).toHaveLength(0)
+
+    await app.close()
+  })
+})

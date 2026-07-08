@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq, desc, and, sql } from 'drizzle-orm'
+import { eq, desc, and, sql, inArray, asc } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { characters, characterSchemas, siteConfig, xpTransactions, eventRegistrations, purchases, game, gameMembers } from '../db/schema.js'
+import { characters, characterSchemas, siteConfig, xpTransactions, eventRegistrations, purchases, game, gameMembers, users } from '../db/schema.js'
 import { CreateCharacterInput, UpdateCharacterInput, AwardXPInput, SpendXPInput, GmDataInput, computeCumulativeXp } from '@larpdb/shared'
 import { validateCharacterData } from '../lib/validateCharacterData.js'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
@@ -657,6 +657,60 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
 
       return reply.send({ games: Array.from(gameMap.values()) })
     }
+  )
+
+  fastify.get(
+    '/admin-characters',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const userId = request.user.sub
+
+      const rows = await db
+        .select({
+          gameId: game.id,
+          gameName: game.name,
+          charId: characters.id,
+          charName: characters.name,
+          charTotalXp: characters.totalXp,
+          charIsActive: characters.isActive,
+          playerName: users.displayName,
+        })
+        .from(gameMembers)
+        .innerJoin(game, eq(game.id, gameMembers.gameId))
+        .leftJoin(characters, eq(characters.gameId, game.id))
+        .leftJoin(users, eq(users.id, characters.userId))
+        .where(
+          and(
+            eq(gameMembers.userId, userId),
+            eq(gameMembers.status, 'active'),
+            inArray(gameMembers.role, ['owner', 'gm']),
+          ),
+        )
+        .orderBy(asc(game.name), asc(characters.name))
+
+      const gameMap = new Map<string, {
+        id: string
+        name: string
+        characters: { id: string; name: string; playerName: string | null; totalXp: number; isActive: boolean }[]
+      }>()
+
+      for (const row of rows) {
+        if (!gameMap.has(row.gameId)) {
+          gameMap.set(row.gameId, { id: row.gameId, name: row.gameName, characters: [] })
+        }
+        if (row.charId) {
+          gameMap.get(row.gameId)!.characters.push({
+            id: row.charId,
+            name: row.charName!,
+            playerName: row.playerName ?? null,
+            totalXp: row.charTotalXp ?? 0,
+            isActive: row.charIsActive ?? false,
+          })
+        }
+      }
+
+      return reply.send({ games: Array.from(gameMap.values()) })
+    },
   )
 
   fastify.delete(
