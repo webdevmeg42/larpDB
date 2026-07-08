@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { api } from '@/lib/api'
+import { setGameId } from '@/lib/auth'
 import { Badge } from '@/components/ui/badge'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { DatePicker } from '@/components/ui/date-picker'
+import { Plus, X } from 'lucide-react'
 import type { Character } from '@larpdb/shared'
 
 type Member = {
@@ -46,6 +49,20 @@ type Event = {
   maxPlayers: number | null
   status: 'draft' | 'published' | 'archived'
   createdAt: string
+}
+
+type NpcSummary = {
+  id: string
+  name: string
+  description: string | null
+}
+
+type NpcGame = {
+  id: string
+  name: string
+  slug: string
+  isActive: boolean
+  npcs: NpcSummary[]
 }
 
 const EMPTY_EVENT_FORM = {
@@ -93,6 +110,12 @@ export default function CommunityPage() {
   const [savingEvent, setSavingEvent] = useState(false)
   const [eventError, setEventError] = useState<string | null>(null)
   const [transitioningId, setTransitioningId] = useState<string | null>(null)
+
+  const router = useRouter()
+  const [npcGames, setNpcGames] = useState<NpcGame[]>([])
+  const [loadingNpcs, setLoadingNpcs] = useState(true)
+  const [selectedNpcGameId, setSelectedNpcGameId] = useState<string | null>(null)
+  const [npcSearch, setNpcSearch] = useState('')
 
   const gameId = game?.id
 
@@ -148,6 +171,19 @@ export default function CommunityPage() {
     }
   }, [gameId])
 
+  const loadNpcs = useCallback(async () => {
+    setLoadingNpcs(true)
+    try {
+      const data = await api.get<{ games: NpcGame[] }>('/my-npcs')
+      setNpcGames(data.games)
+      if (data.games.length > 0) setSelectedNpcGameId(data.games[0]!.id)
+    } catch {
+      // silent fail — NPC tab shows empty state
+    } finally {
+      setLoadingNpcs(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (!gameId) return
     void loadMembers()
@@ -155,6 +191,11 @@ export default function CommunityPage() {
     void loadEvents()
     void loadCharacters()
   }, [gameId, loadMembers, loadSubscribers, loadEvents, loadCharacters])
+
+  useEffect(() => {
+    if (!user) return
+    void loadNpcs()
+  }, [user, loadNpcs])
 
   async function handleRoleChange(userId: string, newRole: 'gm' | 'player') {
     if (!gameId) return
@@ -259,6 +300,34 @@ export default function CommunityPage() {
     archived: 'outline',
   }
 
+  const filteredNpcGames = npcGames.filter(
+    g =>
+      g.name.toLowerCase().includes(npcSearch.toLowerCase()) ||
+      g.npcs.some(n => n.name.toLowerCase().includes(npcSearch.toLowerCase()))
+  )
+
+  const selectedNpcGame =
+    filteredNpcGames.find(g => g.id === selectedNpcGameId) ??
+    (selectedNpcGameId === null ? (filteredNpcGames[0] ?? null) : null)
+
+  const visibleNpcs = selectedNpcGame
+    ? npcSearch && !selectedNpcGame.name.toLowerCase().includes(npcSearch.toLowerCase())
+      ? selectedNpcGame.npcs.filter(n =>
+          n.name.toLowerCase().includes(npcSearch.toLowerCase())
+        )
+      : selectedNpcGame.npcs
+    : []
+
+  function handleNewNpc(g: NpcGame) {
+    setGameId(g.id)
+    router.push('/npcs/new')
+  }
+
+  function handleEditNpc(g: NpcGame, npcId: string) {
+    setGameId(g.id)
+    router.push(`/npcs/${npcId}`)
+  }
+
   return (
     <div className="p-6 max-w-3xl">
       <h1 className="text-2xl font-semibold mb-6">Admin</h1>
@@ -271,6 +340,7 @@ export default function CommunityPage() {
           <TabsTrigger value="characters">Characters</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
+          <TabsTrigger value="npcs">NPCs</TabsTrigger>
         </TabsList>
 
         <TabsContent value="events">
@@ -596,6 +666,144 @@ export default function CommunityPage() {
                 </table>
               </CardContent>
             </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="npcs">
+          {/* Search */}
+          <div className="relative max-w-md mb-4">
+            <input
+              type="text"
+              value={npcSearch}
+              onChange={e => setNpcSearch(e.target.value)}
+              placeholder="Search LARPs or NPCs…"
+              aria-label="Search LARPs or NPCs"
+              className="w-full px-4 py-2 rounded-md border border-border bg-card text-sm pr-10 focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            {npcSearch && (
+              <button
+                onClick={() => setNpcSearch('')}
+                aria-label="Clear search"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {loadingNpcs ? (
+            <p className="text-muted-foreground text-sm">Loading…</p>
+          ) : npcGames.length === 0 ? (
+            <p className="text-muted-foreground text-sm">You don&apos;t manage NPCs for any LARPs yet.</p>
+          ) : (
+            <div className="flex gap-4 min-h-[400px]">
+              {/* Left panel — LARP list */}
+              <Card className="w-64 shrink-0 overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="px-3 py-2 bg-muted text-xs font-semibold text-muted-foreground border-b border-border uppercase tracking-wide">
+                    Your LARPs
+                  </div>
+                  {filteredNpcGames.length === 0 ? (
+                    <p className="px-3 py-4 text-sm text-muted-foreground italic">
+                      No results for &ldquo;{npcSearch}&rdquo;
+                    </p>
+                  ) : (
+                    filteredNpcGames.map(g => (
+                      <button
+                        key={g.id}
+                        onClick={() => setSelectedNpcGameId(g.id)}
+                        className={`w-full text-left px-3 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors ${
+                          selectedNpcGame?.id === g.id ? 'bg-muted' : ''
+                        }`}
+                      >
+                        <p className={`text-sm font-medium truncate ${g.npcs.length === 0 ? 'text-muted-foreground italic' : ''}`}>
+                          {g.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {g.npcs.length === 0
+                            ? 'no NPCs'
+                            : `${g.npcs.length} NPC${g.npcs.length === 1 ? '' : 's'}`}
+                        </p>
+                      </button>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Right panel — NPC table */}
+              <Card className="flex-1 overflow-hidden">
+                <CardContent className="p-0 h-full">
+                  {selectedNpcGame ? (
+                    <>
+                      <div className="flex items-center justify-between px-4 py-2 bg-muted border-b border-border">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                          {selectedNpcGame.name}
+                        </span>
+                        <Button
+                          size="sm"
+                          onClick={() => handleNewNpc(selectedNpcGame)}
+                          disabled={!selectedNpcGame.isActive}
+                          title={!selectedNpcGame.isActive ? 'This LARP is inactive' : undefined}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          New NPC
+                        </Button>
+                      </div>
+
+                      {visibleNpcs.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-40 gap-3">
+                          <p className="text-sm text-muted-foreground">No NPCs yet.</p>
+                          <Button
+                            size="sm"
+                            onClick={() => handleNewNpc(selectedNpcGame)}
+                            disabled={!selectedNpcGame.isActive}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            New NPC
+                          </Button>
+                        </div>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                              <th className="px-4 py-2 font-medium">Name</th>
+                              <th className="px-4 py-2 font-medium">Description</th>
+                              <th className="px-4 py-2 font-medium" />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {visibleNpcs.map(n => (
+                              <tr key={n.id} className="border-b border-border last:border-b-0 hover:bg-muted/30">
+                                <td className="px-4 py-3 font-medium">{n.name}</td>
+                                <td className="px-4 py-3 text-muted-foreground text-xs">
+                                  {n.description
+                                    ? n.description.length > 60
+                                      ? `${n.description.slice(0, 60)}…`
+                                      : n.description
+                                    : <span className="italic">No description</span>}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <button
+                                    onClick={() => handleEditNpc(selectedNpcGame, n.id)}
+                                    className={buttonVariants({ variant: 'outline', size: 'sm' })}
+                                  >
+                                    Edit
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-center h-40">
+                      <p className="text-sm text-muted-foreground">Select a LARP to view NPCs.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           )}
         </TabsContent>
       </Tabs>
