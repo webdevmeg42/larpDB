@@ -702,7 +702,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
           gameMap.get(row.gameId)!.characters.push({
             id: row.charId,
             name: row.charName!,
-            playerName: row.playerName ?? null,
+            playerName: row.playerName,
             totalXp: row.charTotalXp ?? 0,
             isActive: row.charIsActive ?? false,
           })
