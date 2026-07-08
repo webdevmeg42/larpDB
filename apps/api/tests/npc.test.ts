@@ -252,4 +252,21 @@ describe('GET /my-npcs', () => {
     expect(res.statusCode).toBe(401)
     await app.close()
   })
+
+  it('game with zero NPCs still appears with empty npcs array', async () => {
+    const { app, ownerToken } = await setupOwnerAndGm()
+
+    // Don't create any NPCs — game should appear with npcs: []
+    const res = await app.inject({
+      method: 'GET',
+      url: '/my-npcs',
+      headers: { authorization: `Bearer ${ownerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const { games } = res.json() as { games: { id: string; npcs: unknown[] }[] }
+    expect(games).toHaveLength(1)
+    expect(games[0]!.npcs).toHaveLength(0)
+    await app.close()
+  })
 })

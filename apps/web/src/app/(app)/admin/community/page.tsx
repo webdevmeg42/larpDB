@@ -114,6 +114,7 @@ export default function CommunityPage() {
   const router = useRouter()
   const [npcGames, setNpcGames] = useState<NpcGame[]>([])
   const [loadingNpcs, setLoadingNpcs] = useState(true)
+  const [npcError, setNpcError] = useState<string | null>(null)
   const [selectedNpcGameId, setSelectedNpcGameId] = useState<string | null>(null)
   const [npcSearch, setNpcSearch] = useState('')
 
@@ -178,7 +179,7 @@ export default function CommunityPage() {
       setNpcGames(data.games)
       if (data.games.length > 0) setSelectedNpcGameId(data.games[0]!.id)
     } catch {
-      // silent fail — NPC tab shows empty state
+      setNpcError('Failed to load NPCs.')
     } finally {
       setLoadingNpcs(false)
     }
@@ -693,6 +694,8 @@ export default function CommunityPage() {
 
           {loadingNpcs ? (
             <p className="text-muted-foreground text-sm">Loading…</p>
+          ) : npcError ? (
+            <p className="text-sm text-destructive">{npcError}</p>
           ) : npcGames.length === 0 ? (
             <p className="text-muted-foreground text-sm">You don&apos;t manage NPCs for any LARPs yet.</p>
           ) : (
