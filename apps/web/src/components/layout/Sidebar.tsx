@@ -9,8 +9,6 @@ import {
   Calendar,
   Users,
   Settings,
-  Swords,
-  Map,
   LogOut,
   UserRound,
   UserCircle,
@@ -37,8 +35,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Admin', href: '/admin/community', icon: ShieldCheck, roles: ['owner', 'gm'] },
   { label: 'LARP Builder', href: '/larps', icon: Settings, roles: ['owner'] },
   { label: 'Users', href: '/admin/users', icon: Users, roles: ['owner'] },
-  { label: 'NPCs', href: '/npcs', icon: Swords, roles: ['owner', 'gm'] },
-  { label: 'Plots', href: '/plots', icon: Map, roles: ['owner', 'gm'] },
   { label: 'New Post', href: '/admin/posts/new', icon: PenSquare, roles: ['owner', 'gm'] },
 ]
 
