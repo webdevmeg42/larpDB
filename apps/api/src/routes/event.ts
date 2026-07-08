@@ -111,6 +111,66 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
   )
 
   fastify.get(
+    '/admin-events',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const userId = request.user.sub
+
+      const rows = await db
+        .select({
+          gameId: game.id,
+          gameName: game.name,
+          gameStatus: game.status,
+          eventId: events.id,
+          eventTitle: events.title,
+          eventStartAt: events.startAt,
+          eventEndAt: events.endAt,
+          eventStatus: events.status,
+        })
+        .from(gameMembers)
+        .innerJoin(game, eq(game.id, gameMembers.gameId))
+        .leftJoin(events, eq(events.gameId, game.id))
+        .where(
+          and(
+            eq(gameMembers.userId, userId),
+            eq(gameMembers.status, 'active'),
+            inArray(gameMembers.role, ['owner', 'gm']),
+          ),
+        )
+        .orderBy(asc(game.name), asc(events.startAt))
+
+      const gameMap = new Map<string, {
+        id: string
+        name: string
+        isActive: boolean
+        events: { id: string; title: string; startAt: string; endAt: string | null; status: string }[]
+      }>()
+
+      for (const row of rows) {
+        if (!gameMap.has(row.gameId)) {
+          gameMap.set(row.gameId, {
+            id: row.gameId,
+            name: row.gameName,
+            isActive: row.gameStatus === 'active',
+            events: [],
+          })
+        }
+        if (row.eventId) {
+          gameMap.get(row.gameId)!.events.push({
+            id: row.eventId,
+            title: row.eventTitle!,
+            startAt: row.eventStartAt!.toISOString(),
+            endAt: row.eventEndAt ? row.eventEndAt.toISOString() : null,
+            status: row.eventStatus!,
+          })
+        }
+      }
+
+      return reply.send({ games: Array.from(gameMap.values()) })
+    },
+  )
+
+  fastify.get(
     '/events/:id',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {

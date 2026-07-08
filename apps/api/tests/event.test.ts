@@ -371,3 +371,200 @@ describe('GET /my-events', () => {
     await app.close()
   })
 })
+
+describe('GET /admin-events', () => {
+  const FUTURE = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  it('owner sees their games with events', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const regRes = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: { email: 'owner@admin-events-test.com', password: 'password123', displayName: 'Owner' },
+    })
+    const { token } = regRes.json()
+
+    const gameRes = await app.inject({
+      method: 'POST',
+      url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Admin Events Game' },
+    })
+    const { id: gameId } = gameRes.json()
+
+    await app.inject({
+      method: 'PATCH',
+      url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { status: 'active' },
+    })
+
+    await app.inject({
+      method: 'POST',
+      url: '/events',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { title: 'The Siege', startAt: FUTURE },
+    })
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin-events',
+      headers: { authorization: `Bearer ${token}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.games).toHaveLength(1)
+    expect(body.games[0].events[0].title).toBe('The Siege')
+    expect(body.games[0].events[0].status).toBe('draft')
+    expect(body.games[0].isActive).toBe(true)
+    await app.close()
+  })
+
+  it('GM sees their games with events', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const ownerRegRes = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: { email: 'owner2@admin-events-test.com', password: 'password123', displayName: 'Owner2' },
+    })
+    const { token: ownerToken } = ownerRegRes.json()
+
+    const gameRes = await app.inject({
+      method: 'POST',
+      url: '/games',
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { name: 'GM Events Game' },
+    })
+    const { id: gameId } = gameRes.json()
+
+    const gmRegRes = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: { email: 'gm@admin-events-test.com', password: 'password123', displayName: 'GM User' },
+    })
+    const { token: gmToken, user: gmUser } = gmRegRes.json()
+
+    await app.inject({
+      method: 'POST',
+      url: '/subscriptions',
+      headers: { authorization: `Bearer ${gmToken}` },
+      payload: { gameId },
+    })
+
+    await app.inject({
+      method: 'PATCH',
+      url: `/games/${gameId}/members/${gmUser.id}`,
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { role: 'gm' },
+    })
+
+    await app.inject({
+      method: 'POST',
+      url: '/events',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { title: 'GM Visible Event', startAt: FUTURE },
+    })
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin-events',
+      headers: { authorization: `Bearer ${gmToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.games).toHaveLength(1)
+    expect(body.games[0].events).toHaveLength(1)
+    await app.close()
+  })
+
+  it('player gets empty games list', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const ownerRegRes = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: { email: 'owner3@admin-events-test.com', password: 'password123', displayName: 'Owner3' },
+    })
+    const { token: ownerToken } = ownerRegRes.json()
+
+    const gameRes = await app.inject({
+      method: 'POST',
+      url: '/games',
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { name: 'Player Test Game' },
+    })
+    const { id: gameId } = gameRes.json()
+
+    const playerRegRes = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: { email: 'player@admin-events-test.com', password: 'password123', displayName: 'Player' },
+    })
+    const { token: playerToken } = playerRegRes.json()
+
+    await app.inject({
+      method: 'POST',
+      url: '/subscriptions',
+      headers: { authorization: `Bearer ${playerToken}` },
+      payload: { gameId },
+    })
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin-events',
+      headers: { authorization: `Bearer ${playerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().games).toEqual([])
+    await app.close()
+  })
+
+  it('returns 401 when not authenticated', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const res = await app.inject({ method: 'GET', url: '/admin-events' })
+    expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+
+  it('game with no events still appears with empty events array', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const regRes = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: { email: 'owner4@admin-events-test.com', password: 'password123', displayName: 'Owner4' },
+    })
+    const { token } = regRes.json()
+
+    const gameRes = await app.inject({
+      method: 'POST',
+      url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Empty Events Game' },
+    })
+    const { id: gameId } = gameRes.json()
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/admin-events',
+      headers: { authorization: `Bearer ${token}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.games).toHaveLength(1)
+    expect(body.games[0].events).toHaveLength(0)
+    await app.close()
+  })
+})
