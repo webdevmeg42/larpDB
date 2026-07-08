@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, asc, inArray } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { npcs } from '../db/schema.js'
+import { npcs, game, gameMembers } from '../db/schema.js'
 import { CreateNpcInput, UpdateNpcInput } from '@larpdb/shared'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 
@@ -75,6 +75,63 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
         .returning({ id: npcs.id })
       if (!deleted.length) return reply.status(404).send({ error: 'NPC not found' })
       return reply.status(204).send()
+    },
+  )
+
+  fastify.get(
+    '/my-npcs',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const userId = request.user.sub
+
+      const rows = await db
+        .select({
+          gameId: game.id,
+          gameName: game.name,
+          gameSlug: game.slug,
+          gameStatus: game.status,
+          npcId: npcs.id,
+          npcName: npcs.name,
+          npcDescription: npcs.description,
+        })
+        .from(gameMembers)
+        .innerJoin(game, eq(game.id, gameMembers.gameId))
+        .leftJoin(npcs, eq(npcs.gameId, game.id))
+        .where(and(
+          eq(gameMembers.userId, userId),
+          eq(gameMembers.status, 'active'),
+          inArray(gameMembers.role, ['owner', 'gm']),
+        ))
+        .orderBy(asc(game.name), asc(npcs.createdAt))
+
+      const gameMap = new Map<string, {
+        id: string
+        name: string
+        slug: string
+        isActive: boolean
+        npcs: { id: string; name: string; description: string | null }[]
+      }>()
+
+      for (const row of rows) {
+        if (!gameMap.has(row.gameId)) {
+          gameMap.set(row.gameId, {
+            id: row.gameId,
+            name: row.gameName,
+            slug: row.gameSlug,
+            isActive: row.gameStatus === 'active',
+            npcs: [],
+          })
+        }
+        if (row.npcId) {
+          gameMap.get(row.gameId)!.npcs.push({
+            id: row.npcId,
+            name: row.npcName!,
+            description: row.npcDescription,
+          })
+        }
+      }
+
+      return reply.send({ games: Array.from(gameMap.values()) })
     },
   )
 }

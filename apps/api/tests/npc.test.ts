@@ -176,3 +176,80 @@ describe('DELETE /npcs/:id', () => {
     await app.close()
   })
 })
+
+describe('GET /my-npcs', () => {
+  it('owner sees all their games with NPCs', async () => {
+    const { app, ownerToken, gmToken, gameId } = await setupOwnerAndGm()
+
+    await app.inject({
+      method: 'POST',
+      url: '/npcs',
+      headers: { authorization: `Bearer ${gmToken}`, 'x-game-id': gameId },
+      payload: { name: 'Dark Lord', description: 'Main villain' },
+    })
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/my-npcs',
+      headers: { authorization: `Bearer ${ownerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const { games } = res.json() as { games: { id: string; name: string; isActive: boolean; npcs: { id: string; name: string; description: string | null }[] }[] }
+    expect(games).toHaveLength(1)
+    expect(games[0]!.npcs).toHaveLength(1)
+    expect(games[0]!.npcs[0]!.name).toBe('Dark Lord')
+    expect(games[0]!.npcs[0]!.description).toBe('Main villain')
+    await app.close()
+  })
+
+  it('GM sees their games with NPCs', async () => {
+    const { app, gmToken, gameId } = await setupOwnerAndGm()
+
+    await app.inject({
+      method: 'POST',
+      url: '/npcs',
+      headers: { authorization: `Bearer ${gmToken}`, 'x-game-id': gameId },
+      payload: { name: 'Side Villain' },
+    })
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/my-npcs',
+      headers: { authorization: `Bearer ${gmToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const { games } = res.json() as { games: { npcs: { name: string }[] }[] }
+    expect(games).toHaveLength(1)
+    expect(games[0]!.npcs).toHaveLength(1)
+    expect(games[0]!.npcs[0]!.name).toBe('Side Villain')
+    await app.close()
+  })
+
+  it('player gets an empty games list', async () => {
+    const { app, playerToken } = await setupOwnerAndGm()
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/my-npcs',
+      headers: { authorization: `Bearer ${playerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect((res.json() as { games: unknown[] }).games).toHaveLength(0)
+    await app.close()
+  })
+
+  it('returns 401 when not authenticated', async () => {
+    const { app } = await setupOwnerAndGm()
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/my-npcs',
+    })
+
+    expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+})
