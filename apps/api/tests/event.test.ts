@@ -373,8 +373,6 @@ describe('GET /my-events', () => {
 })
 
 describe('GET /admin-events', () => {
-  const FUTURE = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-
   it('owner sees their games with events', async () => {
     const app = buildApp()
     await app.ready()
@@ -405,7 +403,7 @@ describe('GET /admin-events', () => {
       method: 'POST',
       url: '/events',
       headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
-      payload: { title: 'The Siege', startAt: FUTURE },
+      payload: { title: 'The Siege', startAt: FUTURE_DATE },
     })
 
     const res = await app.inject({
@@ -467,7 +465,7 @@ describe('GET /admin-events', () => {
       method: 'POST',
       url: '/events',
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { title: 'GM Visible Event', startAt: FUTURE },
+      payload: { title: 'GM Visible Event', startAt: FUTURE_DATE },
     })
 
     const res = await app.inject({
@@ -547,13 +545,12 @@ describe('GET /admin-events', () => {
     })
     const { token } = regRes.json()
 
-    const gameRes = await app.inject({
+    await app.inject({
       method: 'POST',
       url: '/games',
       headers: { authorization: `Bearer ${token}` },
       payload: { name: 'Empty Events Game' },
     })
-    const { id: gameId } = gameRes.json()
 
     const res = await app.inject({
       method: 'GET',
