@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, inArray, asc } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { gameMembers, larpSubscriptions, users } from '../db/schema.js'
+import { game, gameMembers, larpSubscriptions, users } from '../db/schema.js'
 import { UpdateMemberInput } from '@larpdb/shared'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 
@@ -120,6 +120,132 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .returning()
 
       return reply.send(updated)
+    },
+  )
+
+  fastify.get(
+    '/admin-members',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const userId = request.user.sub
+
+      const myMemberships = await db
+        .select({ gameId: gameMembers.gameId })
+        .from(gameMembers)
+        .where(
+          and(
+            eq(gameMembers.userId, userId),
+            eq(gameMembers.status, 'active'),
+            inArray(gameMembers.role, ['owner', 'gm']),
+          ),
+        )
+
+      if (myMemberships.length === 0) return reply.send({ games: [] })
+
+      const myGameIds = myMemberships.map(m => m.gameId)
+
+      const rows = await db
+        .select({
+          gameId: game.id,
+          gameName: game.name,
+          memberId: gameMembers.id,
+          memberUserId: gameMembers.userId,
+          memberRole: gameMembers.role,
+          memberJoinedAt: gameMembers.joinedAt,
+          memberDisplayName: users.displayName,
+          memberEmail: users.email,
+        })
+        .from(game)
+        .leftJoin(gameMembers, and(eq(gameMembers.gameId, game.id), eq(gameMembers.status, 'active')))
+        .leftJoin(users, eq(users.id, gameMembers.userId))
+        .where(inArray(game.id, myGameIds))
+        .orderBy(asc(game.name), asc(users.displayName))
+
+      const gameMap = new Map<string, {
+        id: string
+        name: string
+        members: { id: string; userId: string; displayName: string; email: string; role: string; joinedAt: string }[]
+      }>()
+
+      for (const row of rows) {
+        if (!gameMap.has(row.gameId)) {
+          gameMap.set(row.gameId, { id: row.gameId, name: row.gameName, members: [] })
+        }
+        if (row.memberId) {
+          gameMap.get(row.gameId)!.members.push({
+            id: row.memberId,
+            userId: row.memberUserId!,
+            displayName: row.memberDisplayName!,
+            email: row.memberEmail!,
+            role: row.memberRole!,
+            joinedAt: row.memberJoinedAt!.toISOString(),
+          })
+        }
+      }
+
+      return reply.send({ games: Array.from(gameMap.values()) })
+    },
+  )
+
+  fastify.get(
+    '/admin-subscriptions',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const userId = request.user.sub
+
+      const myMemberships = await db
+        .select({ gameId: gameMembers.gameId })
+        .from(gameMembers)
+        .where(
+          and(
+            eq(gameMembers.userId, userId),
+            eq(gameMembers.status, 'active'),
+            inArray(gameMembers.role, ['owner', 'gm']),
+          ),
+        )
+
+      if (myMemberships.length === 0) return reply.send({ games: [] })
+
+      const myGameIds = myMemberships.map(m => m.gameId)
+
+      const rows = await db
+        .select({
+          gameId: game.id,
+          gameName: game.name,
+          subId: larpSubscriptions.id,
+          subUserId: larpSubscriptions.userId,
+          subCreatedAt: larpSubscriptions.createdAt,
+          subDisplayName: users.displayName,
+          subEmail: users.email,
+        })
+        .from(game)
+        .leftJoin(larpSubscriptions, eq(larpSubscriptions.gameId, game.id))
+        .leftJoin(users, eq(users.id, larpSubscriptions.userId))
+        .where(inArray(game.id, myGameIds))
+        .orderBy(asc(game.name), asc(users.displayName))
+
+      const gameMap = new Map<string, {
+        id: string
+        name: string
+        subscribers: { id: string; userId: string; displayName: string; email: string; subscribedAt: string }[]
+      }>()
+
+      for (const row of rows) {
+        if (!gameMap.has(row.gameId)) {
+          gameMap.set(row.gameId, { id: row.gameId, name: row.gameName, subscribers: [] })
+        }
+        if (row.subId) {
+          gameMap.get(row.gameId)!.subscribers.push({
+            id: row.subId,
+            userId: row.subUserId!,
+            displayName: row.subDisplayName!,
+            email: row.subEmail!,
+            subscribedAt: row.subCreatedAt!.toISOString(),
+          })
+        }
+      }
+
+      return reply.send({ games: Array.from(gameMap.values()) })
     },
   )
 }

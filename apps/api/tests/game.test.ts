@@ -389,3 +389,182 @@ describe('GET /games hides inactive games', () => {
     await app.close()
   })
 })
+
+async function setupAdminMemberTest() {
+  const app = buildApp()
+  await app.ready()
+
+  const ownerRegRes = await app.inject({
+    method: 'POST', url: '/auth/register',
+    payload: { email: 'adminmemowner@example.com', password: 'password123', displayName: 'Admin Owner' },
+  })
+  const { token: ownerToken } = ownerRegRes.json()
+
+  const gameRes = await app.inject({
+    method: 'POST', url: '/games',
+    headers: { authorization: `Bearer ${ownerToken}` },
+    payload: { name: 'Member Test LARP' },
+  })
+  const { id: gameId } = gameRes.json()
+
+  await app.inject({
+    method: 'PATCH', url: `/games/${gameId}/status`,
+    headers: { authorization: `Bearer ${ownerToken}` },
+    payload: { status: 'active' },
+  })
+
+  const playerRegRes = await app.inject({
+    method: 'POST', url: '/auth/register',
+    payload: { email: 'adminmemplayer@example.com', password: 'password123', displayName: 'Admin Player' },
+  })
+  const { token: playerToken } = playerRegRes.json()
+
+  await app.inject({
+    method: 'POST', url: '/subscriptions',
+    headers: { authorization: `Bearer ${playerToken}` },
+    payload: { gameId },
+  })
+
+  return { app, ownerToken, playerToken, gameId }
+}
+
+describe('GET /admin-members', () => {
+  it('owner sees all members', async () => {
+    const { app, ownerToken } = await setupAdminMemberTest()
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin-members',
+      headers: { authorization: `Bearer ${ownerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as { games: Array<{ id: string; name: string; members: Array<{ role: string; displayName: string }> }> }
+    expect(body.games.length).toBe(1)
+    expect(body.games[0].name).toBe('Member Test LARP')
+    expect(body.games[0].members.length).toBeGreaterThanOrEqual(2)
+    const ownerMember = body.games[0].members.find(m => m.role === 'owner')
+    expect(ownerMember).toBeDefined()
+    expect(ownerMember!.displayName).toBe('Admin Owner')
+    await app.close()
+  })
+
+  it('player gets empty games list', async () => {
+    const { app, playerToken } = await setupAdminMemberTest()
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin-members',
+      headers: { authorization: `Bearer ${playerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as { games: unknown[] }
+    expect(body.games.length).toBe(0)
+    await app.close()
+  })
+
+  it('returns 401 without auth', async () => {
+    const app = buildApp()
+    await app.ready()
+    const res = await app.inject({ method: 'GET', url: '/admin-members' })
+    expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+
+  it('game with only owner shows 1 member', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const regRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: `solo-owner-${Date.now()}@example.com`, password: 'password123', displayName: 'Solo Owner' },
+    })
+    const { token: ownerToken } = regRes.json()
+
+    const gameRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { name: 'Solo LARP' },
+    })
+    const { id: gameId } = gameRes.json()
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin-members',
+      headers: { authorization: `Bearer ${ownerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as { games: Array<{ members: unknown[] }> }
+    expect(body.games.length).toBe(1)
+    expect(body.games[0].members.length).toBe(1)
+    await app.close()
+  })
+})
+
+describe('GET /admin-subscriptions', () => {
+  it('owner sees subscribers', async () => {
+    const { app, ownerToken } = await setupAdminMemberTest()
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin-subscriptions',
+      headers: { authorization: `Bearer ${ownerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as { games: Array<{ id: string; name: string; subscribers: Array<{ displayName: string; email: string }> }> }
+    expect(body.games.length).toBe(1)
+    expect(body.games[0].subscribers.length).toBe(1)
+    expect(body.games[0].subscribers[0].displayName).toBe('Admin Player')
+    expect(body.games[0].subscribers[0].email).toBe('adminmemplayer@example.com')
+    await app.close()
+  })
+
+  it('player gets empty games list', async () => {
+    const { app, playerToken } = await setupAdminMemberTest()
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin-subscriptions',
+      headers: { authorization: `Bearer ${playerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as { games: unknown[] }
+    expect(body.games.length).toBe(0)
+    await app.close()
+  })
+
+  it('returns 401 without auth', async () => {
+    const app = buildApp()
+    await app.ready()
+    const res = await app.inject({ method: 'GET', url: '/admin-subscriptions' })
+    expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+
+  it('game with no subscribers shows empty array', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const regRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: `nosub-owner-${Date.now()}@example.com`, password: 'password123', displayName: 'NoSub Owner' },
+    })
+    const { token: ownerToken } = regRes.json()
+
+    await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { name: 'Empty Sub LARP' },
+    })
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin-subscriptions',
+      headers: { authorization: `Bearer ${ownerToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as { games: Array<{ subscribers: unknown[] }> }
+    expect(body.games.length).toBe(1)
+    expect(body.games[0].subscribers.length).toBe(0)
+    await app.close()
+  })
+})
