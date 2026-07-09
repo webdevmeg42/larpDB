@@ -6,6 +6,7 @@ import { NpcsTab } from './_components/NpcsTab'
 import { EventsTab } from './_components/EventsTab'
 import { CharactersTab } from './_components/CharactersTab'
 import { MembersTab } from './_components/MembersTab'
+import { SubscriptionsTab } from './_components/SubscriptionsTab'
 
 export default function CommunityPage() {
   const { user } = useAuth()
@@ -37,7 +38,7 @@ export default function CommunityPage() {
         </TabsContent>
 
         <TabsContent value="subscriptions">
-          <p className="text-muted-foreground text-sm">Coming soon…</p>
+          <SubscriptionsTab />
         </TabsContent>
 
         <TabsContent value="npcs">
