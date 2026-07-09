@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { NpcsTab } from './_components/NpcsTab'
 import { EventsTab } from './_components/EventsTab'
 import { CharactersTab } from './_components/CharactersTab'
+import { MembersTab } from './_components/MembersTab'
 
 export default function CommunityPage() {
   const { user } = useAuth()
@@ -32,7 +33,7 @@ export default function CommunityPage() {
         </TabsContent>
 
         <TabsContent value="members">
-          <p className="text-muted-foreground text-sm">Coming soon…</p>
+          <MembersTab />
         </TabsContent>
 
         <TabsContent value="subscriptions">
