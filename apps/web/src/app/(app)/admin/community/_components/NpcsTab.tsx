@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
 import { setGameId } from '@/lib/auth'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ChevronDown, ChevronRight, Plus, X } from 'lucide-react'
@@ -108,9 +108,12 @@ export function NpcsTab() {
             const isOpen = openSections.has(g.id)
             return (
               <Card key={g.id}>
-                <button
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => toggleSection(g.id)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') toggleSection(g.id) }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors cursor-pointer"
                 >
                   {isOpen
                     ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -129,7 +132,7 @@ export function NpcsTab() {
                     <Plus className="h-4 w-4 mr-1" />
                     New NPC
                   </Button>
-                </button>
+                </div>
                 {isOpen && (
                   <CardContent className="p-0 border-t border-border">
                     {g.npcs.length === 0 ? (
@@ -165,12 +168,13 @@ export function NpcsTab() {
                                   : <span className="italic">No description</span>}
                               </td>
                               <td className="px-4 py-3 text-right">
-                                <button
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={() => { setGameId(g.id); router.push(`/npcs/${n.id}`) }}
-                                  className={buttonVariants({ variant: 'outline', size: 'sm' })}
                                 >
                                   Edit
-                                </button>
+                                </Button>
                               </td>
                             </tr>
                           ))}
