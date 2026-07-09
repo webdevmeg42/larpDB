@@ -441,10 +441,44 @@ describe('GET /admin-members', () => {
     const body = res.json() as { games: Array<{ id: string; name: string; members: Array<{ role: string; displayName: string }> }> }
     expect(body.games.length).toBe(1)
     expect(body.games[0].name).toBe('Member Test LARP')
-    expect(body.games[0].members.length).toBeGreaterThanOrEqual(2)
+    expect(body.games[0].members.length).toBe(2)
     const ownerMember = body.games[0].members.find(m => m.role === 'owner')
     expect(ownerMember).toBeDefined()
     expect(ownerMember!.displayName).toBe('Admin Owner')
+    const playerMember = body.games[0].members.find((m: { role: string }) => m.role === 'player')
+    expect(playerMember).toBeDefined()
+    await app.close()
+  })
+
+  it('GM sees members across their games', async () => {
+    const { app, ownerToken, gameId } = await setupAdminMemberTest()
+
+    const gmRegRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'adminmemgm@example.com', password: 'password123', displayName: 'Admin GM' },
+    })
+    const { token: gmToken, user: gmUser } = gmRegRes.json()
+
+    await app.inject({
+      method: 'POST', url: '/subscriptions',
+      headers: { authorization: `Bearer ${gmToken}` },
+      payload: { gameId },
+    })
+    await app.inject({
+      method: 'PATCH', url: `/games/${gameId}/members/${gmUser.id}`,
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { role: 'gm' },
+    })
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin-members',
+      headers: { authorization: `Bearer ${gmToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as { games: Array<{ members: unknown[] }> }
+    expect(body.games).toHaveLength(1)
+    expect(body.games[0].members.length).toBeGreaterThan(0)
     await app.close()
   })
 
@@ -515,6 +549,38 @@ describe('GET /admin-subscriptions', () => {
     expect(body.games[0].subscribers.length).toBe(1)
     expect(body.games[0].subscribers[0].displayName).toBe('Admin Player')
     expect(body.games[0].subscribers[0].email).toBe('adminmemplayer@example.com')
+    await app.close()
+  })
+
+  it('GM sees subscriptions across their games', async () => {
+    const { app, ownerToken, gameId } = await setupAdminMemberTest()
+
+    const gmRegRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'adminsubgm@example.com', password: 'password123', displayName: 'Sub GM' },
+    })
+    const { token: gmToken, user: gmUser } = gmRegRes.json()
+
+    await app.inject({
+      method: 'POST', url: '/subscriptions',
+      headers: { authorization: `Bearer ${gmToken}` },
+      payload: { gameId },
+    })
+    await app.inject({
+      method: 'PATCH', url: `/games/${gameId}/members/${gmUser.id}`,
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { role: 'gm' },
+    })
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin-subscriptions',
+      headers: { authorization: `Bearer ${gmToken}` },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as { games: Array<{ subscribers: unknown[] }> }
+    expect(body.games).toHaveLength(1)
+    expect(body.games[0].subscribers.length).toBeGreaterThan(0)
     await app.close()
   })
 
