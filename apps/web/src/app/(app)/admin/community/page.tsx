@@ -3,6 +3,7 @@
 import { useAuth } from '@/hooks/useAuth'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { NpcsTab } from './_components/NpcsTab'
+import { EventsTab } from './_components/EventsTab'
 
 export default function CommunityPage() {
   const { user } = useAuth()
@@ -22,7 +23,7 @@ export default function CommunityPage() {
         </TabsList>
 
         <TabsContent value="events">
-          <p className="text-muted-foreground text-sm">Coming soon…</p>
+          <EventsTab />
         </TabsContent>
 
         <TabsContent value="characters">
