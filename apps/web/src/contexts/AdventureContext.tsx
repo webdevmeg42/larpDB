@@ -3,7 +3,7 @@
 import { createContext, useContext } from 'react'
 import { FONTS } from '@/lib/fonts'
 
-export interface LarpPublicData {
+export interface AdventurePublicData {
   id: string
   name: string
   slug: string
@@ -33,7 +33,7 @@ export interface LarpPublicData {
   additionalWebsites?: { label: string; url: string }[]
 }
 
-export interface LarpTheme {
+export interface AdventureTheme {
   colorPrimary: string
   colorSecondary: string
   colorBackground: string
@@ -43,20 +43,20 @@ export interface LarpTheme {
   bodyFamily: string
 }
 
-export interface LarpContextValue {
-  data: LarpPublicData
-  theme: LarpTheme
+export interface AdventureContextValue {
+  data: AdventurePublicData
+  theme: AdventureTheme
 }
 
-export const LarpContext = createContext<LarpContextValue | null>(null)
+export const AdventureContext = createContext<AdventureContextValue | null>(null)
 
-export function useLarpContext(): LarpContextValue {
-  const ctx = useContext(LarpContext)
-  if (!ctx) throw new Error('useLarpContext must be used inside LarpLayout')
+export function useAdventureContext(): AdventureContextValue {
+  const ctx = useContext(AdventureContext)
+  if (!ctx) throw new Error('useAdventureContext must be used inside AdventureLayout')
   return ctx
 }
 
-export function buildTheme(data: LarpPublicData): LarpTheme {
+export function buildTheme(data: AdventurePublicData): AdventureTheme {
   const headingFont = FONTS.find(f => f.name === data.fontHeading)
   const bodyFont = FONTS.find(f => f.name === data.fontBody)
   return {

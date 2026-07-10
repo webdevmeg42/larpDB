@@ -5,10 +5,10 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { getToken } from '@/lib/auth'
 import { SubscribeButton } from '@/components/SubscribeButton'
-import { useLarpContext, type LarpPublicData } from '@/contexts/LarpContext'
+import { useAdventureContext, type AdventurePublicData } from '@/contexts/AdventureContext'
 import { getContrastColor } from '@/lib/contrast'
 
-const SOCIAL_MAP: { key: keyof LarpPublicData; icon: string; label: string }[] = [
+const SOCIAL_MAP: { key: keyof AdventurePublicData; icon: string; label: string }[] = [
   { key: 'socialFacebook', icon: '📘', label: 'Facebook' },
   { key: 'socialInstagram', icon: '📸', label: 'Instagram' },
   { key: 'socialSnapchat', icon: '👻', label: 'Snapchat' },
@@ -31,7 +31,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export default function LarpLandingPage() {
   const params = useParams<{ slug: string }>()
-  const { data: larp, theme } = useLarpContext()
+  const { data: larp, theme } = useAdventureContext()
   const { colorPrimary, colorSecondary, colorBackground, headingFamily, bodyFamily } = theme
 
   const textColor = getContrastColor(colorBackground)
@@ -178,7 +178,7 @@ export default function LarpLandingPage() {
               {DIRECTORY_CARDS.map(card => (
                 <Link
                   key={card.slug}
-                  href={`/larps/${larp.slug}/${card.slug}`}
+                  href={`/adventures/${larp.slug}/${card.slug}`}
                   className="flex flex-col items-center text-center p-4 rounded-xl transition-colors"
                   style={{ border: `1px solid ${textColor}22`, color: textColor }}
                 >

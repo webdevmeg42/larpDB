@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useLarpContext } from '@/contexts/LarpContext'
+import { useAdventureContext } from '@/contexts/AdventureContext'
 import { getContrastColor } from '@/lib/contrast'
 
 interface Props {
@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function LarpPublicShell({ title, subtitle, children }: Props) {
-  const { data, theme } = useLarpContext()
+  const { data, theme } = useAdventureContext()
   const { colorPrimary, colorBackground, headingFamily, bodyFamily } = theme
 
   const navTextColor = getContrastColor(colorPrimary)
@@ -24,7 +24,7 @@ export function LarpPublicShell({ title, subtitle, children }: Props) {
         style={{ background: colorPrimary, color: navTextColor }}
       >
         <Link
-          href={`/larps/${data.slug}`}
+          href={`/adventures/${data.slug}`}
           className="hover:opacity-80 transition-opacity"
           style={{ color: navTextColor }}
         >
