@@ -58,7 +58,15 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     if (existing) return reply.status(409).send({ error: 'Email already in use' })
 
     const passwordHash = await bcrypt.hash(password, 12)
-    const [newUser] = await db.insert(users).values({ email, passwordHash, displayName }).returning()
+    let newUser: typeof users.$inferSelect | undefined
+    try {
+      ;[newUser] = await db.insert(users).values({ email, passwordHash, displayName }).returning()
+    } catch (err: unknown) {
+      if ((err as { code?: string }).code === '23505') {
+        return reply.status(409).send({ error: 'Email already in use' })
+      }
+      throw err
+    }
     if (!newUser) throw new Error('Failed to create user')
 
     return reply.status(201).send(await signResponse(newUser))

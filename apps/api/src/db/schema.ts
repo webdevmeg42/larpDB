@@ -44,6 +44,7 @@ export const gameMembers = pgTable('game_members', {
 }, (t) => ({
   uniqGameUser: unique().on(t.gameId, t.userId),
   userIdIdx: index('game_members_user_id_idx').on(t.userId),
+  gameStatusIdx: index('game_members_game_status_idx').on(t.gameId, t.status),
 }))
 
 export const siteConfig = pgTable('site_config', {
@@ -82,7 +83,9 @@ export const schemaTemplates = pgTable('schema_templates', {
   fields: jsonb('fields').notNull().$type<SchemaField[]>(),
   isBuiltin: boolean('is_builtin').notNull().default(false),
   type: text('type'),
-})
+}, (t) => ({
+  gameIdIdx: index('schema_templates_game_id_idx').on(t.gameId),
+}))
 
 export const characterSchemas = pgTable('character_schemas', {
   id: uuid('id').primaryKey().defaultRandom(),

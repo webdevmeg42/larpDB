@@ -56,7 +56,15 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
       if (result.data.email !== undefined) patch.email = result.data.email
       if (result.data.phone !== undefined) patch.phone = result.data.phone
 
-      const [updated] = await db.update(users).set(patch).where(eq(users.id, userId)).returning()
+      let updated: typeof users.$inferSelect | undefined
+      try {
+        ;[updated] = await db.update(users).set(patch).where(eq(users.id, userId)).returning()
+      } catch (err: unknown) {
+        if ((err as { code?: string }).code === '23505') {
+          return reply.status(409).send({ error: 'Email already in use' })
+        }
+        throw err
+      }
       if (!updated) return reply.status(404).send({ error: 'User not found' })
 
       const { passwordHash: _, ...safeUser } = updated
@@ -106,7 +114,10 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         .from(users)
         .where(eq(users.id, request.user.sub))
         .limit(1)
-      if (!current) return reply.status(404).send({ error: 'User not found' })
+      if (!current) {
+        await fs.promises.unlink(filepath).catch(() => {})
+        return reply.status(404).send({ error: 'User not found' })
+      }
 
       const avatarUrl = `/uploads/${filename}`
       const [updated] = await db
@@ -114,7 +125,10 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         .set({ avatarUrl })
         .where(eq(users.id, request.user.sub))
         .returning()
-      if (!updated) return reply.status(404).send({ error: 'User not found' })
+      if (!updated) {
+        await fs.promises.unlink(filepath).catch(() => {})
+        return reply.status(404).send({ error: 'User not found' })
+      }
 
       // Delete old avatar file if it was a local upload
       if (current.avatarUrl?.startsWith('/uploads/')) {

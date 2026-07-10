@@ -100,13 +100,29 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId } = request.gameContext
       const { id } = request.params as { id: string }
 
-      const [activated] = await db
-        .update(characterSchemas)
-        .set({ isActive: true })
+      const [schema] = await db
+        .select({ id: characterSchemas.id, gameId: characterSchemas.gameId, type: characterSchemas.type })
+        .from(characterSchemas)
         .where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId)))
-        .returning()
+        .limit(1)
+      if (!schema) return reply.status(404).send({ error: 'Schema not found' })
 
-      if (!activated) return reply.status(404).send({ error: 'Schema not found' })
+      const [activated] = await db.transaction(async (tx) => {
+        // Deactivate all schemas of the same type in this game
+        await tx
+          .update(characterSchemas)
+          .set({ isActive: false })
+          .where(and(eq(characterSchemas.gameId, gameId), eq(characterSchemas.type, schema.type)))
+
+        // Activate the target
+        const [updated] = await tx
+          .update(characterSchemas)
+          .set({ isActive: true })
+          .where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId)))
+          .returning()
+        return [updated]
+      })
+
       return reply.send(activated)
     },
   )

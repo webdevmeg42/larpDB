@@ -115,15 +115,24 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         .limit(1)
       if (!existing) return reply.status(404).send({ error: 'Store item not found' })
 
-      const [hasPurchase] = await db.select({ id: purchases.id }).from(purchases).where(eq(purchases.storeItemId, id)).limit(1)
-      if (hasPurchase) {
-        return reply.status(409).send({ error: 'Cannot delete item with existing purchases' })
+      try {
+        await db.transaction(async (tx) => {
+          const [hasPurchase] = await tx
+            .select({ id: purchases.id })
+            .from(purchases)
+            .where(eq(purchases.storeItemId, id))
+            .limit(1)
+          if (hasPurchase) {
+            throw Object.assign(new Error('Cannot delete item with existing purchases'), { statusCode: 409 })
+          }
+          await tx.delete(storeItems).where(eq(storeItems.id, id))
+        })
+      } catch (err: unknown) {
+        const code = (err as { statusCode?: number; code?: string })
+        if (code.statusCode === 409) return reply.status(409).send({ error: 'Cannot delete item with existing purchases' })
+        if (code.code === '23503') return reply.status(409).send({ error: 'Cannot delete item with existing purchases' })
+        throw err
       }
-
-      await db.delete(storeItems).where(and(
-        eq(storeItems.id, id),
-        inArray(storeItems.eventId, db.select({ id: events.id }).from(events).where(eq(events.gameId, gameId))),
-      ))
       return reply.status(204).send()
     },
   )
@@ -137,18 +146,32 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
-      const { eventId, userId, characterId } = request.query as {
+      const { eventId, userId, characterId, limit: limitParam, offset: offsetParam } = request.query as {
         eventId?: string
         userId?: string
         characterId?: string
+        limit?: string
+        offset?: string
       }
+
+      const resolvedLimit = Math.min(parseInt(limitParam ?? '100', 10) || 100, 500)
+      const resolvedOffset = Math.max(parseInt(offsetParam ?? '0', 10) || 0, 0)
 
       const conditions: SQL[] = [eq(events.gameId, gameId)]
       if (eventId) conditions.push(eq(purchases.eventId, eventId))
       if (userId) conditions.push(eq(purchases.userId, userId))
       if (characterId) conditions.push(eq(purchases.characterId, characterId))
 
-      const rows = await db
+      const [countResult] = await db
+        .select({ total: sql<number>`COUNT(*)::int` })
+        .from(purchases)
+        .leftJoin(users, eq(purchases.userId, users.id))
+        .leftJoin(characters, eq(purchases.characterId, characters.id))
+        .innerJoin(events, eq(purchases.eventId, events.id))
+        .leftJoin(storeItems, eq(purchases.storeItemId, storeItems.id))
+        .where(and(...conditions))
+
+      const items = await db
         .select({
           id: purchases.id,
           storeItemId: purchases.storeItemId,
@@ -170,8 +193,10 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         .innerJoin(events, eq(purchases.eventId, events.id))
         .leftJoin(storeItems, eq(purchases.storeItemId, storeItems.id))
         .where(and(...conditions))
+        .limit(resolvedLimit)
+        .offset(resolvedOffset)
 
-      return reply.send(rows)
+      return reply.send({ total: countResult?.total ?? 0, items })
     },
   )
 
