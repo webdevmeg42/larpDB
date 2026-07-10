@@ -9,7 +9,7 @@ import { setGameId } from '@/lib/auth'
 import dynamic from 'next/dynamic'
 
 const RulebookTab = dynamic(
-  () => import('../../larps/_components/RulebookTab'),
+  () => import('../../adventures/_components/RulebookTab'),
   { ssr: false },
 )
 

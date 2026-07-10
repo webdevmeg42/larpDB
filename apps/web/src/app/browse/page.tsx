@@ -100,7 +100,7 @@ export default function BrowsePage() {
               >
                 <div className="min-w-0">
                   <Link
-                    href={`/larps/${g.slug}`}
+                    href={`/adventures/${g.slug}`}
                     className="font-semibold hover:underline"
                   >
                     {g.name}

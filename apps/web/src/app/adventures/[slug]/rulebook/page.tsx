@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { LarpPublicShell } from '../_components/LarpPublicShell'
+import { AdventurePublicShell } from '../_components/AdventurePublicShell'
 import type { RulebookChapter } from '@plotrunner/shared'
 
 interface RulebookData {
@@ -42,7 +42,7 @@ export default function PublicRulebookPage() {
   // Link-only mode
   if (data.chapters.length === 0 && data.rulebookLink) {
     return (
-      <LarpPublicShell title="Rulebook" subtitle="Game mechanics">
+      <AdventurePublicShell title="Rulebook" subtitle="Game mechanics">
         <div className="rounded-lg border p-8 text-center">
           <a
             href={data.rulebookLink}
@@ -53,24 +53,24 @@ export default function PublicRulebookPage() {
             View Rulebook →
           </a>
         </div>
-      </LarpPublicShell>
+      </AdventurePublicShell>
     )
   }
 
   if (data.chapters.length === 0) {
     return (
-      <LarpPublicShell title="Rulebook" subtitle="Game mechanics">
+      <AdventurePublicShell title="Rulebook" subtitle="Game mechanics">
         <div className="rounded-lg border p-8 text-center text-muted-foreground text-sm">
           No rulebook chapters have been added yet.
         </div>
-      </LarpPublicShell>
+      </AdventurePublicShell>
     )
   }
 
   const activeChapter = data.chapters.find(c => c.id === activeId) ?? data.chapters[0]
 
   return (
-    <LarpPublicShell title="Rulebook" subtitle="Game mechanics">
+    <AdventurePublicShell title="Rulebook" subtitle="Game mechanics">
       {data.rulebookLink && (
         <p className="text-xs text-muted-foreground mb-4">
           Also available externally:{' '}
@@ -112,6 +112,6 @@ export default function PublicRulebookPage() {
           </div>
         )}
       </div>
-    </LarpPublicShell>
+    </AdventurePublicShell>
   )
 }

@@ -29,7 +29,7 @@ const DIRECTORY_CARDS = [
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
-export default function LarpLandingPage() {
+export default function AdventureLandingPage() {
   const params = useParams<{ slug: string }>()
   const { data: larp, theme } = useAdventureContext()
   const { colorPrimary, colorSecondary, colorBackground, headingFamily, bodyFamily } = theme

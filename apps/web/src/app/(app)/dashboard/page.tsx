@@ -88,7 +88,7 @@ export default function DashboardPage() {
             <div key={post.id}>
               <div className="mb-2 flex items-center gap-2">
                 <Link
-                  href={`/larps/${post.gameSlug}`}
+                  href={`/adventures/${post.gameSlug}`}
                   className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${getLarpColor(post.gameId)}`}
                 >
                   {post.gameName}

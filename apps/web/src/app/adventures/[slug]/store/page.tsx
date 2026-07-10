@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { LarpPublicShell } from '../_components/LarpPublicShell'
+import { AdventurePublicShell } from '../_components/AdventurePublicShell'
 
 interface StoreItem {
   id: string
@@ -54,7 +54,7 @@ export default function PublicStorePage() {
   const hasItems = data.events.some(e => e.items.length > 0)
 
   return (
-    <LarpPublicShell title="Store" subtitle="Tickets & items">
+    <AdventurePublicShell title="Store" subtitle="Tickets & items">
       {!hasItems ? (
         <div className="rounded-lg border p-8 text-center text-muted-foreground text-sm">
           No items are currently available.
@@ -101,6 +101,6 @@ export default function PublicStorePage() {
           </p>
         </div>
       )}
-    </LarpPublicShell>
+    </AdventurePublicShell>
   )
 }

@@ -18,7 +18,7 @@ export default function SchemaBuilderPage({ params }: { params: { id: string } }
     if (!user) return
     api.get<CharacterSchema>(`/character-schemas/${params.id}`)
       .then(setSchema)
-      .catch(() => router.push('/larps'))
+      .catch(() => router.push('/adventures'))
       .finally(() => setLoading(false))
   }, [user, params.id, router])
 

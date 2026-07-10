@@ -139,7 +139,7 @@ export default function NewPostPage() {
         : {}
       await api.post('/posts', { title, body, ...mediaPayload })
       const selected = games.find(g => g.id === selectedGameId)
-      router.push(selected ? `/larps/${selected.slug}` : '/dashboard')
+      router.push(selected ? `/adventures/${selected.slug}` : '/dashboard')
     } catch (err) {
       setError((err as Error).message ?? 'Failed to create post')
       setSubmitting(false)

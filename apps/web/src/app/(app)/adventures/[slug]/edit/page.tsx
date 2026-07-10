@@ -143,7 +143,7 @@ export default function BuilderPage() {
   return (
     <div className="p-6 max-w-6xl">
       <Link
-        href="/larps"
+        href="/adventures"
         className="text-sm text-muted-foreground hover:text-foreground mb-4 inline-block"
       >
         ← Back to LARP Builder

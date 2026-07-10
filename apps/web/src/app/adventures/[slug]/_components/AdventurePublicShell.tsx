@@ -10,7 +10,7 @@ interface Props {
   children: React.ReactNode
 }
 
-export function LarpPublicShell({ title, subtitle, children }: Props) {
+export function AdventurePublicShell({ title, subtitle, children }: Props) {
   const { data, theme } = useAdventureContext()
   const { colorPrimary, colorBackground, headingFamily, bodyFamily } = theme
 

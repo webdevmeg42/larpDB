@@ -33,7 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Events', href: '/events', icon: Calendar, roles: ['owner', 'gm', 'player'] },
   { label: 'Rulebook', href: '/rulebook', icon: BookOpen, roles: ['owner', 'gm', 'player'] },
   { label: 'Admin', href: '/admin/community', icon: ShieldCheck, roles: ['owner', 'gm'] },
-  { label: 'LARP Builder', href: '/larps', icon: Settings, roles: ['owner'] },
+  { label: 'LARP Builder', href: '/adventures', icon: Settings, roles: ['owner'] },
   { label: 'Users', href: '/admin/users', icon: Users, roles: ['owner'] },
   { label: 'New Post', href: '/admin/posts/new', icon: PenSquare, roles: ['owner', 'gm'] },
 ]

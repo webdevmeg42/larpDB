@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { LarpPublicShell } from '../_components/LarpPublicShell'
+import { AdventurePublicShell } from '../_components/AdventurePublicShell'
 import type { SchemaField } from '@plotrunner/shared'
 
 interface Schema {
@@ -39,7 +39,7 @@ export default function ClassBuildsPage() {
   if (notFound) return <div className="p-6">LARP not found.</div>
 
   return (
-    <LarpPublicShell title="Class Builds" subtitle="Character classes">
+    <AdventurePublicShell title="Class Builds" subtitle="Character classes">
       {schemas.length === 0 ? (
         <div className="rounded-lg border p-8 text-center text-muted-foreground text-sm">
           No classes have been published yet.
@@ -61,6 +61,6 @@ export default function ClassBuildsPage() {
           })}
         </div>
       )}
-    </LarpPublicShell>
+    </AdventurePublicShell>
   )
 }

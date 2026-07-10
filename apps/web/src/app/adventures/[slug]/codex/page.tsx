@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { LarpPublicShell } from '../_components/LarpPublicShell'
+import { AdventurePublicShell } from '../_components/AdventurePublicShell'
 import type { GameCodex } from '@plotrunner/shared'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
@@ -35,7 +35,7 @@ export default function CodexPage() {
   const hasFactions = codex.factions && codex.factions.length > 0
 
   return (
-    <LarpPublicShell title="Codex" subtitle="World lore & setting">
+    <AdventurePublicShell title="Codex" subtitle="World lore & setting">
       <div className="space-y-4">
         {(codex.genre || codex.tone) && (
           <Section title="Genre & Tone">
@@ -114,7 +114,7 @@ export default function CodexPage() {
           </Section>
         )}
       </div>
-    </LarpPublicShell>
+    </AdventurePublicShell>
   )
 }
 
