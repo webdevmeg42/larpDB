@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq, and, desc, count, sql, inArray } from 'drizzle-orm'
+import { eq, and, desc, count, sql, inArray, asc } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { game, posts, comments, postLikes, users, gameMembers, larpSubscriptions } from '../db/schema.js'
 import { CreatePostInput, CreateCommentInput } from '@larpdb/shared'
@@ -97,43 +97,71 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(403).send({ error: 'Owner or GM role required' })
       }
 
-      const [post] = await db
-        .select()
-        .from(posts)
-        .where(eq(posts.id, postId))
-        .limit(1)
+      const [post] = await db.select().from(posts).where(and(eq(posts.id, postId), eq(posts.gameId, gameId))).limit(1)
       if (!post) return reply.status(404).send({ error: 'Post not found' })
-      if (post.gameId !== gameId) return reply.status(403).send({ error: 'Post does not belong to this game' })
 
       await db.delete(posts).where(eq(posts.id, postId))
       return reply.status(204).send()
     },
   )
 
-  // GET /posts/:postId/comments — public
+  // GET /posts/:postId/comments — public for public+active games, members-only otherwise
   fastify.get('/posts/:postId/comments', async (request, reply) => {
     const { postId } = request.params as { postId: string }
 
-    const [post] = await db
-      .select({ id: posts.id })
+    // Join the post's game to check visibility
+    const [postWithGame] = await db
+      .select({
+        postId: posts.id,
+        gameId: posts.gameId,
+        gameIsPublic: game.isPublic,
+        gameStatus: game.status,
+      })
       .from(posts)
+      .innerJoin(game, eq(game.id, posts.gameId))
       .where(eq(posts.id, postId))
       .limit(1)
-    if (!post) return reply.status(404).send({ error: 'Post not found' })
+
+    if (!postWithGame) return reply.status(404).send({ error: 'Post not found' })
+
+    // Allow access if: game is public+active, OR caller is an authenticated active member
+    const isPublicGame = postWithGame.gameIsPublic && postWithGame.gameStatus === 'active'
+    if (!isPublicGame) {
+      const token = (request.headers['authorization'] ?? '').replace('Bearer ', '')
+      if (!token) return reply.status(403).send({ error: 'Access denied' })
+      try {
+        await request.jwtVerify()
+      } catch {
+        return reply.status(403).send({ error: 'Access denied' })
+      }
+      const userId = (request.user as { sub: string }).sub
+      const [membership] = await db
+        .select({ id: gameMembers.id })
+        .from(gameMembers)
+        .where(
+          and(
+            eq(gameMembers.gameId, postWithGame.gameId),
+            eq(gameMembers.userId, userId),
+            eq(gameMembers.status, 'active'),
+          ),
+        )
+        .limit(1)
+      if (!membership) return reply.status(403).send({ error: 'Access denied' })
+    }
 
     const rows = await db
       .select({
         id: comments.id,
         postId: comments.postId,
+        body: comments.body,
         authorId: comments.authorId,
         authorName: users.displayName,
-        body: comments.body,
         createdAt: comments.createdAt,
       })
       .from(comments)
       .innerJoin(users, eq(users.id, comments.authorId))
       .where(eq(comments.postId, postId))
-      .orderBy(comments.createdAt)
+      .orderBy(asc(comments.createdAt))
 
     return reply.send(rows)
   })
@@ -249,16 +277,16 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
 
       if (existing) {
         await db.delete(postLikes).where(and(eq(postLikes.postId, postId), eq(postLikes.userId, userId)))
+        return reply.send({ liked: false })
       } else {
-        await db.insert(postLikes).values({ postId, userId })
+        try {
+          await db.insert(postLikes).values({ postId, userId })
+        } catch (err: unknown) {
+          // Concurrent duplicate insert — unique constraint (23505) means already liked
+          if ((err as { code?: string }).code !== '23505') throw err
+        }
+        return reply.send({ liked: true })
       }
-
-      const [{ likeCount }] = await db
-        .select({ likeCount: count() })
-        .from(postLikes)
-        .where(eq(postLikes.postId, postId))
-
-      return reply.send({ likeCount: Number(likeCount), likedByMe: !existing })
     },
   )
 
@@ -304,6 +332,10 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
           updatedAt: posts.updatedAt,
           mediaType: posts.mediaType,
           mediaUrls: posts.mediaUrls,
+          likedByMe: sql<boolean>`EXISTS (
+            SELECT 1 FROM post_likes pl
+            WHERE pl.post_id = ${posts.id} AND pl.user_id = ${userId}
+          )`.as('liked_by_me'),
         })
         .from(posts)
         .innerJoin(game, eq(game.id, posts.gameId))
@@ -316,21 +348,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
         .limit(limitN)
         .offset(offsetN)
 
-      // Determine which posts the user has liked
-      const postIds = rows.map(r => r.id)
-      const likedSet = postIds.length > 0
-        ? new Set(
-            (await db
-              .select({ postId: postLikes.postId })
-              .from(postLikes)
-              .where(and(inArray(postLikes.postId, postIds), eq(postLikes.userId, userId)))
-            ).map(l => l.postId),
-          )
-        : new Set<string>()
-
-      const items = rows.map(r => ({ ...r, likedByMe: likedSet.has(r.id) }))
-
-      return reply.send({ items, total: Number(total), limit: limitN, offset: offsetN })
+      return reply.send({ items: rows, total: Number(total), limit: limitN, offset: offsetN })
     },
   )
 }
