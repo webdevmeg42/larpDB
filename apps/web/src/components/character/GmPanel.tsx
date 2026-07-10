@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Character, GmData, GmCondition } from '@larpdb/shared'
+import type { Character, GmData, GmCondition } from '@plotrunner/shared'
 
 interface Props {
   character: Character

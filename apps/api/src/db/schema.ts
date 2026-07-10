@@ -10,7 +10,7 @@ import {
   index,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
-import type { SchemaField, GameCodex } from '@larpdb/shared'
+import type { SchemaField, GameCodex } from '@plotrunner/shared'
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import type { ApiError } from '@larpdb/shared'
+import type { ApiError } from '@plotrunner/shared'
 
 interface SubscribeButtonProps {
   gameId: string

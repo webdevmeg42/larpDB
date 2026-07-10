@@ -1,1 +1,1 @@
-export { resolveLevelFromXp } from '@larpdb/shared'
+export { resolveLevelFromXp } from '@plotrunner/shared'

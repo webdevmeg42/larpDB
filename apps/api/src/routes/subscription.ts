@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { eq, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { game, gameMembers, adventureSubscriptions } from '../db/schema.js'
-import { SubscribeInput } from '@larpdb/shared'
+import { SubscribeInput } from '@plotrunner/shared'
 
 export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post(

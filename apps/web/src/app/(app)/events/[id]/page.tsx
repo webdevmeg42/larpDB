@@ -8,7 +8,7 @@ import { api } from '@/lib/api'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
-import type { LarpEvent, EventRegistration, Character } from '@larpdb/shared'
+import type { LarpEvent, EventRegistration, Character } from '@plotrunner/shared'
 import { ArrowLeft } from 'lucide-react'
 
 function formatDateTime(iso: string): string {

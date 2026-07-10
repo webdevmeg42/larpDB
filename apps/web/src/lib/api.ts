@@ -1,4 +1,4 @@
-import { createApiClient } from '@larpdb/shared'
+import { createApiClient } from '@plotrunner/shared'
 import { getToken, getGameId } from './auth'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL

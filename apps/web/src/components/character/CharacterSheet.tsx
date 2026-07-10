@@ -1,6 +1,6 @@
 'use client'
 
-import type { SchemaField, AttackEntry, SpellEntry } from '@larpdb/shared'
+import type { SchemaField, AttackEntry, SpellEntry } from '@plotrunner/shared'
 
 function SheetField({ field, value }: { field: SchemaField; value: unknown }) {
   switch (field.type) {

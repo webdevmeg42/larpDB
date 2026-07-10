@@ -9,7 +9,7 @@ import { CharacterForm } from '@/components/character/CharacterForm'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { fieldHasXpCost } from '@/lib/xpCost'
-import type { CharacterSchema, Character, SchemaField } from '@larpdb/shared'
+import type { CharacterSchema, Character, SchemaField } from '@plotrunner/shared'
 
 interface MyGame {
   id: string

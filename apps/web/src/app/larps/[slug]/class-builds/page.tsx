@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { LarpPublicShell } from '../_components/LarpPublicShell'
-import type { SchemaField } from '@larpdb/shared'
+import type { SchemaField } from '@plotrunner/shared'
 
 interface Schema {
   id: string

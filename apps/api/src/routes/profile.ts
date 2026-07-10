@@ -7,7 +7,7 @@ import path from 'path'
 import { randomUUID } from 'crypto'
 import { db } from '../db/index.js'
 import { users, gameMembers } from '../db/schema.js'
-import { UpdateProfileInput, ChangePasswordInput } from '@larpdb/shared'
+import { UpdateProfileInput, ChangePasswordInput } from '@plotrunner/shared'
 import { UPLOADS_DIR } from './upload.js'
 
 const ALLOWED_MIME_TYPES = new Set([

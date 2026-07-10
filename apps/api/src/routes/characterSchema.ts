@@ -2,8 +2,8 @@ import type { FastifyPluginAsync } from 'fastify'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { characterSchemas } from '../db/schema.js'
-import type { SchemaField } from '@larpdb/shared'
-import { CreateCharacterSchemaInput, UpdateCharacterSchemaInput } from '@larpdb/shared'
+import type { SchemaField } from '@plotrunner/shared'
+import { CreateCharacterSchemaInput, UpdateCharacterSchemaInput } from '@plotrunner/shared'
 
 export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(

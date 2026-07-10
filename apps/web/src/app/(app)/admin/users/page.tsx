@@ -7,7 +7,7 @@ import { getErrorMessage } from '@/lib/utils'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import type { User, UserRole } from '@larpdb/shared'
+import type { User, UserRole } from '@plotrunner/shared'
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth()

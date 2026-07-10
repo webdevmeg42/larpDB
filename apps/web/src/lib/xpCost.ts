@@ -1,4 +1,4 @@
-import type { SchemaField } from '@larpdb/shared'
+import type { SchemaField } from '@plotrunner/shared'
 
 export function fieldHasXpCost(field: SchemaField): boolean {
   if (field.xpCostPerPoint !== undefined) return true

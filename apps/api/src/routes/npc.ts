@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { eq, and, asc, inArray } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { npcs, game, gameMembers } from '../db/schema.js'
-import { CreateNpcInput, UpdateNpcInput } from '@larpdb/shared'
+import { CreateNpcInput, UpdateNpcInput } from '@plotrunner/shared'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 
 export const npcRoutes: FastifyPluginAsync = async (fastify) => {

@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { eq, and, inArray, asc } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { game, gameMembers, adventureSubscriptions, users } from '../db/schema.js'
-import { UpdateMemberInput } from '@larpdb/shared'
+import { UpdateMemberInput } from '@plotrunner/shared'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 
 const validStatuses = ['active', 'pending', 'banned'] as const

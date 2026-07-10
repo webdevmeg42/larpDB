@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { JwtPayload } from '@/lib/auth'
 import { getCurrentUser, setToken, clearToken, decodeToken } from '@/lib/auth'
 import { api } from '@/lib/api'
-import type { LoginInput, RegisterInput } from '@larpdb/shared'
+import type { LoginInput, RegisterInput } from '@plotrunner/shared'
 
 interface AuthContextValue {
   user: JwtPayload | null

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import type { SiteConfig, Game } from '@larpdb/shared'
+import type { SiteConfig, Game } from '@plotrunner/shared'
 import { api } from '@/lib/api'
 import { getGameId, setGameId, clearGameId } from '@/lib/auth'
 

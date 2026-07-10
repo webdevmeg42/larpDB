@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { LarpPublicShell } from '../_components/LarpPublicShell'
-import type { RulebookChapter } from '@larpdb/shared'
+import type { RulebookChapter } from '@plotrunner/shared'
 
 interface RulebookData {
   rulebookLink: string | null

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { LikeButton } from './LikeButton'
 import { CommentList } from './CommentList'
-import type { Post } from '@larpdb/shared'
+import type { Post } from '@plotrunner/shared'
 
 interface PostCardProps {
   post: Post

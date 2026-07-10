@@ -9,7 +9,7 @@ import { getErrorMessage, cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import type { MyGame } from '@larpdb/shared'
+import type { MyGame } from '@plotrunner/shared'
 
 export default function LarpBuilderPage() {
   const { user } = useAuth()

@@ -1,6 +1,6 @@
 'use client'
 
-import type { SchemaField } from '@larpdb/shared'
+import type { SchemaField } from '@plotrunner/shared'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'

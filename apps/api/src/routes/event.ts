@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { and, eq, desc, count, inArray, asc } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { events, eventRegistrations, characters, game, gameMembers } from '../db/schema.js'
-import { CreateEventInput, UpdateEventInput, RegisterForEventInput, UpdateRegistrationInput } from '@larpdb/shared'
+import { CreateEventInput, UpdateEventInput, RegisterForEventInput, UpdateRegistrationInput } from '@plotrunner/shared'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 
 export const eventRoutes: FastifyPluginAsync = async (fastify) => {

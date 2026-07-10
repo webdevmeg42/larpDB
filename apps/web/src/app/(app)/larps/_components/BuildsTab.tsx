@@ -7,7 +7,7 @@ import { getErrorMessage } from '@/lib/utils'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import type { CharacterSchema, CharacterSchemaType } from '@larpdb/shared'
+import type { CharacterSchema, CharacterSchemaType } from '@plotrunner/shared'
 import { Plus, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react'
 
 interface BuildsTabProps {

@@ -15,10 +15,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { calculateXpDelta, fieldHasXpCost } from '@/lib/xpCost'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import type { Character, CharacterSchema } from '@larpdb/shared'
+import type { Character, CharacterSchema } from '@plotrunner/shared'
 
 type XpTransaction = { type: 'award' | 'spend'; amount: number }
-import { computeCumulativeXp, resolveLevelFromXp } from '@larpdb/shared'
+import { computeCumulativeXp, resolveLevelFromXp } from '@plotrunner/shared'
 import { ArrowLeft } from 'lucide-react'
 
 export default function CharacterDetailPage() {

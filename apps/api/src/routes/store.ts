@@ -3,7 +3,7 @@ import { eq, and, or, sql, inArray } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { storeItems, purchases, siteConfig, eventRegistrations, characters, users, events } from '../db/schema.js'
-import { CreateStoreItemInput, UpdateStoreItemInput, CreatePurchaseInput } from '@larpdb/shared'
+import { CreateStoreItemInput, UpdateStoreItemInput, CreatePurchaseInput } from '@plotrunner/shared'
 import { buildPatch } from '../lib/roles.js'
 
 export const storeRoutes: FastifyPluginAsync = async (fastify) => {

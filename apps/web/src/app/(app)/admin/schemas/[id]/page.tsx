@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
 import { SchemaBuilder } from '@/components/schema-builder/SchemaBuilder'
-import type { CharacterSchema, SchemaField } from '@larpdb/shared'
+import type { CharacterSchema, SchemaField } from '@plotrunner/shared'
 
 export default function SchemaBuilderPage({ params }: { params: { id: string } }) {
   const { user } = useAuth()

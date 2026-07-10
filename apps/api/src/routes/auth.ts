@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { users, gameMembers } from '../db/schema.js'
-import { LoginInput, RegisterInput } from '@larpdb/shared'
+import { LoginInput, RegisterInput } from '@plotrunner/shared'
 
 const ROLE_ORDER = { owner: 3, gm: 2, player: 1 } as const
 

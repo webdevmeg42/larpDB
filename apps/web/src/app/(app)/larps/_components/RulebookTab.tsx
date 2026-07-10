@@ -5,7 +5,7 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Underline from '@tiptap/extension-underline'
 import { api } from '@/lib/api'
-import type { SiteConfig, GameCodex, RulebookChapter } from '@larpdb/shared'
+import type { SiteConfig, GameCodex, RulebookChapter } from '@plotrunner/shared'
 
 interface Props {
   config: SiteConfig | null

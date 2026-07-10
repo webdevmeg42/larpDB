@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { eq, and, desc, count, sql, inArray, asc } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { game, posts, comments, postLikes, users, gameMembers, adventureSubscriptions } from '../db/schema.js'
-import { CreatePostInput, CreateCommentInput } from '@larpdb/shared'
+import { CreatePostInput, CreateCommentInput } from '@plotrunner/shared'
 import { gmOrOwner } from '../lib/roles.js'
 
 export const postRoutes: FastifyPluginAsync = async (fastify) => {

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SchemaBuilder } from '@/components/schema-builder/SchemaBuilder'
-import type { SchemaTemplate, CharacterSchema, SchemaField } from '@larpdb/shared'
+import type { SchemaTemplate, CharacterSchema, SchemaField } from '@plotrunner/shared'
 
 export default function NewSchemaContent() {
   const { user } = useAuth()

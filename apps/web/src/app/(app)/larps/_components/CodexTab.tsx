@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import type { SiteConfig, GameCodex, LevelingSystemType, Faction, AdditionalWebsite } from '@larpdb/shared'
+import type { SiteConfig, GameCodex, LevelingSystemType, Faction, AdditionalWebsite } from '@plotrunner/shared'
 
 interface Props {
   config: SiteConfig | null

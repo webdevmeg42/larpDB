@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import type { SchemaField, CharacterSchemaType } from '@larpdb/shared'
+import type { SchemaField, CharacterSchemaType } from '@plotrunner/shared'
 
 const EQUIPMENT_CATEGORIES = [
   'Weapons',

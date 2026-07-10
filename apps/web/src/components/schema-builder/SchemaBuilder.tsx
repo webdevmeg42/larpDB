@@ -8,7 +8,7 @@ import { FieldEditor } from './FieldEditor'
 import { SchemaPreview } from './SchemaPreview'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import type { SchemaField, SchemaFieldType, CharacterSchemaType } from '@larpdb/shared'
+import type { SchemaField, SchemaFieldType, CharacterSchemaType } from '@plotrunner/shared'
 import { getErrorMessage } from '@/lib/utils'
 
 const RACE_LOCKED_FIELDS: SchemaField[] = [

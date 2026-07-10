@@ -20,7 +20,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Lock, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { SchemaField } from '@larpdb/shared'
+import type { SchemaField } from '@plotrunner/shared'
 
 function LockedFieldItem({
   field,

@@ -1,4 +1,4 @@
-import type { SchemaField } from '@larpdb/shared'
+import type { SchemaField } from '@plotrunner/shared'
 
 /**
  * Given a character's current level and their class schema fields, computes the

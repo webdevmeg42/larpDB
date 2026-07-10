@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { eq, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { plots } from '../db/schema.js'
-import { CreatePlotInput, UpdatePlotInput } from '@larpdb/shared'
+import { CreatePlotInput, UpdatePlotInput } from '@plotrunner/shared'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 
 export const plotRoutes: FastifyPluginAsync = async (fastify) => {

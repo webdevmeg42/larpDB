@@ -18,7 +18,7 @@ import {
   npcs,
   plots,
 } from '../db/schema.js'
-import { CreateGameInput, UpdateSiteConfigInput, UpdateGameStatusInput } from '@larpdb/shared'
+import { CreateGameInput, UpdateSiteConfigInput, UpdateGameStatusInput } from '@plotrunner/shared'
 import { buildPatch } from '../lib/roles.js'
 
 function generateSlug(name: string): string {

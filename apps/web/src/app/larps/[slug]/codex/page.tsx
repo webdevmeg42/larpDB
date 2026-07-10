@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { LarpPublicShell } from '../_components/LarpPublicShell'
-import type { GameCodex } from '@larpdb/shared'
+import type { GameCodex } from '@plotrunner/shared'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 

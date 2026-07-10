@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { api } from '@/lib/api'
 import { setToken } from '@/lib/auth'
-import type { SiteConfig, ApiError } from '@larpdb/shared'
+import type { SiteConfig, ApiError } from '@plotrunner/shared'
 
 export default function SetupPage() {
   const router = useRouter()

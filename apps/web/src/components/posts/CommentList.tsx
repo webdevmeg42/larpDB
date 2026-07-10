@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
-import type { Comment } from '@larpdb/shared'
+import type { Comment } from '@plotrunner/shared'
 
 interface CommentListProps {
   postId: string

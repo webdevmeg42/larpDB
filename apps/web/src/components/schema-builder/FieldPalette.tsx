@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import type { SchemaFieldType, CharacterSchemaType } from '@larpdb/shared'
+import type { SchemaFieldType, CharacterSchemaType } from '@plotrunner/shared'
 import {
   Type,
   AlignLeft,

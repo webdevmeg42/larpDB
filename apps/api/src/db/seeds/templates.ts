@@ -1,7 +1,7 @@
 import { eq, and } from 'drizzle-orm'
 import { db } from '../index.js'
 import { schemaTemplates } from '../schema.js'
-import type { SchemaField } from '@larpdb/shared'
+import type { SchemaField } from '@plotrunner/shared'
 
 const RACE_TEMPLATES: Array<{ name: string; genre: string; description: string; type: string; fields: SchemaField[] }> = [
   {

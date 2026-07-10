@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
 import { PostCard } from '@/components/posts/PostCard'
-import type { FeedPost } from '@larpdb/shared'
+import type { FeedPost } from '@plotrunner/shared'
 import { buttonVariants } from '@/components/ui/button'
 
 interface FeedResponse {
