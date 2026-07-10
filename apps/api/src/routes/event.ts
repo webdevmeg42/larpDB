@@ -293,33 +293,64 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
         if (!char) return reply.status(403).send({ error: 'Character does not belong to you' })
       }
 
-      let newStatus: 'pending' | 'waitlist' = 'pending'
+      let registration: typeof eventRegistrations.$inferSelect
+
       if (event.maxPlayers !== null) {
-        const countResult = await db
-          .select({ value: count() })
-          .from(eventRegistrations)
-          .where(and(eq(eventRegistrations.eventId, id), eq(eventRegistrations.status, 'confirmed')))
-        const confirmedCount = countResult[0]?.value ?? 0
-        if (confirmedCount >= event.maxPlayers) newStatus = 'waitlist'
+        // Serialize concurrent registrations when capacity is limited
+        registration = await db.transaction(async (tx) => {
+          // Lock event row to prevent phantom reads on the count
+          await tx
+            .select({ id: events.id })
+            .from(events)
+            .where(eq(events.id, id))
+            .for('update')
+            .limit(1)
+
+          const countResult = await tx
+            .select({ value: count() })
+            .from(eventRegistrations)
+            .where(and(eq(eventRegistrations.eventId, id), eq(eventRegistrations.status, 'confirmed')))
+          const confirmedCount = countResult[0]?.value ?? 0
+          const newStatus: 'pending' | 'waitlist' = confirmedCount >= event.maxPlayers! ? 'waitlist' : 'pending'
+
+          if (existing) {
+            const [updated] = await tx
+              .update(eventRegistrations)
+              .set({ status: newStatus, characterId: result.data.characterId ?? null })
+              .where(eq(eventRegistrations.id, existing.id))
+              .returning()
+            return updated!
+          }
+
+          const [reg] = await tx.insert(eventRegistrations).values({
+            eventId: id,
+            userId,
+            characterId: result.data.characterId ?? null,
+            status: newStatus,
+          }).returning()
+          return reg!
+        })
+      } else {
+        // No capacity limit — no race condition
+        if (existing) {
+          const [updated] = await db
+            .update(eventRegistrations)
+            .set({ status: 'pending', characterId: result.data.characterId ?? null })
+            .where(eq(eventRegistrations.id, existing.id))
+            .returning()
+          registration = updated!
+        } else {
+          const [reg] = await db.insert(eventRegistrations).values({
+            eventId: id,
+            userId,
+            characterId: result.data.characterId ?? null,
+            status: 'pending',
+          }).returning()
+          registration = reg!
+        }
       }
 
-      if (existing) {
-        const [updated] = await db
-          .update(eventRegistrations)
-          .set({ status: newStatus, characterId: result.data.characterId ?? null })
-          .where(eq(eventRegistrations.id, existing.id))
-          .returning()
-        return reply.status(200).send(updated)
-      }
-
-      const [registration] = await db.insert(eventRegistrations).values({
-        eventId: id,
-        userId,
-        characterId: result.data.characterId ?? null,
-        status: newStatus,
-      }).returning()
-
-      return reply.status(201).send(registration)
+      return reply.status(existing ? 200 : 201).send(registration)
     },
   )
 
@@ -347,8 +378,15 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
     '/events/:id/registrations/:regId',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { userId, role } = request.gameContext
+      const { userId, role, gameId } = request.gameContext
       const { id, regId } = request.params as { id: string; regId: string }
+
+      const [eventCheck] = await db
+        .select({ id: events.id })
+        .from(events)
+        .where(and(eq(events.id, id), eq(events.gameId, gameId)))
+        .limit(1)
+      if (!eventCheck) return reply.status(404).send({ error: 'Event not found' })
 
       const [reg] = await db
         .select()
