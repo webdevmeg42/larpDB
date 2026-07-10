@@ -178,6 +178,9 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       let finalData = result.data.data
+      let siteCfgForLevelUp: { codex: unknown } | null = null
+      let resolvedLevelField: { id: string; type: string; label: string } | null = null
+      let resolvedNewLevel: number | null = null
 
       if (finalData !== undefined) {
         const [raceSchema, classSchemaRow] = await Promise.all([
@@ -209,31 +212,15 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
             if (typeof newLevel === 'number' && newLevel !== oldLevel) {
               finalData = applyLevelProgression(newLevel, classSchemaRow[0].fields, finalData)
 
-              // Auto-award XP for level-up
-              const [siteCfg] = await db.select({ codex: siteConfig.codex })
+              // Capture level-up context for atomic XP award inside the main transaction
+              resolvedLevelField = levelField as { id: string; type: string; label: string }
+              resolvedNewLevel = newLevel
+              const [siteCfg] = await db
+                .select({ codex: siteConfig.codex })
                 .from(siteConfig)
                 .where(eq(siteConfig.gameId, gameId))
                 .limit(1)
-
-              if (siteCfg?.codex) {
-                const prevXp = computeCumulativeXp(typeof oldLevel === 'number' ? oldLevel : 0, siteCfg.codex) ?? 0
-                const nextXp = computeCumulativeXp(newLevel, siteCfg.codex) ?? 0
-                const delta = nextXp - prevXp
-                if (delta > 0) {
-                  await db.transaction(async (tx) => {
-                    await tx.insert(xpTransactions).values({
-                      characterId: id,
-                      awardedBy: userId,
-                      amount: delta,
-                      reason: `Level ${String(oldLevel ?? 0)} → ${newLevel}`,
-                      type: 'award',
-                    })
-                    await tx.update(characters)
-                      .set({ totalXp: sql`${characters.totalXp} + ${delta}` })
-                      .where(eq(characters.id, id))
-                  })
-                }
-              }
+              siteCfgForLevelUp = siteCfg ?? null
             }
           }
         }
@@ -246,18 +233,20 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       let updated: typeof characters.$inferSelect | undefined
       try {
         ;[updated] = await db.transaction(async (tx) => {
-          if (xpSpend > 0) {
-            const [locked] = await tx
-              .select({ totalXp: characters.totalXp })
-              .from(characters)
-              .where(and(eq(characters.id, id), eq(characters.gameId, gameId)))
-              .for('update')
-              .limit(1)
+          // Always lock the character row — prevents both XP-spend and level-up races
+          const [locked] = await tx
+            .select({ totalXp: characters.totalXp, data: characters.data })
+            .from(characters)
+            .where(and(eq(characters.id, id), eq(characters.gameId, gameId)))
+            .for('update')
+            .limit(1)
 
-            if (!locked || locked.totalXp < xpSpend) {
+          if (!locked) throw Object.assign(new Error('Character not found'), { statusCode: 404 })
+
+          if (xpSpend > 0) {
+            if (locked.totalXp < xpSpend) {
               throw Object.assign(new Error('Insufficient XP'), { statusCode: 400 })
             }
-
             await tx.insert(xpTransactions).values({
               characterId: id,
               awardedBy: null,
@@ -267,11 +256,32 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
             })
           }
 
+          // Level-up XP award: use locked.data to prevent double-award on concurrent patches
+          let levelXpDelta = 0
+          if (resolvedLevelField && resolvedNewLevel !== null && siteCfgForLevelUp?.codex) {
+            const oldLevel = (locked.data as Record<string, unknown>)?.[resolvedLevelField.id]
+            if (oldLevel !== resolvedNewLevel) {
+              const prevXp = computeCumulativeXp(typeof oldLevel === 'number' ? oldLevel : 0, siteCfgForLevelUp.codex as Parameters<typeof computeCumulativeXp>[1]) ?? 0
+              const nextXp = computeCumulativeXp(resolvedNewLevel, siteCfgForLevelUp.codex as Parameters<typeof computeCumulativeXp>[1]) ?? 0
+              levelXpDelta = nextXp - prevXp
+              if (levelXpDelta > 0) {
+                await tx.insert(xpTransactions).values({
+                  characterId: id,
+                  awardedBy: userId,
+                  amount: levelXpDelta,
+                  reason: `Level ${String(oldLevel ?? 0)} → ${resolvedNewLevel}`,
+                  type: 'award',
+                })
+              }
+            }
+          }
+
+          const xpChange = levelXpDelta - xpSpend
           const [c] = await tx
             .update(characters)
             .set({
               ...patchPayload,
-              ...(xpSpend > 0 ? { totalXp: sql`${characters.totalXp} - ${xpSpend}` } : {}),
+              ...(xpChange !== 0 ? { totalXp: sql`${characters.totalXp} + ${xpChange}` } : {}),
               updatedAt: new Date(),
             })
             .where(and(eq(characters.id, id), eq(characters.gameId, gameId)))
@@ -280,9 +290,9 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
           return [c]
         })
       } catch (err) {
-        if ((err as { statusCode?: number }).statusCode === 400) {
-          return reply.status(400).send({ error: 'Insufficient XP balance' })
-        }
+        const code = (err as { statusCode?: number }).statusCode
+        if (code === 400) return reply.status(400).send({ error: 'Insufficient XP balance' })
+        if (code === 404) return reply.status(404).send({ error: 'Character not found' })
         throw err
       }
 
@@ -348,7 +358,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
                 const progressedData = applyLevelProgression(targetLevel, classSchemaRow[0]?.fields ?? [], newData)
                 await db.update(characters)
                   .set({ data: progressedData, updatedAt: new Date() })
-                  .where(eq(characters.id, id))
+                  .where(and(eq(characters.id, id), eq(characters.gameId, gameId)))
               }
             }
           }
