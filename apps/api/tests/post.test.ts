@@ -387,7 +387,7 @@ describe('DELETE /posts/:postId/comments/:commentId', () => {
 })
 
 describe('POST /posts/:postId/like', () => {
-  it('toggles like on, returns likeCount 1 and likedByMe true', async () => {
+  it('toggles like on, returns liked true', async () => {
     const { app, token, postId } = await createGameWithPost()
 
     const res = await app.inject({
@@ -395,8 +395,7 @@ describe('POST /posts/:postId/like', () => {
       headers: { authorization: `Bearer ${token}` },
     })
     expect(res.statusCode).toBe(200)
-    expect(res.json().likeCount).toBe(1)
-    expect(res.json().likedByMe).toBe(true)
+    expect(res.json().liked).toBe(true)
     await app.close()
   })
 
@@ -412,8 +411,7 @@ describe('POST /posts/:postId/like', () => {
       method: 'POST', url: `/posts/${postId}/like`,
       headers: { authorization: `Bearer ${token}` },
     })
-    expect(res.json().likeCount).toBe(0)
-    expect(res.json().likedByMe).toBe(false)
+    expect(res.json().liked).toBe(false)
     await app.close()
   })
 

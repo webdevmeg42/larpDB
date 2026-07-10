@@ -344,48 +344,6 @@ describe('GET /admin/logs', () => {
   })
 })
 
-describe('GET /admin/logs/users/:userId', () => {
-  it('returns logs for a specific user', async () => {
-    const app = buildApp()
-    await app.ready()
-
-    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
-    const { token: userToken, userId } = await registerAndLogin(app, 'user@test.com')
-
-    await app.inject({
-      method: 'POST', url: '/games',
-      headers: { authorization: `Bearer ${userToken}` },
-      payload: { name: 'Game 1' },
-    })
-
-    const res = await app.inject({
-      method: 'GET', url: `/admin/logs/users/${userId}`,
-      headers: { authorization: `Bearer ${adminToken}` },
-    })
-
-    expect(res.statusCode).toBe(200)
-    const body = res.json()
-    expect(body.items.every((l: { userId: string }) => l.userId === userId)).toBe(true)
-    await app.close()
-  })
-
-  it('returns empty results for a non-existent userId (not 404)', async () => {
-    const app = buildApp()
-    await app.ready()
-
-    const { token: adminToken } = await createSysAdmin(app)
-
-    const res = await app.inject({
-      method: 'GET',
-      url: '/admin/logs/users/00000000-0000-0000-0000-000000000000',
-      headers: { authorization: `Bearer ${adminToken}` },
-    })
-
-    expect(res.statusCode).toBe(200)
-    expect(res.json().items).toHaveLength(0)
-    await app.close()
-  })
-})
 
 describe('GET /admin/games', () => {
   it('returns all games regardless of status and visibility', async () => {

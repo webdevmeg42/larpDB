@@ -459,12 +459,13 @@ describe('GET /store/purchases', () => {
     })
 
     expect(res.statusCode).toBe(200)
-    const rows = res.json()
-    expect(rows).toHaveLength(1)
-    expect(rows[0].playerName).toBe('Player One')
-    expect(rows[0].characterName).toBe('Elara')
-    expect(rows[0].eventTitle).toBe('Test Event')
-    expect(rows[0].itemName).toBe('Tent')
+    const body = res.json() as { total: number; items: Array<Record<string, unknown>> }
+    expect(body.total).toBe(1)
+    expect(body.items).toHaveLength(1)
+    expect(body.items[0]!.playerName).toBe('Player One')
+    expect(body.items[0]!.characterName).toBe('Elara')
+    expect(body.items[0]!.eventTitle).toBe('Test Event')
+    expect(body.items[0]!.itemName).toBe('Tent')
     await app.close()
   })
 
@@ -493,7 +494,8 @@ describe('GET /store/purchases', () => {
     })
 
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toHaveLength(1)
+    const filtered = res.json() as { total: number; items: Array<Record<string, unknown>> }
+    expect(filtered.items).toHaveLength(1)
     await app.close()
   })
 })
