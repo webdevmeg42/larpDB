@@ -50,7 +50,7 @@ export const gameMembers = pgTable('game_members', {
 export const siteConfig = pgTable('site_config', {
   id: uuid('id').primaryKey().defaultRandom(),
   gameId: uuid('game_id').notNull().references(() => game.id),
-  siteTitle: text('site_title').notNull().default('My LARP'),
+  siteTitle: text('site_title').notNull().default('My Adventure'),
   tagline: text('tagline'),
   logoUrl: text('logo_url'),
   faviconUrl: text('favicon_url'),
@@ -222,15 +222,15 @@ export const purchases = pgTable('purchases', {
   characterIdIdx: index('purchases_character_id_idx').on(t.characterId),
 }))
 
-export const larpSubscriptions = pgTable('larp_subscriptions', {
+export const adventureSubscriptions = pgTable('adventure_subscriptions', {
   id: uuid('id').primaryKey().defaultRandom(),
   gameId: uuid('game_id').notNull().references(() => game.id, { onDelete: 'cascade' }),
   userId: uuid('user_id').notNull().references(() => users.id),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   uniqGameUser: unique().on(t.gameId, t.userId),
-  gameIdIdx: index('larp_subscriptions_game_id_idx').on(t.gameId),
-  userIdIdx: index('larp_subscriptions_user_id_idx').on(t.userId),
+  gameIdIdx: index('adventure_subscriptions_game_id_idx').on(t.gameId),
+  userIdIdx: index('adventure_subscriptions_user_id_idx').on(t.userId),
 }))
 
 export const posts = pgTable('posts', {

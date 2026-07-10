@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { eq, and, desc, count, sql, inArray, asc } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { game, posts, comments, postLikes, users, gameMembers, larpSubscriptions } from '../db/schema.js'
+import { game, posts, comments, postLikes, users, gameMembers, adventureSubscriptions } from '../db/schema.js'
 import { CreatePostInput, CreateCommentInput } from '@larpdb/shared'
 import { gmOrOwner } from '../lib/roles.js'
 
@@ -301,9 +301,9 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
       const offsetN = parseInt(offset, 10) || 0
 
       const subscriptions = await db
-        .select({ gameId: larpSubscriptions.gameId })
-        .from(larpSubscriptions)
-        .where(eq(larpSubscriptions.userId, userId))
+        .select({ gameId: adventureSubscriptions.gameId })
+        .from(adventureSubscriptions)
+        .where(eq(adventureSubscriptions.userId, userId))
 
       if (subscriptions.length === 0) {
         return reply.send({ items: [], total: 0, limit: limitN, offset: offsetN })

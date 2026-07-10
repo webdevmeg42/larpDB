@@ -5,7 +5,7 @@ import * as schema from '../src/db/schema.js'
 import {
   users, game, gameMembers, siteConfig, characterSchemas, characters,
   xpTransactions, events, eventRegistrations, npcs, plots, schemaTemplates,
-  storeItems, purchases, postLikes, comments, larpSubscriptions, posts,
+  storeItems, purchases, postLikes, comments, adventureSubscriptions, posts,
   requestLogs,
 } from '../src/db/schema.js'
 
@@ -23,7 +23,7 @@ beforeEach(async () => {
   await testDb.delete(requestLogs)
   await testDb.delete(postLikes)
   await testDb.delete(comments)
-  await testDb.delete(larpSubscriptions)
+  await testDb.delete(adventureSubscriptions)
   await testDb.delete(posts)
   await testDb.delete(purchases)
   await testDb.delete(xpTransactions)

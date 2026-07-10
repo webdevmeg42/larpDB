@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { eq, and, inArray, asc } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { game, gameMembers, larpSubscriptions, users } from '../db/schema.js'
+import { game, gameMembers, adventureSubscriptions, users } from '../db/schema.js'
 import { UpdateMemberInput } from '@larpdb/shared'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 
@@ -48,15 +48,15 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
 
       const rows = await db
         .select({
-          id: larpSubscriptions.id,
-          userId: larpSubscriptions.userId,
-          subscribedAt: larpSubscriptions.createdAt,
+          id: adventureSubscriptions.id,
+          userId: adventureSubscriptions.userId,
+          subscribedAt: adventureSubscriptions.createdAt,
           displayName: users.displayName,
           email: users.email,
         })
-        .from(larpSubscriptions)
-        .innerJoin(users, eq(larpSubscriptions.userId, users.id))
-        .where(eq(larpSubscriptions.gameId, gameId))
+        .from(adventureSubscriptions)
+        .innerJoin(users, eq(adventureSubscriptions.userId, users.id))
+        .where(eq(adventureSubscriptions.gameId, gameId))
 
       return reply.send(rows)
     },
@@ -212,15 +212,15 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .select({
           gameId: game.id,
           gameName: game.name,
-          subId: larpSubscriptions.id,
-          subUserId: larpSubscriptions.userId,
-          subCreatedAt: larpSubscriptions.createdAt,
+          subId: adventureSubscriptions.id,
+          subUserId: adventureSubscriptions.userId,
+          subCreatedAt: adventureSubscriptions.createdAt,
           subDisplayName: users.displayName,
           subEmail: users.email,
         })
         .from(game)
-        .leftJoin(larpSubscriptions, eq(larpSubscriptions.gameId, game.id))
-        .leftJoin(users, eq(users.id, larpSubscriptions.userId))
+        .leftJoin(adventureSubscriptions, eq(adventureSubscriptions.gameId, game.id))
+        .leftJoin(users, eq(users.id, adventureSubscriptions.userId))
         .where(inArray(game.id, myGameIds))
         .orderBy(asc(game.name), asc(users.displayName))
 

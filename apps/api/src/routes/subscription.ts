@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { eq, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { game, gameMembers, larpSubscriptions } from '../db/schema.js'
+import { game, gameMembers, adventureSubscriptions } from '../db/schema.js'
 import { SubscribeInput } from '@larpdb/shared'
 
 export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
@@ -25,7 +25,7 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
 
       await db.transaction(async (tx) => {
         await tx
-          .insert(larpSubscriptions)
+          .insert(adventureSubscriptions)
           .values({ gameId, userId })
           .onConflictDoNothing()
 
@@ -61,8 +61,8 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
 
       await db.transaction(async (tx) => {
         const [deleted] = await tx
-          .delete(larpSubscriptions)
-          .where(and(eq(larpSubscriptions.gameId, gameId), eq(larpSubscriptions.userId, userId)))
+          .delete(adventureSubscriptions)
+          .where(and(eq(adventureSubscriptions.gameId, gameId), eq(adventureSubscriptions.userId, userId)))
           .returning()
 
         if (!deleted) {
@@ -91,8 +91,8 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
       const userId = request.user.sub
       const subs = await db
         .select()
-        .from(larpSubscriptions)
-        .where(eq(larpSubscriptions.userId, userId))
+        .from(adventureSubscriptions)
+        .where(eq(adventureSubscriptions.userId, userId))
       return reply.send(subs)
     },
   )
