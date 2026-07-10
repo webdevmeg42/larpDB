@@ -418,7 +418,7 @@ describe('PATCH /characters/:id', () => {
     await app.close()
   })
 
-  it('allows GET /characters and GET /characters/:id regardless of LARP status', async () => {
+  it('allows GET /characters and GET /characters/:id regardless of Adventure status', async () => {
     const { app, ownerToken, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     const createRes = await app.inject({

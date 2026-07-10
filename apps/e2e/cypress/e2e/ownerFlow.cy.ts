@@ -8,15 +8,15 @@ function tomorrowDatetimeLocal(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T12:00`
 }
 
-const larpName = `Cypress ownerFlow Test ${testDateTime(new Date())}`
-let larpEditUrl = ''
+const adventureName = `Cypress ownerFlow Test ${testDateTime(new Date())}`
+let adventureEditUrl = ''
 const characterName = `Character ${testDateTime(new Date())}`
 
 const sel = {
-  // new larp form
+  // new adventure form
   visibilityPrivateBtn: '[data-testid="visibility-private-btn"]',
-  larpNameInput: '[data-testid="larp-name-input"]',
-  larpNameError: '[data-testid="larp-name-error"]',
+  advNameInput: '[data-testid="adv-name-input"]',
+  advNameError: '[data-testid="adv-name-error"]',
   // edit tabs
   tabBranding: '[data-testid="tab-branding"]',
   tabCodex: '[data-testid="tab-codex"]',
@@ -60,19 +60,19 @@ const sel = {
   startBuildingBtn: '[data-testid="start-building-btn"]',
   // schema builder
   schemaActivateBtn: '[data-testid="schema-activate-btn"]',
-  // larps list
+  // adventures list
   gamesSearchInput: '[data-testid="games-search-input"]',
-  deleteLarpBtn: '[data-testid="delete-larp-btn"]',
+  deleteAdvBtn: '[data-testid="delete-adv-btn"]',
   confirmDeleteBtn: '[data-testid="confirm-delete-btn"]',
   // nav
-  navLarpBuilder: '[data-testid="nav-larp-builder"]',
+  navAdvBuilder: '[data-testid="nav-adv-builder"]',
   navEvents:      '[data-testid="nav-events"]',
   // builds tab (race + class list)
   buildsSearchInput: '[data-testid="builds-search-input"]',
   buildsExpandBtn: '[data-testid="builds-expand-btn"]',
   buildsActivateBtn: '[data-testid="builds-activate-btn"]',
-  // larps list — enable/disable toggle
-  enableLarpBtn:         '[data-testid="enable-larp-btn"]',
+  // adventures list — enable/disable toggle
+  enableAdvBtn:         '[data-testid="enable-adv-btn"]',
   // my characters page
   navMyCharacters:       '[data-testid="nav-my-characters"]',
   charactersSearchInput: '[data-testid="characters-search-input"]',
@@ -95,20 +95,20 @@ describe('Owner Flow', () => {
     cy.loginOwner()
   })
 
-  it('Owner cannot build an incorrect LARP', () => {
-    cy.get(sel.navLarpBuilder).click()
-    cy.contains('Build New LARP').click()
+  it('Owner cannot build an incorrect Adventure', () => {
+    cy.get(sel.navAdvBuilder).click()
+    cy.contains('Build New Adventure').click()
 
     cy.get(sel.visibilityPrivateBtn).click()
-    cy.contains('button', 'Create LARP').click()
-    cy.get(sel.larpNameError)
-      .should('be.visible').and('contain', 'LARP Name is required')
+    cy.contains('button', 'Create Adventure').click()
+    cy.get(sel.advNameError)
+      .should('be.visible').and('contain', 'Adventure Name is required')
 
-    cy.get(sel.larpNameInput).type(larpName)
-    cy.contains('button', 'Create LARP').click()
+    cy.get(sel.advNameInput).type(adventureName)
+    cy.contains('button', 'Create Adventure').click()
 
     cy.get(sel.tabBranding).should('be.visible')
-    cy.url().then(url => { larpEditUrl = url })
+    cy.url().then(url => { adventureEditUrl = url })
     cy.get(sel.saveChangesBtn).click()
     cy.get(sel.formErrorBanner)
       .should('be.visible').and('contain', 'Tagline')
@@ -152,7 +152,7 @@ describe('Owner Flow', () => {
     cy.get(sel.schemaNameError)
       .should('be.visible').and('contain', 'Name is required')
 
-    cy.get(sel.schemaNameInput).click().type(larpName)
+    cy.get(sel.schemaNameInput).click().type(adventureName)
     cy.get(sel.startBuildingBtn).click()
 
     // Add common fields — labels auto-populate on click, then one save (POST)
@@ -179,27 +179,27 @@ describe('Owner Flow', () => {
     cy.schemaBuilderSave('All fields must have a label before saving.')
 
     // Label all 7 unlabeled fields, then one passing save (PATCH)
-    cy.schemaBuilderLabelField(`${larpName} testRace`)
-    cy.schemaBuilderLabelField(`${larpName} testRace`)
-    cy.schemaBuilderLabelField(`${larpName} testRace`)
-    cy.schemaBuilderLabelField(`${larpName} testRace`)
-    cy.schemaBuilderLabelField(`${larpName} testRace`)
-    cy.schemaBuilderLabelField(`${larpName} testRace`)
-    cy.schemaBuilderLabelField(`${larpName} testRace`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace`)
     cy.schemaBuilderSave()
 
     cy.url().should('include', '/admin/schemas')
 
-    // Activate the race schema from the LARP Builder
-    cy.visit(larpEditUrl)
+    // Activate the race schema from the Adventure Builder
+    cy.visit(adventureEditUrl)
     cy.get(sel.tabRaceBuilds).click()
-    cy.get(sel.buildsSearchInput).type(larpName)
+    cy.get(sel.buildsSearchInput).type(adventureName)
     cy.get(sel.buildsExpandBtn).first().click()
     cy.get(sel.buildsActivateBtn).first().click()
   })
 
   it('Owner can build a class with all common fields pre-populated', () => {
-    cy.visit(larpEditUrl)
+    cy.visit(adventureEditUrl)
     cy.get(sel.tabClassBuilds).click()
     cy.get(sel.newClassLink).click()
 
@@ -208,7 +208,7 @@ describe('Owner Flow', () => {
     cy.get(sel.schemaNameError)
       .should('be.visible').and('contain', 'Name is required')
 
-    cy.get(sel.schemaNameInput).click().type(`Warrior ${larpName}`)
+    cy.get(sel.schemaNameInput).click().type(`Warrior ${adventureName}`)
     cy.get(sel.startBuildingBtn).click()
 
     // Add common fields — labels auto-populate on click, then one save (POST)
@@ -234,47 +234,47 @@ describe('Owner Flow', () => {
     cy.schemaBuilderSave('All fields must have a label before saving.')
 
     // Label all 8 unlabeled fields, then one passing save (PATCH)
-    cy.schemaBuilderLabelField(`${larpName} testClass`)
-    cy.schemaBuilderLabelField(`${larpName} testClass`)
-    cy.schemaBuilderLabelField(`${larpName} testClass`)
-    cy.schemaBuilderLabelField(`${larpName} testClass`)
-    cy.schemaBuilderLabelField(`${larpName} testClass`)
-    cy.schemaBuilderLabelField(`${larpName} testClass`)
-    cy.schemaBuilderLabelField(`${larpName} testClass`)
-    cy.schemaBuilderLabelField(`${larpName} testClass`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass`)
     cy.schemaBuilderSave()
 
     cy.url().should('include', '/admin/schemas')
 
-    // Activate the class schema from the LARP Builder
-    cy.visit(larpEditUrl)
+    // Activate the class schema from the Adventure Builder
+    cy.visit(adventureEditUrl)
     cy.get(sel.tabClassBuilds).click()
-    cy.get(sel.buildsSearchInput).type(larpName)
+    cy.get(sel.buildsSearchInput).type(adventureName)
     cy.get(sel.buildsExpandBtn).first().click()
     cy.get(sel.buildsActivateBtn).first().click()
   })
 
   it('Owner can create a character', () => {
-    // Enable the LARP so isActive is true and New Character button is not disabled
-    cy.get(sel.navLarpBuilder).click()
-    cy.get(sel.gamesSearchInput).clear().type(larpName)
-    cy.get(sel.enableLarpBtn).first().click()
-    cy.get(sel.enableLarpBtn).first().should('contain', 'Disable')
+    // Enable the Adventure so isActive is true and New Character button is not disabled
+    cy.get(sel.navAdvBuilder).click()
+    cy.get(sel.gamesSearchInput).clear().type(adventureName)
+    cy.get(sel.enableAdvBtn).first().click()
+    cy.get(sel.enableAdvBtn).first().should('contain', 'Disable')
 
-    // Navigate to My Characters and locate the LARP
+    // Navigate to My Characters and locate the Adventure
     cy.get(sel.navMyCharacters).click()
-    cy.get(sel.charactersSearchInput).type(larpName)
-    cy.contains('button', larpName).first().click()
+    cy.get(sel.charactersSearchInput).type(adventureName)
+    cy.contains('button', adventureName).first().click()
     cy.get(sel.newCharacterBtn).first().click()
 
     // Race step — Continue is disabled until a race is selected
     cy.get(sel.continueBtn).should('be.disabled')
-    cy.contains('button', larpName).first().click()
+    cy.contains('button', adventureName).first().click()
     cy.get(sel.continueBtn).click()
 
     // Class step — Continue is disabled until a class is selected
     cy.get(sel.continueBtn).should('be.disabled')
-    cy.contains('button', `Warrior ${larpName}`).first().click()
+    cy.contains('button', `Warrior ${adventureName}`).first().click()
     cy.get(sel.continueBtn).click()
 
     // Character form: validate name required before submitting
@@ -289,26 +289,26 @@ describe('Owner Flow', () => {
 
   it('Owner can create an event', () => {
     cy.get(sel.navEvents).click()
-    cy.get(sel.eventsSearchInput).type(larpName)
-    cy.contains('button', larpName).first().click()
+    cy.get(sel.eventsSearchInput).type(adventureName)
+    cy.contains('button', adventureName).first().click()
     cy.get(sel.newEventBtn).first().click()
 
     cy.get(sel.createEventBtn).should('be.disabled')
 
-    cy.get(sel.eventTitleInput).type(`Event ${larpName}`)
+    cy.get(sel.eventTitleInput).type(`Event ${adventureName}`)
     cy.get(sel.createEventBtn).should('be.disabled')
 
     cy.get(sel.eventStartAtInput).type(tomorrowDatetimeLocal())
     cy.get(sel.createEventBtn).click()
 
-    cy.contains('h1', `Event ${larpName}`)
+    cy.contains('h1', `Event ${adventureName}`)
   })
 
   after(() => {
-    cy.visit('/larps')
-    cy.contains('h1', 'LARP Builder')
-    cy.get(sel.gamesSearchInput).clear().type(larpName)
-    cy.get(sel.deleteLarpBtn).first().click()
+    cy.visit('/adventures')
+    cy.contains('h1', 'Adventure Builder')
+    cy.get(sel.gamesSearchInput).clear().type(adventureName)
+    cy.get(sel.deleteAdvBtn).first().click()
     cy.get(sel.confirmDeleteBtn).click()
   })
 })
