@@ -42,20 +42,26 @@ async function fetchPublicGameCodex(slug: string) {
 }
 
 async function fetchPublicSchemas(slug: string, type: 'race' | 'class') {
-  const [gameRow] = await db
-    .select({ id: game.id })
-    .from(game)
-    .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
-    .limit(1)
-  if (!gameRow) return null
-  return db
-    .select({ id: characterSchemas.id, name: characterSchemas.name, fields: characterSchemas.fields })
+  const rows = await db
+    .select({
+      id: characterSchemas.id,
+      name: characterSchemas.name,
+      type: characterSchemas.type,
+      fields: characterSchemas.fields,
+      gameId: characterSchemas.gameId,
+    })
     .from(characterSchemas)
-    .where(and(
-      eq(characterSchemas.gameId, gameRow.id),
-      eq(characterSchemas.isActive, true),
-      eq(characterSchemas.type, type),
-    ))
+    .innerJoin(game, eq(game.id, characterSchemas.gameId))
+    .where(
+      and(
+        eq(game.slug, slug),
+        eq(game.isPublic, true),
+        eq(game.status, 'active'),
+        eq(characterSchemas.isActive, true),
+        eq(characterSchemas.type, type),
+      ),
+    )
+  return rows.length > 0 ? rows : null
 }
 
 async function uniqueSlug(base: string): Promise<string> {
@@ -100,7 +106,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get('/games/:slug', async (request, reply) => {
     const { slug } = request.params as { slug: string }
-    const [row] = await db.select().from(game).where(eq(game.slug, slug)).limit(1)
+    const [row] = await db.select().from(game).where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active'))).limit(1)
     if (!row) return reply.status(404).send({ error: 'Game not found' })
     return reply.send(row)
   })

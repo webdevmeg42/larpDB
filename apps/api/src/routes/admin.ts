@@ -100,43 +100,6 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   )
 
   fastify.get(
-    '/admin/logs/users/:userId',
-    { preHandler: [fastify.requireSysAdmin] },
-    async (request, reply) => {
-      const { userId } = request.params as { userId: string }
-      const { limit = '100', offset = '0' } = request.query as { limit?: string; offset?: string }
-
-      const limitN = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200)
-      const offsetN = Math.max(parseInt(offset, 10) || 0, 0)
-
-      const filter = eq(requestLogs.userId, userId)
-
-      const [{ total }] = await db.select({ total: count() }).from(requestLogs).where(filter)
-
-      const items = await db
-        .select({
-          id: requestLogs.id,
-          userId: requestLogs.userId,
-          userDisplayName: users.displayName,
-          userEmail: users.email,
-          method: requestLogs.method,
-          url: requestLogs.url,
-          statusCode: requestLogs.statusCode,
-          durationMs: requestLogs.durationMs,
-          createdAt: requestLogs.createdAt,
-        })
-        .from(requestLogs)
-        .leftJoin(users, eq(users.id, requestLogs.userId))
-        .where(filter)
-        .orderBy(desc(requestLogs.createdAt))
-        .limit(limitN)
-        .offset(offsetN)
-
-      return reply.send({ total, items, limit: limitN, offset: offsetN })
-    },
-  )
-
-  fastify.get(
     '/admin/games',
     { preHandler: [fastify.requireSysAdmin] },
     async (_request, reply) => {
