@@ -9,7 +9,7 @@
   "scripts": {
     "dev:api": "pnpm --filter @larpdb/api dev",
     "test": "pnpm --filter @larpdb/api test",
-    "build": "pnpm --filter @larpdb/shared build && pnpm --filter @larpdb/api build",
+    "build": "pnpm --filter @plotrunner/shared build && pnpm --filter @larpdb/api build",
     "db:generate": "pnpm --filter @larpdb/api db:generate",
     "db:migrate": "pnpm --filter @larpdb/api db:migrate"
   },
