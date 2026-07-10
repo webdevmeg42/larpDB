@@ -36,7 +36,7 @@ export default function RaceBuildsPage() {
   }, [params.slug])
 
   if (loading) return <div className="p-6 text-muted-foreground">Loading…</div>
-  if (notFound) return <div className="p-6">LARP not found.</div>
+  if (notFound) return <div className="p-6">Adventure not found.</div>
 
   return (
     <AdventurePublicShell title="Race Builds" subtitle="Playable races">

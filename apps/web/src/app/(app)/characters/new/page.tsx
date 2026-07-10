@@ -132,7 +132,7 @@ export default function NewCharacterPage() {
       <div className="p-6 max-w-lg">
         <h1 className="text-2xl font-semibold mb-4">New Character</h1>
         <p className="text-muted-foreground">
-          You are not a member of any active LARPs. Join a LARP before creating a character.
+          You are not a member of any active Adventures. Join an Adventure before creating a character.
         </p>
       </div>
     )
@@ -189,14 +189,14 @@ export default function NewCharacterPage() {
         <div className="space-y-6">
           <h1 className="text-2xl font-semibold">New Character</h1>
           <div className="space-y-1.5">
-            <Label htmlFor="adventure">Select a LARP</Label>
+            <Label htmlFor="adventure">Select an Adventure</Label>
             <select
               id="adventure"
               value={selectedGameId}
               onChange={e => setSelectedGameId(e.target.value)}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              {games.length > 1 && <option value="">Choose a LARP…</option>}
+              {games.length > 1 && <option value="">Choose an Adventure…</option>}
               {games.map(g => (
                 <option key={g.id} value={g.id}>
                   {g.name}{g.status !== 'active' ? ' (inactive)' : ''}
@@ -220,7 +220,7 @@ export default function NewCharacterPage() {
           <h1 className="text-2xl font-semibold">Select Race</h1>
           {raceSchemas.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No races are available for this LARP yet. Ask your GM to set them up.
+              No races are available for this Adventure yet. Ask your GM to set them up.
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3">
@@ -257,7 +257,7 @@ export default function NewCharacterPage() {
           <h1 className="text-2xl font-semibold">Select Class</h1>
           {classSchemas.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No classes are available for this LARP yet. Ask your GM to set them up.
+              No classes are available for this Adventure yet. Ask your GM to set them up.
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3">

@@ -73,7 +73,7 @@ export default function NewAdventurePage() {
       }
       router.replace(`/adventures/${newGame.id}/edit`)
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to create LARP'))
+      setError(getErrorMessage(err, 'Failed to create Adventure'))
     } finally {
       setSaving(false)
     }
@@ -85,25 +85,25 @@ export default function NewAdventurePage() {
         href="/adventures"
         className="text-sm text-muted-foreground hover:text-foreground mb-4 inline-block"
       >
-        ← Back to LARP Builder
+        ← Back to Adventure Builder
       </Link>
-      <h1 className="text-2xl font-semibold mb-6">Build New LARP</h1>
+      <h1 className="text-2xl font-semibold mb-6">Build New Adventure</h1>
 
       <form onSubmit={e => void handleSave(e)} className="space-y-6">
         <Card>
           <CardHeader><CardTitle>Identity</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1">
-              <Label>LARP Name <span className="text-destructive">*</span></Label>
+              <Label>Adventure Name <span className="text-destructive">*</span></Label>
               <Input
-                data-testid="larp-name-input"
+                data-testid="adv-name-input"
                 value={form.siteTitle}
                 onChange={e => set('siteTitle', e.target.value)}
                 maxLength={150}
                 placeholder="Realm of Shadows"
                 className={titleError ? 'border-destructive' : ''}
               />
-              {titleError && <p data-testid="larp-name-error" className="text-xs text-destructive">LARP Name is required</p>}
+              {titleError && <p data-testid="adv-name-error" className="text-xs text-destructive">Adventure Name is required</p>}
               {(() => {
                 const len = form.siteTitle.length
                 return (
@@ -211,7 +211,7 @@ export default function NewAdventurePage() {
           type="submit"
           disabled={saving}
         >
-          {saving ? 'Creating…' : 'Create LARP'}
+          {saving ? 'Creating…' : 'Create Adventure'}
         </Button>
       </form>
     </div>

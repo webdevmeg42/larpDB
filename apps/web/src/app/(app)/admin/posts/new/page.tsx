@@ -60,7 +60,7 @@ export default function NewPostPage() {
       <div className="p-6 max-w-2xl">
         <h1 className="text-2xl font-semibold mb-4">New Post</h1>
         <p className="text-muted-foreground">
-          You have no active LARPs to post to. A LARP must be set to active before you can publish posts.
+          You have no active Adventures to post to. An Adventure must be set to active before you can publish posts.
         </p>
       </div>
     )
@@ -153,15 +153,15 @@ export default function NewPostPage() {
       <h1 className="text-2xl font-semibold mb-6">New Post</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="larp">LARP</Label>
+          <Label htmlFor="adventure">Adventure</Label>
           <select
-            id="larp"
+            id="adventure"
             value={selectedGameId}
             onChange={e => setSelectedGameId(e.target.value)}
             required
             className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            {games.length > 1 && <option value="">Select a LARP…</option>}
+            {games.length > 1 && <option value="">Select an Adventure…</option>}
             {games.map(g => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}

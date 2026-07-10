@@ -176,7 +176,7 @@ describe('POST /characters', () => {
     await app.close()
   })
 
-  it('returns 403 for every role when the LARP is inactive', async () => {
+  it('returns 403 for every role when the Adventure is inactive', async () => {
     const { app, ownerToken, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     const gmRegRes = await app.inject({
@@ -217,7 +217,7 @@ describe('POST /characters', () => {
         },
       })
       expect(res.statusCode).toBe(403)
-      expect(res.json().error).toBe('LARP is not currently active')
+      expect(res.json().error).toBe('Adventure is not currently active')
     }
 
     await app.close()
@@ -330,7 +330,7 @@ describe('PATCH /characters/:id', () => {
     await app.close()
   })
 
-  it('blocks a player from editing their own character while the LARP is inactive', async () => {
+  it('blocks a player from editing their own character while the Adventure is inactive', async () => {
     const { app, ownerToken, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     const createRes = await app.inject({
@@ -356,11 +356,11 @@ describe('PATCH /characters/:id', () => {
     })
 
     expect(res.statusCode).toBe(403)
-    expect(res.json().error).toBe('Character editing is disabled while this LARP is inactive')
+    expect(res.json().error).toBe('Character editing is disabled while this Adventure is inactive')
     await app.close()
   })
 
-  it('allows gm and owner to edit characters while the LARP is inactive', async () => {
+  it('allows gm and owner to edit characters while the Adventure is inactive', async () => {
     const { app, ownerToken, playerToken, schemaId, gameId } = await setupWithActiveSchema()
 
     const createRes = await app.inject({

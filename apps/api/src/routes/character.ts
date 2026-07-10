@@ -16,7 +16,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId, userId, gameStatus, role } = request.gameContext
 
       if (gameStatus !== 'active') {
-        return reply.status(403).send({ error: 'LARP is not currently active' })
+        return reply.status(403).send({ error: 'Adventure is not currently active' })
       }
 
       const result = CreateCharacterInput.safeParse(request.body)
@@ -70,7 +70,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Character data is invalid', errors: validationErrors })
       }
 
-      // Apply LARP base level, then stamp all progression values for that level
+      // Apply Adventure base level, then stamp all progression values for that level
       const [config] = await db.select({ codex: siteConfig.codex })
         .from(siteConfig)
         .where(eq(siteConfig.gameId, gameId))
@@ -169,7 +169,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       if (!character) return reply.status(404).send({ error: 'Character not found' })
       if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
       if (role === 'player' && gameStatus !== 'active') {
-        return reply.status(403).send({ error: 'Character editing is disabled while this LARP is inactive' })
+        return reply.status(403).send({ error: 'Character editing is disabled while this Adventure is inactive' })
       }
 
       const result = UpdateCharacterInput.safeParse(request.body)

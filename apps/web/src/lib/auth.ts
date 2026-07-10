@@ -8,8 +8,8 @@ export interface JwtPayload {
   exp: number
 }
 
-const TOKEN_KEY = 'larpdb_token'
-const GAME_KEY = 'larpdb_game_id'
+const TOKEN_KEY = 'plotrunner_token'
+const GAME_KEY = 'plotrunner_game_id'
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null

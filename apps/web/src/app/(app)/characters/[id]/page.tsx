@@ -334,7 +334,7 @@ export default function CharacterDetailPage() {
             </div>
           ) : (
             <span className="text-xs text-muted-foreground max-w-[160px] text-right">
-              Editing is disabled while this LARP is inactive.
+              Editing is disabled while this Adventure is inactive.
             </span>
           )
         )}

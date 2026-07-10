@@ -67,7 +67,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold">Feed</h1>
         <Link href="/browse" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-          Browse LARPs
+          Browse Adventures
         </Link>
       </div>
 
@@ -76,10 +76,10 @@ export default function DashboardPage() {
       ) : feed.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground mb-4">
-            You're not following any LARPs yet.
+            You're not following any Adventures yet.
           </p>
           <Link href="/browse" className={buttonVariants()}>
-            Browse active LARPs
+            Browse active Adventures
           </Link>
         </div>
       ) : (

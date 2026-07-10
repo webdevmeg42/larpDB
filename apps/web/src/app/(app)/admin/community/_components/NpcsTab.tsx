@@ -99,7 +99,7 @@ export function NpcsTab() {
       </div>
 
       {games.length === 0 ? (
-        <p className="text-muted-foreground text-sm">You don&apos;t manage NPCs for any LARPs yet.</p>
+        <p className="text-muted-foreground text-sm">You don&apos;t manage NPCs for any Adventures yet.</p>
       ) : filteredGames.length === 0 ? (
         <p className="text-sm text-muted-foreground italic">No results for &ldquo;{search}&rdquo;</p>
       ) : (
@@ -126,7 +126,7 @@ export function NpcsTab() {
                     size="sm"
                     onClick={e => { e.stopPropagation(); setGameId(g.id); router.push('/npcs/new') }}
                     disabled={!g.isActive}
-                    title={!g.isActive ? 'This LARP is inactive' : undefined}
+                    title={!g.isActive ? 'This Adventure is inactive' : undefined}
                     className="ml-2"
                   >
                     <Plus className="h-4 w-4 mr-1" />

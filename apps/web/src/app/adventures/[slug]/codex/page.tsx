@@ -30,7 +30,7 @@ export default function CodexPage() {
   }, [params.slug])
 
   if (loading) return <div className="p-6 text-muted-foreground">Loading…</div>
-  if (notFound || !codex) return <div className="p-6">LARP not found.</div>
+  if (notFound || !codex) return <div className="p-6">Adventure not found.</div>
 
   const hasFactions = codex.factions && codex.factions.length > 0
 

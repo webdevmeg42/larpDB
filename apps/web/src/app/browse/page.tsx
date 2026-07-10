@@ -47,7 +47,7 @@ export default function BrowsePage() {
   return (
     <div className="max-w-5xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Browse LARPs</h1>
+        <h1 className="text-2xl font-semibold">Browse Adventures</h1>
         <Link href="/dashboard" className="text-sm text-muted-foreground hover:underline">
           My feed →
         </Link>
@@ -86,12 +86,12 @@ export default function BrowsePage() {
           </div>
         </aside>
 
-        {/* LARP list */}
+        {/* Adventure list */}
         <main className="flex-1 space-y-3">
           {loading ? (
             <p className="text-muted-foreground text-sm">Loading…</p>
           ) : filtered.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No LARPs found.</p>
+            <p className="text-muted-foreground text-sm">No Adventures found.</p>
           ) : (
             filtered.map(g => (
               <div

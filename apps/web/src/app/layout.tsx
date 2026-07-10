@@ -6,8 +6,8 @@ import { Providers } from '@/providers/Providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'larpDB',
-  description: 'LARP management platform',
+  title: 'PlotRunner',
+  description: 'Adventure management platform',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

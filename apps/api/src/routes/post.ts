@@ -64,7 +64,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(403).send({ error: 'Owner or GM role required' })
       }
       if (gameStatus !== 'active') {
-        return reply.status(403).send({ error: 'Posts can only be created while the LARP is active' })
+        return reply.status(403).send({ error: 'Posts can only be created while the Adventure is active' })
       }
 
       const result = CreatePostInput.safeParse(request.body)

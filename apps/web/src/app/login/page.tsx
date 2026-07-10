@@ -45,7 +45,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl">larpDB</CardTitle>
+          <CardTitle className="text-2xl">PlotRunner</CardTitle>
           <CardDescription>
             {isSignUp ? 'Create an account to get started' : 'Sign in to manage your game'}
           </CardDescription>

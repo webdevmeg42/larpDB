@@ -95,7 +95,7 @@ export function SubscriptionsTab() {
       </div>
 
       {games.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No subscribers in any of your LARPs yet.</p>
+        <p className="text-muted-foreground text-sm">No subscribers in any of your Adventures yet.</p>
       ) : filteredGames.length === 0 ? (
         <p className="text-sm text-muted-foreground italic">No results for &ldquo;{search}&rdquo;</p>
       ) : (

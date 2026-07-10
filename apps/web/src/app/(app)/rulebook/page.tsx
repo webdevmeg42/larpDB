@@ -38,7 +38,7 @@ export default function RulebookPage() {
   if (games.length === 0) {
     return (
       <div className="p-6 flex flex-col items-center justify-center min-h-[40vh]">
-        <p className="text-muted-foreground">You haven&apos;t joined any LARPs yet.</p>
+        <p className="text-muted-foreground">You haven&apos;t joined any Adventures yet.</p>
       </div>
     )
   }
@@ -56,8 +56,8 @@ export default function RulebookPage() {
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search LARPs…"
-          aria-label="Search LARPs"
+          placeholder="Search Adventures…"
+          aria-label="Search Adventures"
           className="w-full px-4 py-2 rounded-md border border-border bg-card text-sm pr-10 focus:outline-none focus:ring-1 focus:ring-ring"
         />
         {search && (
@@ -81,7 +81,7 @@ export default function RulebookPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="px-4 py-2 font-medium">LARP</th>
+                  <th className="px-4 py-2 font-medium">Adventure</th>
                   <th className="px-4 py-2 font-medium">Role</th>
                   <th className="px-4 py-2 font-medium" />
                 </tr>

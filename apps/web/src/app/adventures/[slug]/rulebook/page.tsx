@@ -37,7 +37,7 @@ export default function PublicRulebookPage() {
   }, [params.slug])
 
   if (loading) return <div className="p-6 text-muted-foreground">Loading…</div>
-  if (notFound || !data) return <div className="p-6">LARP not found.</div>
+  if (notFound || !data) return <div className="p-6">Adventure not found.</div>
 
   // Link-only mode
   if (data.chapters.length === 0 && data.rulebookLink) {

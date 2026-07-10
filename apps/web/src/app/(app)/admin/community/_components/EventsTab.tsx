@@ -122,7 +122,7 @@ export function EventsTab() {
       </div>
 
       {games.length === 0 ? (
-        <p className="text-muted-foreground text-sm">You don&apos;t manage events for any LARPs yet.</p>
+        <p className="text-muted-foreground text-sm">You don&apos;t manage events for any Adventures yet.</p>
       ) : filteredGames.length === 0 ? (
         <p className="text-sm text-muted-foreground italic">No results for &ldquo;{search}&rdquo;</p>
       ) : (

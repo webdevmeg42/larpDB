@@ -21,7 +21,7 @@ interface ThemePreviewProps {
 
 export default function ThemePreview({ form }: ThemePreviewProps) {
   const {
-    siteTitle = 'My LARP',
+    siteTitle = 'My Adventure',
     tagline,
     colorPrimary = '#6366f1',
     colorSecondary = '#a78bfa',

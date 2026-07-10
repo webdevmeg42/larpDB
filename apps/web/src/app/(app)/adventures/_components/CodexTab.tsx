@@ -376,7 +376,7 @@ const LEVELING_SYSTEMS: {
     value: 'flat',
     label: 'Flat cost',
     costs: '10, 10, 10, 10, 10…',
-    description: 'Every level costs the same. Simplest possible system — good for shorter LARPs where you don\'t want grinding to dominate, just steady progression.',
+    description: 'Every level costs the same. Simplest possible system — good for shorter Adventures where you don\'t want grinding to dominate, just steady progression.',
   },
   {
     value: 'doubling',

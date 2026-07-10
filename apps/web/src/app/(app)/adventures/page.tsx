@@ -75,8 +75,8 @@ export default function AdventureBuilderPage() {
   return (
     <div className="p-6 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">LARP Builder</h1>
-        <Button onClick={() => router.push('/adventures/new')}>+ Build New LARP</Button>
+        <h1 className="text-2xl font-semibold">Adventure Builder</h1>
+        <Button onClick={() => router.push('/adventures/new')}>+ Build New Adventure</Button>
       </div>
 
       {error && <p className="text-sm text-destructive mb-4">{error}</p>}
@@ -95,7 +95,7 @@ export default function AdventureBuilderPage() {
       {loading ? (
         <p className="text-muted-foreground">Loading…</p>
       ) : games.length === 0 ? (
-        <p className="text-muted-foreground">No games yet. Build your first LARP!</p>
+        <p className="text-muted-foreground">No games yet. Build your first Adventure!</p>
       ) : visibleGames.length === 0 ? (
         <p className="text-muted-foreground">No games match your search.</p>
       ) : (
@@ -144,7 +144,7 @@ export default function AdventureBuilderPage() {
                         </Link>
                         <span className="text-muted-foreground">|</span>
                         <button
-                          data-testid="enable-larp-btn"
+                          data-testid="enable-adv-btn"
                           onClick={() => void handleStatusToggle(g)}
                           className="text-xs text-muted-foreground hover:text-foreground"
                         >
@@ -152,7 +152,7 @@ export default function AdventureBuilderPage() {
                         </button>
                         <span className="text-muted-foreground">|</span>
                         <button
-                          data-testid="delete-larp-btn"
+                          data-testid="delete-adv-btn"
                           onClick={() => setDeleteTarget(g)}
                           className="text-xs text-destructive hover:underline"
                         >
@@ -173,7 +173,7 @@ export default function AdventureBuilderPage() {
       <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
         <DialogTitle>Delete {deleteTarget?.name}?</DialogTitle>
         <DialogDescription>
-          This permanently deletes the LARP and all its data — members, characters, events, and
+          This permanently deletes the Adventure and all its data — members, characters, events, and
           everything else. This cannot be undone.
         </DialogDescription>
         <div className="flex justify-end gap-2">

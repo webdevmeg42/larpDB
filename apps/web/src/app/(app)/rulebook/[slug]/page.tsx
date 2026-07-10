@@ -27,7 +27,7 @@ export default function RulebookDetailPage() {
 
   if (!user) return null
 
-  // Owner: full editor (same component and data source as LARP Builder)
+  // Owner: full editor (same component and data source as Adventure Builder)
   if (user.role === 'owner') {
     return (
       <div className="p-6 max-w-6xl">

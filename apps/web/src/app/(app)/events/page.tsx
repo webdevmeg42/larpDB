@@ -80,7 +80,7 @@ export default function EventsPage() {
   if (games.length === 0) {
     return (
       <div className="p-6 flex flex-col items-center justify-center min-h-[40vh]">
-        <p className="text-muted-foreground">You haven&apos;t joined any LARPs yet.</p>
+        <p className="text-muted-foreground">You haven&apos;t joined any Adventures yet.</p>
       </div>
     )
   }
@@ -96,8 +96,8 @@ export default function EventsPage() {
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Search LARPs or events…"
-          aria-label="Search LARPs or events"
+          placeholder="Search Adventures or events…"
+          aria-label="Search Adventures or events"
           className="w-full px-4 py-2 rounded-md border border-border bg-card text-sm pr-10 focus:outline-none focus:ring-1 focus:ring-ring"
         />
         {search && (
@@ -113,11 +113,11 @@ export default function EventsPage() {
 
       {/* Master / detail panels */}
       <div className="flex gap-4 min-h-[400px]">
-        {/* Left panel — LARP list */}
+        {/* Left panel — Adventure list */}
         <Card className="w-64 shrink-0 overflow-hidden">
           <CardContent className="p-0">
             <div className="px-3 py-2 bg-muted text-xs font-semibold text-muted-foreground border-b border-border uppercase tracking-wide">
-              Your LARPs
+              Your Adventures
             </div>
             {filteredGames.length === 0 ? (
               <p className="px-3 py-4 text-sm text-muted-foreground italic">
@@ -235,7 +235,7 @@ export default function EventsPage() {
               </>
             ) : (
               <div className="flex items-center justify-center h-40">
-                <p className="text-sm text-muted-foreground">Select a LARP to view events.</p>
+                <p className="text-sm text-muted-foreground">Select an Adventure to view events.</p>
               </div>
             )}
           </CardContent>

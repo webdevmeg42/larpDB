@@ -49,7 +49,7 @@ export default function PublicStorePage() {
   }, [params.slug])
 
   if (loading) return <div className="p-6 text-muted-foreground">Loading…</div>
-  if (notFound || !data) return <div className="p-6">LARP not found.</div>
+  if (notFound || !data) return <div className="p-6">Adventure not found.</div>
 
   const hasItems = data.events.some(e => e.items.length > 0)
 

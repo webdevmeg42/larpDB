@@ -20,8 +20,8 @@ const [newUser] = await db.insert(users).values({
 if (!newUser) throw new Error('Failed to create user')
 
 const [newGame] = await db.insert(game).values({
-  name: 'My LARP',
-  slug: 'my-larp',
+  name: 'My Adventure',
+  slug: 'my-adventure',
   isPublic: true,
   status: 'active',
 }).returning()
@@ -37,7 +37,7 @@ await db.insert(gameMembers).values({
 
 await db.insert(siteConfig).values({
   gameId: newGame.id,
-  siteTitle: 'My LARP',
+  siteTitle: 'My Adventure',
 })
 
 console.log(`Seeded: ${newUser.email} as owner of game ${newGame.id}`)

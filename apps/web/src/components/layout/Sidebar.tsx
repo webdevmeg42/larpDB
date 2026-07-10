@@ -24,6 +24,7 @@ interface NavItem {
   href: string
   icon: LucideIcon
   roles: ('owner' | 'gm' | 'player')[]
+  testId?: string
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -33,7 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Events', href: '/events', icon: Calendar, roles: ['owner', 'gm', 'player'] },
   { label: 'Rulebook', href: '/rulebook', icon: BookOpen, roles: ['owner', 'gm', 'player'] },
   { label: 'Admin', href: '/admin/community', icon: ShieldCheck, roles: ['owner', 'gm'] },
-  { label: 'LARP Builder', href: '/adventures', icon: Settings, roles: ['owner'] },
+  { label: 'Adventure Builder', href: '/adventures', icon: Settings, roles: ['owner'], testId: 'nav-adv-builder' },
   { label: 'Users', href: '/admin/users', icon: Users, roles: ['owner'] },
   { label: 'New Post', href: '/admin/posts/new', icon: PenSquare, roles: ['owner', 'gm'] },
 ]
@@ -49,7 +50,7 @@ export function Sidebar() {
   return (
     <div className="flex h-full w-56 flex-col border-r bg-background">
       <div className="flex h-14 items-center border-b px-4">
-        <span className="font-semibold">larpDB</span>
+        <span className="font-semibold">PlotRunner</span>
       </div>
       <nav className="flex-1 space-y-1 p-2">
         {visibleItems.map(item => {
@@ -59,7 +60,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+              data-testid={item.testId ?? `nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 isActive

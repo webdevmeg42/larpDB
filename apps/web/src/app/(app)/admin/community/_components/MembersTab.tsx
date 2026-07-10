@@ -121,7 +121,7 @@ export function MembersTab() {
       </div>
 
       {games.length === 0 ? (
-        <p className="text-muted-foreground text-sm">You don&apos;t manage members for any LARPs yet.</p>
+        <p className="text-muted-foreground text-sm">You don&apos;t manage members for any Adventures yet.</p>
       ) : filteredGames.length === 0 ? (
         <p className="text-sm text-muted-foreground italic">No results for &ldquo;{search}&rdquo;</p>
       ) : (

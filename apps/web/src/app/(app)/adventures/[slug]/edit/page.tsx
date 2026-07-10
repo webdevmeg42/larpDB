@@ -112,7 +112,7 @@ export default function BuilderPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     const errors: Record<string, string> = {}
-    if (!form.siteTitle?.trim()) errors.siteTitle = 'LARP Name is required'
+    if (!form.siteTitle?.trim()) errors.siteTitle = 'Adventure Name is required'
     if (!form.tagline?.trim()) errors.tagline = 'Tagline is required'
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors)
@@ -146,9 +146,9 @@ export default function BuilderPage() {
         href="/adventures"
         className="text-sm text-muted-foreground hover:text-foreground mb-4 inline-block"
       >
-        ← Back to LARP Builder
+        ← Back to Adventure Builder
       </Link>
-      <h1 className="text-2xl font-semibold mb-6">LARP Builder</h1>
+      <h1 className="text-2xl font-semibold mb-6">Adventure Builder</h1>
 
       <Tabs defaultValue="branding">
         <TabsList className="mb-6">
@@ -167,7 +167,7 @@ export default function BuilderPage() {
               <CardHeader><CardTitle>Identity</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1">
-                  <Label>LARP Name <span className="text-destructive">*</span></Label>
+                  <Label>Adventure Name <span className="text-destructive">*</span></Label>
                   <Input
                     value={form.siteTitle ?? ''}
                     onChange={e => set('siteTitle', e.target.value)}
@@ -325,7 +325,7 @@ export default function BuilderPage() {
                 <p data-testid="form-error-banner" className="text-sm text-destructive">
                   Please fill out the following required fields:{' '}
                   {Object.keys(validationErrors)
-                    .map(k => ({ siteTitle: 'LARP Name', tagline: 'Tagline' })[k] ?? k)
+                    .map(k => ({ siteTitle: 'Adventure Name', tagline: 'Tagline' })[k] ?? k)
                     .join(', ')}
                 </p>
               )}

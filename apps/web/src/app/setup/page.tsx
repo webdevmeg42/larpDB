@@ -49,7 +49,7 @@ export default function SetupPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/40">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl">Welcome to larpDB</CardTitle>
+          <CardTitle className="text-2xl">Welcome to PlotRunner</CardTitle>
           <CardDescription>Set up your game and create the owner account.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
