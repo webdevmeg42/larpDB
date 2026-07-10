@@ -22,7 +22,7 @@ type NewFormState = {
   showDirectory: boolean
 }
 
-export default function NewLarpPage() {
+export default function NewAdventurePage() {
   const { user } = useAuth()
   const router = useRouter()
   const [form, setForm] = useState<NewFormState>({

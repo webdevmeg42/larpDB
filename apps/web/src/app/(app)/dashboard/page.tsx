@@ -15,7 +15,7 @@ interface FeedResponse {
   offset: number
 }
 
-const LARP_COLORS = [
+const ADVENTURE_COLORS = [
   'bg-violet-500/20 text-violet-200',
   'bg-emerald-500/20 text-emerald-200',
   'bg-amber-500/20 text-amber-200',
@@ -23,13 +23,13 @@ const LARP_COLORS = [
   'bg-rose-500/20 text-rose-200',
 ]
 
-function getLarpColor(gameId: string): string {
+function getAdventureColor(gameId: string): string {
   let hash = 0
   for (let i = 0; i < gameId.length; i++) hash = (hash * 31 + gameId.charCodeAt(i)) & 0xffffffff
-  const idx = Math.abs(hash) % LARP_COLORS.length
+  const idx = Math.abs(hash) % ADVENTURE_COLORS.length
   // idx is always a valid index since we mod by length
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return LARP_COLORS[idx]!
+  return ADVENTURE_COLORS[idx]!
 }
 
 export default function DashboardPage() {
@@ -89,7 +89,7 @@ export default function DashboardPage() {
               <div className="mb-2 flex items-center gap-2">
                 <Link
                   href={`/adventures/${post.gameSlug}`}
-                  className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${getLarpColor(post.gameId)}`}
+                  className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${getAdventureColor(post.gameId)}`}
                 >
                   {post.gameName}
                 </Link>

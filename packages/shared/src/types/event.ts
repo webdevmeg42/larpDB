@@ -1,7 +1,7 @@
 export type EventStatus = 'draft' | 'published' | 'archived'
 export type RegistrationStatus = 'pending' | 'confirmed' | 'waitlist' | 'cancelled'
 
-export interface LarpEvent {
+export interface AdventureEvent {
   id: string
   title: string
   description: string | null

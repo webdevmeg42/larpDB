@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import type { SiteConfig, StoreItem, PurchaseDetail, LarpEvent } from '@plotrunner/shared'
+import type { SiteConfig, StoreItem, PurchaseDetail, AdventureEvent } from '@plotrunner/shared'
 import { ChevronDown, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react'
 
 interface Props {
@@ -23,7 +23,7 @@ export default function StoreTab({ config, reload }: Props) {
   const [savingCurrency, setSavingCurrency] = useState(false)
   const [currencySaved, setCurrencySaved] = useState(false)
 
-  const [events, setEvents] = useState<LarpEvent[]>([])
+  const [events, setEvents] = useState<AdventureEvent[]>([])
   const [items, setItems] = useState<StoreItem[]>([])
   const [purchases, setPurchases] = useState<PurchaseDetail[]>([])
   const [filterEventId, setFilterEventId] = useState('')
@@ -34,7 +34,7 @@ export default function StoreTab({ config, reload }: Props) {
 
   useEffect(() => {
     void Promise.all([
-      api.get<LarpEvent[]>('/events'),
+      api.get<AdventureEvent[]>('/events'),
       api.get<StoreItem[]>('/store/items'),
       api.get<PurchaseDetail[]>('/store/purchases'),
     ]).then(([evts, itms, purch]) => {
@@ -124,7 +124,7 @@ export default function StoreTab({ config, reload }: Props) {
 }
 
 interface ItemsSectionProps {
-  events: LarpEvent[]
+  events: AdventureEvent[]
   items: StoreItem[]
   currencyName: string
   onRefresh: () => Promise<void>
@@ -270,7 +270,7 @@ function ItemsSection({ events, items, currencyName, onRefresh }: ItemsSectionPr
 }
 
 interface ItemFormProps {
-  events: LarpEvent[]
+  events: AdventureEvent[]
   currencyName: string
   item?: StoreItem
   onSave: () => Promise<void>
@@ -381,7 +381,7 @@ function ItemForm({ events, currencyName, item, onSave, onCancel }: ItemFormProp
 }
 
 interface PurchaseLogProps {
-  events: LarpEvent[]
+  events: AdventureEvent[]
   purchases: PurchaseDetail[]
   filterEventId: string
   onFilterChange: (id: string) => void

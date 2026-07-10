@@ -8,7 +8,7 @@ import { api } from '@/lib/api'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
-import type { LarpEvent, EventRegistration, Character } from '@plotrunner/shared'
+import type { AdventureEvent, EventRegistration, Character } from '@plotrunner/shared'
 import { ArrowLeft } from 'lucide-react'
 
 function formatDateTime(iso: string): string {
@@ -20,7 +20,7 @@ export default function EventDetailPage() {
   const params = useParams()
   const id = typeof params.id === 'string' ? params.id : ''
 
-  const [event, setEvent] = useState<LarpEvent | null>(null)
+  const [event, setEvent] = useState<AdventureEvent | null>(null)
   const [myReg, setMyReg] = useState<EventRegistration | null>(null)
   const [characters, setCharacters] = useState<Character[]>([])
   const [selectedCharId, setSelectedCharId] = useState('')
@@ -36,7 +36,7 @@ export default function EventDetailPage() {
     void (async () => {
       try {
         const [evt, regs, chars] = await Promise.all([
-          api.get<LarpEvent>(`/events/${id}`),
+          api.get<AdventureEvent>(`/events/${id}`),
           api.get<EventRegistration[]>(`/events/${id}/registrations`),
           api.get<Character[]>('/characters'),
         ])

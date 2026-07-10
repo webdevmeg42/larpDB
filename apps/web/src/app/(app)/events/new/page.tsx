@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import type { LarpEvent } from '@plotrunner/shared'
+import type { AdventureEvent } from '@plotrunner/shared'
 
 interface MyGame {
   id: string
@@ -73,7 +73,7 @@ export default function NewEventPage() {
       if (description.trim()) body.description = description.trim()
       if (maxPlayers) body.maxPlayers = parseInt(maxPlayers, 10)
 
-      const event = await api.post<LarpEvent>('/events', body)
+      const event = await api.post<AdventureEvent>('/events', body)
       router.push(`/events/${event.id}`)
     } catch (err) {
       setError((err as Error).message ?? 'Failed to create event')

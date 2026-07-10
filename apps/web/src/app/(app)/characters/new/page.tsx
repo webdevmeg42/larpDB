@@ -21,13 +21,13 @@ interface MyGame {
 // The locked "Character Name" field ID defined in SchemaBuilder
 const CHARACTER_NAME_FIELD_ID = 'aaaaaaaa-0000-0000-0000-000000000001'
 
-type Step = 'larp' | 'race' | 'class' | 'form'
+type Step = 'adventure' | 'race' | 'class' | 'form'
 
 export default function NewCharacterPage() {
   const { user } = useAuth()
   const router = useRouter()
 
-  const [step, setStep] = useState<Step>('larp')
+  const [step, setStep] = useState<Step>('adventure')
 
   const [games, setGames] = useState<MyGame[]>([])
   const [gamesLoading, setGamesLoading] = useState(true)
@@ -80,7 +80,7 @@ export default function NewCharacterPage() {
       .catch(() => setGamesLoading(false))
   }, [user])
 
-  function handleLarpContinue() {
+  function handleAdventureContinue() {
     if (!selectedGameId) return
     setSchemasLoading(true)
     setSchemasError(null)
@@ -138,8 +138,8 @@ export default function NewCharacterPage() {
     )
   }
 
-  const stepOrder: Step[] = ['larp', 'race', 'class', 'form']
-  const stepLabels: Record<Step, string> = { larp: 'LARP', race: 'Race', class: 'Class', form: 'Character' }
+  const stepOrder: Step[] = ['adventure', 'race', 'class', 'form']
+  const stepLabels: Record<Step, string> = { adventure: 'Adventure', race: 'Race', class: 'Class', form: 'Character' }
   const currentIndex = stepOrder.indexOf(step)
 
   const allCombinedFields = [
@@ -184,14 +184,14 @@ export default function NewCharacterPage() {
         ))}
       </div>
 
-      {/* Step 1: Select LARP */}
-      {step === 'larp' && (
+      {/* Step 1: Select Adventure */}
+      {step === 'adventure' && (
         <div className="space-y-6">
           <h1 className="text-2xl font-semibold">New Character</h1>
           <div className="space-y-1.5">
-            <Label htmlFor="larp">Select a LARP</Label>
+            <Label htmlFor="adventure">Select a LARP</Label>
             <select
-              id="larp"
+              id="adventure"
               value={selectedGameId}
               onChange={e => setSelectedGameId(e.target.value)}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -206,7 +206,7 @@ export default function NewCharacterPage() {
           </div>
           {schemasError && <p className="text-sm text-destructive">{schemasError}</p>}
           <div className="flex gap-2">
-            <Button onClick={handleLarpContinue} disabled={!selectedGameId || schemasLoading}>
+            <Button onClick={handleAdventureContinue} disabled={!selectedGameId || schemasLoading}>
               {schemasLoading ? 'Loading…' : 'Continue'}
             </Button>
             <Button variant="outline" onClick={() => router.push('/characters')}>Cancel</Button>
@@ -246,7 +246,7 @@ export default function NewCharacterPage() {
             >
               Continue
             </Button>
-            <Button variant="outline" onClick={() => setStep('larp')}>Back</Button>
+            <Button variant="outline" onClick={() => setStep('adventure')}>Back</Button>
           </div>
         </div>
       )}

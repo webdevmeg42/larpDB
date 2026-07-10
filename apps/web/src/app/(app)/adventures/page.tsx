@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import type { MyGame } from '@plotrunner/shared'
 
-export default function LarpBuilderPage() {
+export default function AdventureBuilderPage() {
   const { user } = useAuth()
   const router = useRouter()
   const [games, setGames] = useState<MyGame[]>([])

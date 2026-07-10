@@ -28,7 +28,7 @@ export interface Comment {
   createdAt: string
 }
 
-export interface LarpSubscription {
+export interface AdventureSubscription {
   id: string
   gameId: string
   userId: string
