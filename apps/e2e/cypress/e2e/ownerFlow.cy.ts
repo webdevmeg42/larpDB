@@ -10,6 +10,7 @@ function tomorrowDatetimeLocal(): string {
 
 const adventureName = `Cypress ownerFlow Test ${testDateTime(new Date())}`
 let adventureEditUrl = ''
+let adventureSlug = ''
 const characterName = `Character ${testDateTime(new Date())}`
 
 const sel = {
@@ -73,6 +74,8 @@ const sel = {
   buildsActivateBtn: '[data-testid="builds-activate-btn"]',
   // adventures list — enable/disable toggle
   enableAdvBtn:         '[data-testid="enable-adv-btn"]',
+  advNameAvailability: '[data-testid="adv-name-availability"]',
+  advSlugDisplay:      '[data-testid="adv-slug-display"]',
   // my characters page
   navMyCharacters:       '[data-testid="nav-my-characters"]',
   charactersSearchInput: '[data-testid="characters-search-input"]',
@@ -109,6 +112,15 @@ describe('Owner Flow', () => {
 
     cy.get(sel.tabBranding).should('be.visible')
     cy.url().then(url => { adventureEditUrl = url })
+    cy.get(sel.advSlugDisplay)
+      .should('be.visible')
+      .invoke('attr', 'data-slug')
+      .then(slug => {
+        adventureSlug = slug as string
+        cy.visit(`/adventures/${adventureSlug}`)
+        cy.contains(adventureName)
+        cy.visit(adventureEditUrl)
+      })
     cy.get(sel.saveChangesBtn).click()
     cy.get(sel.formErrorBanner)
       .should('be.visible').and('contain', 'Tagline')
@@ -302,6 +314,15 @@ describe('Owner Flow', () => {
     cy.get(sel.createEventBtn).click()
 
     cy.contains('h1', `Event ${adventureName}`)
+  })
+
+  it('Owner cannot create an adventure with a duplicate name', () => {
+    cy.get(sel.navAdvBuilder).click()
+    cy.contains('Build New Adventure').click()
+
+    cy.get(sel.advNameInput).type(adventureName)
+    cy.get(sel.advNameAvailability, { timeout: 3000 }).should('contain', '✗ Already taken')
+    cy.contains('button', 'Create Adventure').should('be.disabled')
   })
 
   after(() => {
