@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { SiteConfig, GameCodex, Game } from '@plotrunner/shared'
 import { useImageUpload } from '@/hooks/useImageUpload'
+import { useNameAvailability } from '@/hooks/useNameAvailability'
 import dynamic from 'next/dynamic'
 import CodexTab, { BrandingSection, type BrandingSectionRef } from '../../_components/CodexTab'
 import StoreTab from '../../_components/StoreTab'
@@ -48,6 +49,15 @@ export default function BuilderPage() {
   const { config, game, reload } = useSiteConfig()
 
   const [form, setForm] = useState<FormState>({})
+
+  const { status: nameStatus, baseSlug } = useNameAvailability(
+    form.siteTitle ?? '',
+    {
+      excludeId: params.slug,
+      ...(config?.siteTitle !== undefined ? { originalName: config.siteTitle } : {}),
+    },
+  )
+
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -123,7 +133,10 @@ export default function BuilderPage() {
     try {
       await Promise.all([
         api.patch<SiteConfig>('/config', form),
-        ...(isPublic !== null ? [api.patch<Game>(`/games/${params.slug}`, { isPublic })] : []),
+        api.patch<Game>(`/games/${params.slug}`, {
+          ...(isPublic !== null ? { isPublic } : {}),
+          ...(form.siteTitle?.trim() ? { name: form.siteTitle.trim() } : {}),
+        }),
       ])
       if (brandingRef.current) {
         const socialData = brandingRef.current.getData()
@@ -172,10 +185,31 @@ export default function BuilderPage() {
                     value={form.siteTitle ?? ''}
                     onChange={e => set('siteTitle', e.target.value)}
                     maxLength={150}
-                    className={validationErrors.siteTitle ? 'border-destructive' : ''}
+                    className={validationErrors.siteTitle || nameStatus === 'taken' || nameStatus === 'invalid-slug' ? 'border-destructive' : ''}
                   />
                   {validationErrors.siteTitle && (
                     <p className="text-xs text-destructive">{validationErrors.siteTitle}</p>
+                  )}
+                  {game?.slug && (
+                    <p
+                      data-testid="adv-slug-display"
+                      data-slug={game.slug}
+                      className="text-xs text-muted-foreground"
+                    >
+                      Public URL: plotrunner.run/adventures/<strong>{game.slug}</strong>
+                    </p>
+                  )}
+                  {nameStatus !== 'idle' && (
+                    <p className={`text-xs ${
+                      nameStatus === 'available' ? 'text-green-600' :
+                      nameStatus === 'taken' || nameStatus === 'invalid-slug' ? 'text-destructive' :
+                      'text-muted-foreground'
+                    }`}>
+                      {nameStatus === 'checking' && `New URL preview: plotrunner.run/adventures/${baseSlug} — Checking availability…`}
+                      {nameStatus === 'available' && `New URL will be: plotrunner.run/adventures/${baseSlug} ✓ Available`}
+                      {nameStatus === 'taken' && '✗ That name is already taken'}
+                      {nameStatus === 'invalid-slug' && 'Name must contain at least one letter or number'}
+                    </p>
                   )}
                   {(() => {
                     const len = (form.siteTitle ?? '').length
@@ -334,7 +368,7 @@ export default function BuilderPage() {
                 type="submit"
                 form="branding-form"
                 data-testid="save-changes-btn"
-                disabled={saving || logoUpload.uploading || bannerUpload.uploading}
+                disabled={saving || logoUpload.uploading || bannerUpload.uploading || nameStatus === 'taken' || nameStatus === 'invalid-slug'}
               >
                 {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
               </Button>
