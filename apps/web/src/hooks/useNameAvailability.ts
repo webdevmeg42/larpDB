@@ -39,8 +39,8 @@ export function useNameAvailability(
       return
     }
 
-    setStatus('checking')
     timerRef.current = setTimeout(() => {
+      setStatus('checking')
       const params = new URLSearchParams({ name: trimmed })
       if (options?.excludeId) params.set('excludeId', options.excludeId)
 
