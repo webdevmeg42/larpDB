@@ -27,6 +27,8 @@ type GameWithEvents = {
   events: EventWithReg[]
 }
 
+type TimeFilter = 'upcoming' | 'past' | 'all'
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' })
 }
@@ -37,7 +39,6 @@ export default function EventsPage() {
   const [games, setGames] = useState<GameWithEvents[]>([])
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  type TimeFilter = 'upcoming' | 'past' | 'all'
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('upcoming')
   const [loading, setLoading] = useState(true)
 
@@ -55,6 +56,14 @@ export default function EventsPage() {
 
   const today = new Date().toISOString()
 
+  const matchesFilter = (e: EventWithReg) => {
+    const matchesTime =
+      timeFilter === 'upcoming' ? e.startAt >= today && e.status !== 'archived' :
+      timeFilter === 'past'     ? e.startAt < today :
+      true
+    return matchesTime && (!search || e.title.toLowerCase().includes(search.toLowerCase()))
+  }
+
   const filteredGames = games.filter(
     g =>
       g.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -65,16 +74,7 @@ export default function EventsPage() {
     filteredGames.find(g => g.id === selectedGameId) ??
     (selectedGameId === null ? (filteredGames[0] ?? null) : null)
 
-  const visibleEvents = selectedGame
-    ? selectedGame.events.filter(e => {
-        const matchesTime =
-          timeFilter === 'upcoming' ? e.startAt >= today && e.status !== 'archived' :
-          timeFilter === 'past'     ? e.startAt < today :
-          true
-        const matchesSearch = !search || e.title.toLowerCase().includes(search.toLowerCase())
-        return matchesTime && matchesSearch
-      })
-    : []
+  const visibleEvents = selectedGame ? selectedGame.events.filter(matchesFilter) : []
 
   if (!user) return null
 
@@ -142,14 +142,7 @@ export default function EventsPage() {
               </p>
             ) : (
               filteredGames.map(g => {
-                const eventCount = g.events.filter(e => {
-                  const matchesTime =
-                    timeFilter === 'upcoming' ? e.startAt >= today && e.status !== 'archived' :
-                    timeFilter === 'past'     ? e.startAt < today :
-                    true
-                  const matchesSearch = !search || e.title.toLowerCase().includes(search.toLowerCase())
-                  return matchesTime && matchesSearch
-                }).length
+                const eventCount = g.events.filter(matchesFilter).length
                 const hasEvents = eventCount > 0
                 return (
                   <button
