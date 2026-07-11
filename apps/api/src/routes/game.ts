@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq, count, and, or, inArray } from 'drizzle-orm'
+import { eq, count, and, or, inArray, ne, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 import { db } from '../db/index.js'
@@ -161,6 +161,25 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
     },
   )
 
+  fastify.get(
+    '/games/check-name',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const { name, excludeId } = request.query as { name?: string; excludeId?: string }
+      if (!name || typeof name !== 'string' || !name.trim()) {
+        return reply.status(400).send({ error: 'name is required' })
+      }
+      if (!generateSlug(name.trim())) {
+        return reply.status(400).send({ error: 'Adventure name must contain at least one letter or number' })
+      }
+      const condition = excludeId
+        ? and(sql`LOWER(${game.name}) = LOWER(${name.trim()})`, ne(game.id, excludeId))
+        : sql`LOWER(${game.name}) = LOWER(${name.trim()})`
+      const [existing] = await db.select({ id: game.id }).from(game).where(condition).limit(1)
+      return reply.send({ available: !existing })
+    },
+  )
+
   fastify.post(
     '/games',
     { preHandler: [fastify.authenticate] },
@@ -172,6 +191,10 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
 
       const userId = request.user.sub
       const baseSlug = generateSlug(result.data.name)
+
+      if (!baseSlug) {
+        return reply.status(400).send({ error: 'Adventure name must contain at least one letter or number' })
+      }
 
       let newGame: typeof game.$inferSelect | undefined
       for (let attempt = 0; attempt < 5 && !newGame; attempt++) {
@@ -203,7 +226,12 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
             return created
           })
         } catch (err: unknown) {
-          if ((err as { code?: string }).code !== '23505' || attempt >= 4) throw err
+          const pgErr = err as { code?: string; constraint?: string; detail?: string }
+          if (pgErr.code !== '23505') throw err
+          if (pgErr.constraint === 'game_name_lower_idx' || (pgErr.detail ?? '').includes('game_name_lower_idx')) {
+            return reply.status(400).send({ error: 'Adventure name already taken' })
+          }
+          if (attempt >= 4) throw err
         }
       }
       if (!newGame) throw new Error('Failed to create game')
@@ -274,17 +302,39 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
-      const schema = z.object({ isPublic: z.boolean() })
+      const schema = z.object({
+        isPublic: z.boolean().optional(),
+        name: z.string().min(1).max(150).optional(),
+      })
       const result = schema.safeParse(request.body)
       if (!result.success) {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
-      const [updated] = await db
-        .update(game)
-        .set({ isPublic: result.data.isPublic })
-        .where(eq(game.id, id))
-        .returning()
+      const patch: Record<string, unknown> = {}
+      if (result.data.isPublic !== undefined) patch.isPublic = result.data.isPublic
+      if (result.data.name !== undefined) {
+        const trimmed = result.data.name.trim()
+        if (!generateSlug(trimmed)) {
+          return reply.status(400).send({ error: 'Adventure name must contain at least one letter or number' })
+        }
+        patch.name = trimmed
+      }
+      if (Object.keys(patch).length === 0) {
+        return reply.status(400).send({ error: 'No fields to update' })
+      }
+
+      let updated: typeof game.$inferSelect | undefined
+      try {
+        const rows = await db.update(game).set(patch).where(eq(game.id, id)).returning()
+        updated = rows[0]
+      } catch (err: unknown) {
+        const pgErr = err as { code?: string; constraint?: string; detail?: string }
+        if (pgErr.code === '23505' && (pgErr.constraint === 'game_name_lower_idx' || (pgErr.detail ?? '').includes('game_name_lower_idx'))) {
+          return reply.status(400).send({ error: 'Adventure name already taken' })
+        }
+        throw err
+      }
 
       if (!updated) return reply.status(404).send({ error: 'Game not found' })
       return reply.send(updated)

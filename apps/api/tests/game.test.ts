@@ -534,6 +534,155 @@ describe('GET /admin-members', () => {
   })
 })
 
+describe('GET /games/check-name', () => {
+  it('returns available: true for an unused name', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const regRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'check1@example.com', password: 'password123', displayName: 'Check User' },
+    })
+    const { token } = regRes.json()
+
+    const res = await app.inject({
+      method: 'GET', url: '/games/check-name?name=Totally+Unique+Name+12345',
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().available).toBe(true)
+    await app.close()
+  })
+
+  it('returns available: false for an existing name (case-insensitive)', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const regRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'check2@example.com', password: 'password123', displayName: 'Check User 2' },
+    })
+    const { token } = regRes.json()
+
+    await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Shadow Realm' },
+    })
+
+    const res = await app.inject({
+      method: 'GET', url: '/games/check-name?name=shadow+realm',
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().available).toBe(false)
+    await app.close()
+  })
+
+  it('returns available: true when excludeId matches the existing game', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const regRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'check3@example.com', password: 'password123', displayName: 'Check User 3' },
+    })
+    const { token } = regRes.json()
+
+    const gameRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Dragon Keep' },
+    })
+    const { id: gameId } = gameRes.json()
+
+    const res = await app.inject({
+      method: 'GET', url: `/games/check-name?name=Dragon+Keep&excludeId=${gameId}`,
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().available).toBe(true)
+    await app.close()
+  })
+
+  it('returns 400 for a name that produces an empty slug', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const regRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'check4@example.com', password: 'password123', displayName: 'Check User 4' },
+    })
+    const { token } = regRes.json()
+
+    const res = await app.inject({
+      method: 'GET', url: '/games/check-name?name=!!!',
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error).toMatch(/letter or number/)
+    await app.close()
+  })
+
+  it('returns 401 without auth', async () => {
+    const app = buildApp()
+    await app.ready()
+    const res = await app.inject({
+      method: 'GET', url: '/games/check-name?name=test',
+    })
+    expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+})
+
+describe('POST /games — name uniqueness', () => {
+  it('returns 400 when creating an adventure with a duplicate name', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const regRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'dup1@example.com', password: 'password123', displayName: 'Dup User' },
+    })
+    const { token } = regRes.json()
+
+    await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Duplicate Name Test' },
+    })
+
+    const res = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'duplicate name test' },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error).toBe('Adventure name already taken')
+    await app.close()
+  })
+
+  it('returns 400 when name produces an empty slug', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const regRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'empty1@example.com', password: 'password123', displayName: 'Empty User' },
+    })
+    const { token } = regRes.json()
+
+    const res = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: '!!!' },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error).toMatch(/letter or number/)
+    await app.close()
+  })
+})
+
 describe('GET /admin-subscriptions', () => {
   it('owner sees subscribers', async () => {
     const { app, ownerToken } = await setupAdminMemberTest()
