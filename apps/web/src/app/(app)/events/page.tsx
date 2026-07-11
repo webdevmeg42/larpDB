@@ -37,6 +37,8 @@ export default function EventsPage() {
   const [games, setGames] = useState<GameWithEvents[]>([])
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  type TimeFilter = 'upcoming' | 'past' | 'all'
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('upcoming')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -64,11 +66,14 @@ export default function EventsPage() {
     (selectedGameId === null ? (filteredGames[0] ?? null) : null)
 
   const visibleEvents = selectedGame
-    ? search
-      ? selectedGame.events.filter(e =>
-          e.title.toLowerCase().includes(search.toLowerCase()),
-        )
-      : selectedGame.events.filter(e => e.startAt >= today && e.status !== 'archived')
+    ? selectedGame.events.filter(e => {
+        const matchesTime =
+          timeFilter === 'upcoming' ? e.startAt >= today && e.status !== 'archived' :
+          timeFilter === 'past'     ? e.startAt < today :
+          true
+        const matchesSearch = !search || e.title.toLowerCase().includes(search.toLowerCase())
+        return matchesTime && matchesSearch
+      })
     : []
 
   if (!user) return null
@@ -90,25 +95,37 @@ export default function EventsPage() {
       <h1 className="text-2xl font-semibold">Events</h1>
 
       {/* Search bar */}
-      <div className="relative max-w-md">
-        <input
-          data-testid="events-search-input"
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search Adventures or events…"
-          aria-label="Search Adventures or events"
-          className="w-full px-4 py-2 rounded-md border border-border bg-card text-sm pr-10 focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-        {search && (
-          <button
-            onClick={() => setSearch('')}
-            aria-label="Clear search"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+      <div className="flex gap-2 max-w-xl items-center">
+        <div className="relative flex-1">
+          <input
+            data-testid="events-search-input"
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search Adventures or events…"
+            aria-label="Search Adventures or events"
+            className="w-full px-4 py-2 rounded-md border border-border bg-card text-sm pr-10 focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              aria-label="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <select
+          data-testid="events-time-filter"
+          value={timeFilter}
+          onChange={e => setTimeFilter(e.target.value as TimeFilter)}
+          className="rounded-md border border-border bg-card text-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-ring shrink-0"
+        >
+          <option value="upcoming">Upcoming</option>
+          <option value="past">Past</option>
+          <option value="all">All</option>
+        </select>
       </div>
 
       {/* Master / detail panels */}
@@ -125,10 +142,15 @@ export default function EventsPage() {
               </p>
             ) : (
               filteredGames.map(g => {
-                const upcomingCount = search
-                  ? g.events.filter(e => e.title.toLowerCase().includes(search.toLowerCase())).length
-                  : g.events.filter(e => e.startAt >= today && e.status !== 'archived').length
-                const hasUpcoming = upcomingCount > 0
+                const eventCount = g.events.filter(e => {
+                  const matchesTime =
+                    timeFilter === 'upcoming' ? e.startAt >= today && e.status !== 'archived' :
+                    timeFilter === 'past'     ? e.startAt < today :
+                    true
+                  const matchesSearch = !search || e.title.toLowerCase().includes(search.toLowerCase())
+                  return matchesTime && matchesSearch
+                }).length
+                const hasEvents = eventCount > 0
                 return (
                   <button
                     key={g.id}
@@ -139,15 +161,17 @@ export default function EventsPage() {
                   >
                     <p
                       className={`text-sm font-medium truncate ${
-                        !hasUpcoming ? 'text-muted-foreground italic' : ''
+                        !hasEvents ? 'text-muted-foreground italic' : ''
                       }`}
                     >
                       {g.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {!hasUpcoming
-                        ? 'no upcoming events'
-                        : `${upcomingCount} event${upcomingCount === 1 ? '' : 's'}`}
+                      {!hasEvents
+                        ? timeFilter === 'upcoming' ? 'no upcoming events'
+                          : timeFilter === 'past' ? 'no past events'
+                          : 'no events'
+                        : `${eventCount} event${eventCount === 1 ? '' : 's'}`}
                     </p>
                   </button>
                 )
@@ -179,7 +203,11 @@ export default function EventsPage() {
 
                 {visibleEvents.length === 0 ? (
                   <div className="flex items-center justify-center h-40">
-                    <p className="text-sm text-muted-foreground">No upcoming events.</p>
+                    <p className="text-sm text-muted-foreground">
+                      {timeFilter === 'upcoming' ? 'No upcoming events.'
+                        : timeFilter === 'past' ? 'No past events.'
+                        : 'No events.'}
+                    </p>
                   </div>
                 ) : (
                   <table className="w-full text-sm">
