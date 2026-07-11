@@ -8,6 +8,7 @@ import {
   jsonb,
   unique,
   index,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { sql } from 'drizzle-orm'
 import type { SchemaField, GameCodex } from '@plotrunner/shared'
@@ -32,7 +33,9 @@ export const game = pgTable('game', {
   joinMode: text('join_mode', { enum: ['open', 'approval'] }).notNull().default('open'),
   status: text('status', { enum: ['active', 'inactive'] }).notNull().default('inactive'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
-})
+}, (t) => ({
+  nameLowerIdx: uniqueIndex('game_name_lower_idx').on(sql`LOWER(${t.name})`),
+}))
 
 export const gameMembers = pgTable('game_members', {
   id: uuid('id').primaryKey().defaultRandom(),

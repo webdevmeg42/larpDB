@@ -26,7 +26,7 @@ async function createAndLogin(email = 'owner@test.com') {
     method: 'POST',
     url: '/games',
     headers: { authorization: `Bearer ${token}` },
-    payload: { name: 'Test Game' },
+    payload: { name: `Test Game ${email}` },
   })
   const { id: gameId } = gameRes.json()
 

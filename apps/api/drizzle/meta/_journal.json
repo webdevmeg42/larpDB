@@ -141,6 +141,13 @@
       "when": 1783623600000,
       "tag": "0019_rename_adventure_constraints",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1783627200000,
+      "tag": "0020_game_name_unique",
+      "breakpoints": true
     }
   ]
 }
