@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Game, SiteConfig } from '@plotrunner/shared'
+import { useNameAvailability } from '@/hooks/useNameAvailability'
 
 type NewFormState = {
   siteTitle: string
@@ -36,6 +37,7 @@ export default function NewAdventurePage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [titleError, setTitleError] = useState(false)
+  const { status: nameStatus, baseSlug } = useNameAvailability(form.siteTitle)
 
   if (user?.role !== 'owner') {
     return <div className="p-6 text-muted-foreground">Owner access required.</div>
@@ -101,9 +103,26 @@ export default function NewAdventurePage() {
                 onChange={e => set('siteTitle', e.target.value)}
                 maxLength={150}
                 placeholder="Realm of Shadows"
-                className={titleError ? 'border-destructive' : ''}
+                className={titleError || nameStatus === 'taken' || nameStatus === 'invalid-slug' ? 'border-destructive' : ''}
               />
               {titleError && <p data-testid="adv-name-error" className="text-xs text-destructive">Adventure Name is required</p>}
+              {!titleError && baseSlug && (
+                <p className="text-xs text-muted-foreground">
+                  URL: plotrunner.run/adventures/<strong>{baseSlug}</strong>
+                </p>
+              )}
+              {!titleError && (
+                <p data-testid="adv-name-availability" className={`text-xs ${
+                  nameStatus === 'available' ? 'text-green-600' :
+                  nameStatus === 'taken' || nameStatus === 'invalid-slug' ? 'text-destructive' :
+                  'text-muted-foreground'
+                }`}>
+                  {nameStatus === 'checking' && 'Checking availability…'}
+                  {nameStatus === 'available' && '✓ Available'}
+                  {nameStatus === 'taken' && '✗ Already taken'}
+                  {nameStatus === 'invalid-slug' && 'Name must contain at least one letter or number'}
+                </p>
+              )}
               {(() => {
                 const len = form.siteTitle.length
                 return (
@@ -209,7 +228,7 @@ export default function NewAdventurePage() {
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button
           type="submit"
-          disabled={saving}
+          disabled={saving || nameStatus === 'taken' || nameStatus === 'checking' || nameStatus === 'invalid-slug'}
         >
           {saving ? 'Creating…' : 'Create Adventure'}
         </Button>
