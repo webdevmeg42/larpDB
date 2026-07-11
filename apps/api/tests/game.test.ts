@@ -683,6 +683,95 @@ describe('POST /games — name uniqueness', () => {
   })
 })
 
+describe('PATCH /games/:id — name update', () => {
+  it('renames an adventure successfully', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const regRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'patchname1@example.com', password: 'password123', displayName: 'Patch User' },
+    })
+    const { token } = regRes.json()
+
+    const gameRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Original Name' },
+    })
+    const { id } = gameRes.json()
+
+    const res = await app.inject({
+      method: 'PATCH', url: `/games/${id}`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Renamed Adventure' },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().name).toBe('Renamed Adventure')
+    await app.close()
+  })
+
+  it('returns 400 when renaming to an already-taken name', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const regRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'patchname2@example.com', password: 'password123', displayName: 'Patch User 2' },
+    })
+    const { token } = regRes.json()
+
+    await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Already Taken' },
+    })
+
+    const gameRes2 = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Another Adventure' },
+    })
+    const { id: id2 } = gameRes2.json()
+
+    const res = await app.inject({
+      method: 'PATCH', url: `/games/${id2}`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'already taken' },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error).toBe('Adventure name already taken')
+    await app.close()
+  })
+
+  it('returns 400 for empty patch body', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const regRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'patchname3@example.com', password: 'password123', displayName: 'Patch User 3' },
+    })
+    const { token } = regRes.json()
+
+    const gameRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Patch Test Game' },
+    })
+    const { id } = gameRes.json()
+
+    const res = await app.inject({
+      method: 'PATCH', url: `/games/${id}`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: {},
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error).toBe('No fields to update')
+    await app.close()
+  })
+})
+
 describe('GET /admin-subscriptions', () => {
   it('owner sees subscribers', async () => {
     const { app, ownerToken } = await setupAdminMemberTest()

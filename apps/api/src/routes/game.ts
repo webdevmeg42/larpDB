@@ -74,6 +74,8 @@ async function uniqueSlug(base: string): Promise<string> {
   }
 }
 
+const ERR_INVALID_SLUG = 'Adventure name must contain at least one letter or number'
+
 export const gameRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/games', async (request, reply) => {
     const { limit = '100', offset = '0' } = request.query as { limit?: string; offset?: string }
@@ -170,7 +172,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'name is required' })
       }
       if (!generateSlug(name.trim())) {
-        return reply.status(400).send({ error: 'Adventure name must contain at least one letter or number' })
+        return reply.status(400).send({ error: ERR_INVALID_SLUG })
       }
       const condition = excludeId
         ? and(sql`LOWER(${game.name}) = LOWER(${name.trim()})`, ne(game.id, excludeId))
@@ -193,7 +195,12 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const baseSlug = generateSlug(result.data.name)
 
       if (!baseSlug) {
-        return reply.status(400).send({ error: 'Adventure name must contain at least one letter or number' })
+        return reply.status(400).send({ error: ERR_INVALID_SLUG })
+      }
+
+      const RESERVED_SLUGS = new Set(['check-name'])
+      if (RESERVED_SLUGS.has(baseSlug)) {
+        return reply.status(400).send({ error: 'Adventure name conflicts with a reserved path' })
       }
 
       let newGame: typeof game.$inferSelect | undefined
@@ -226,9 +233,9 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
             return created
           })
         } catch (err: unknown) {
-          const pgErr = err as { code?: string; constraint?: string; detail?: string }
+          const pgErr = err as { code?: string; constraint?: string }
           if (pgErr.code !== '23505') throw err
-          if (pgErr.constraint === 'game_name_lower_idx' || (pgErr.detail ?? '').includes('game_name_lower_idx')) {
+          if (pgErr.constraint === 'game_name_lower_idx') {
             return reply.status(400).send({ error: 'Adventure name already taken' })
           }
           if (attempt >= 4) throw err
@@ -311,12 +318,12 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
-      const patch: Record<string, unknown> = {}
+      const patch: Partial<typeof game.$inferInsert> = {}
       if (result.data.isPublic !== undefined) patch.isPublic = result.data.isPublic
       if (result.data.name !== undefined) {
         const trimmed = result.data.name.trim()
         if (!generateSlug(trimmed)) {
-          return reply.status(400).send({ error: 'Adventure name must contain at least one letter or number' })
+          return reply.status(400).send({ error: ERR_INVALID_SLUG })
         }
         patch.name = trimmed
       }
@@ -329,8 +336,8 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         const rows = await db.update(game).set(patch).where(eq(game.id, id)).returning()
         updated = rows[0]
       } catch (err: unknown) {
-        const pgErr = err as { code?: string; constraint?: string; detail?: string }
-        if (pgErr.code === '23505' && (pgErr.constraint === 'game_name_lower_idx' || (pgErr.detail ?? '').includes('game_name_lower_idx'))) {
+        const pgErr = err as { code?: string; constraint?: string }
+        if (pgErr.code === '23505' && pgErr.constraint === 'game_name_lower_idx') {
           return reply.status(400).send({ error: 'Adventure name already taken' })
         }
         throw err
