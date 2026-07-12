@@ -64,6 +64,9 @@ async function fetchPublicSchemas(slug: string, type: 'race' | 'class') {
   return rows.length > 0 ? rows : null
 }
 
+// No max-attempts cap here — after the first DB check finds a free slug, collisions
+// on subsequent attempts would require an exact match including the numeric suffix,
+// which is astronomically unlikely. A cap would add complexity for no real protection.
 async function uniqueSlug(base: string): Promise<string> {
   let attempt = 0
   while (true) {
@@ -195,11 +198,16 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const baseSlug = generateSlug(result.data.name)
 
       if (!baseSlug) {
+        request.log.warn({ name: result.data.name }, "adventure name produces an empty slug, rejecting")
         return reply.status(400).send({ error: ERR_INVALID_SLUG })
       }
 
+      // 'check-name' is reserved because GET /games/check-name is a static route that Fastify
+      // resolves before the parameterized GET /games/:slug — a game that slugged to 'check-name'
+      // would permanently lose access to its own public URL
       const RESERVED_SLUGS = new Set(['check-name'])
       if (RESERVED_SLUGS.has(baseSlug)) {
+        request.log.warn({ name: result.data.name, slug: baseSlug }, "adventure name conflicts with a reserved path")
         return reply.status(400).send({ error: 'Adventure name conflicts with a reserved path' })
       }
 
@@ -233,9 +241,11 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
             return created
           })
         } catch (err: unknown) {
+          // 23505 is PostgreSQL's unique_violation error code
           const pgErr = err as { code?: string; constraint?: string }
           if (pgErr.code !== '23505') throw err
           if (pgErr.constraint === 'game_name_lower_idx') {
+            request.log.warn({ name: result.data.name }, "adventure name already taken")
             return reply.status(400).send({ error: 'Adventure name already taken' })
           }
           if (attempt >= 4) throw err
@@ -243,6 +253,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       }
       if (!newGame) throw new Error('Failed to create game')
 
+      request.log.info({ id: newGame.id, name: newGame.name, slug: newGame.slug }, "new adventure created")
       return reply.status(201).send(newGame)
     },
   )
@@ -267,6 +278,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         .limit(1)
 
       if (!member || member.role !== 'owner') {
+        request.log.warn({ id, userId }, "non-owner tried to change adventure status")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -282,6 +294,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         .returning()
 
       if (!updated) return reply.status(404).send({ error: 'Game not found' })
+      request.log.info({ id, status: result.data.status }, "adventure status changed")
       return reply.send(updated)
     },
   )
@@ -306,6 +319,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         .limit(1)
 
       if (!member || member.role !== 'owner') {
+        request.log.warn({ id, userId }, "non-owner tried to update adventure")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -336,14 +350,17 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         const rows = await db.update(game).set(patch).where(eq(game.id, id)).returning()
         updated = rows[0]
       } catch (err: unknown) {
+        // 23505 is PostgreSQL's unique_violation error code
         const pgErr = err as { code?: string; constraint?: string }
         if (pgErr.code === '23505' && pgErr.constraint === 'game_name_lower_idx') {
+          request.log.warn({ id, name: result.data.name }, "patch rejected — adventure name already taken")
           return reply.status(400).send({ error: 'Adventure name already taken' })
         }
         throw err
       }
 
       if (!updated) return reply.status(404).send({ error: 'Game not found' })
+      request.log.info({ id }, "adventure updated")
       return reply.send(updated)
     },
   )
@@ -368,6 +385,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         .limit(1)
 
       if (!member || member.role !== 'owner') {
+        request.log.warn({ id, userId }, "non-owner tried to delete adventure")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -395,6 +413,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         await tx.delete(game).where(eq(game.id, id))
       })
 
+      request.log.info({ id }, "adventure and all its data deleted")
       return reply.status(204).send()
     },
   )
