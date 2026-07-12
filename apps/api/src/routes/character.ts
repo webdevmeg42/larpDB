@@ -16,6 +16,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId, userId, gameStatus, role } = request.gameContext
 
       if (gameStatus !== 'active') {
+        request.log.warn({ userId, gameId }, "character creation rejected — adventure is not active")
         return reply.status(403).send({ error: 'Adventure is not currently active' })
       }
 
@@ -127,6 +128,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         return c
       })
 
+      request.log.info({ id: character.id, name: character.name, userId, gameId }, "character created")
       return reply.status(201).send(character)
     },
   )
@@ -152,7 +154,10 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [character] = await db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
 
-      if (!character) return reply.status(404).send({ error: 'Character not found' })
+      if (!character) {
+        request.log.warn({ id, gameId }, "character not found")
+        return reply.status(404).send({ error: 'Character not found' })
+      }
       if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
 
       return reply.send(character)
@@ -166,7 +171,10 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId, role, userId, gameStatus } = request.gameContext
       const { id } = request.params as { id: string }
       const [character] = await db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
-      if (!character) return reply.status(404).send({ error: 'Character not found' })
+      if (!character) {
+        request.log.warn({ id, gameId }, "character not found")
+        return reply.status(404).send({ error: 'Character not found' })
+      }
       if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
       if (role === 'player' && gameStatus !== 'active') {
         return reply.status(403).send({ error: 'Character editing is disabled while this Adventure is inactive' })
@@ -305,11 +313,17 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { gameId, role, userId } = request.gameContext
-      if (!gmOrOwner(role)) return reply.status(403).send({ error: 'GM or owner role required' })
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to perform GM action on character")
+        return reply.status(403).send({ error: 'GM or owner role required' })
+      }
 
       const { id } = request.params as { id: string }
       const [character] = await db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
-      if (!character) return reply.status(404).send({ error: 'Character not found' })
+      if (!character) {
+        request.log.warn({ id, gameId }, "character not found")
+        return reply.status(404).send({ error: 'Character not found' })
+      }
 
       const result = AwardXPInput.safeParse(request.body)
       if (!result.success) {
@@ -379,7 +393,10 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
 
       const { id } = request.params as { id: string }
       const [character] = await db.select({ userId: characters.userId }).from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
-      if (!character) return reply.status(404).send({ error: 'Character not found' })
+      if (!character) {
+        request.log.warn({ id, gameId }, "character not found")
+        return reply.status(404).send({ error: 'Character not found' })
+      }
       if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
 
       const result = SpendXPInput.safeParse(request.body)
@@ -433,7 +450,10 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string }
 
       const [character] = await db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
-      if (!character) return reply.status(404).send({ error: 'Character not found' })
+      if (!character) {
+        request.log.warn({ id, gameId }, "character not found")
+        return reply.status(404).send({ error: 'Character not found' })
+      }
       if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
 
       const transactions = await db
@@ -451,7 +471,10 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { gameId, role, userId } = request.gameContext
-      if (!gmOrOwner(role)) return reply.status(403).send({ error: 'GM or owner role required' })
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to perform GM action on character")
+        return reply.status(403).send({ error: 'GM or owner role required' })
+      }
 
       const { id } = request.params as { id: string }
       const [character] = await db
@@ -459,7 +482,10 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         .from(characters)
         .where(and(eq(characters.id, id), eq(characters.gameId, gameId)))
         .limit(1)
-      if (!character) return reply.status(404).send({ error: 'Character not found' })
+      if (!character) {
+        request.log.warn({ id, gameId }, "character not found")
+        return reply.status(404).send({ error: 'Character not found' })
+      }
 
       const [[siteCfg], [raceSchema, classSchemaRow]] = await Promise.all([
         db.select({ codex: siteConfig.codex }).from(siteConfig).where(eq(siteConfig.gameId, gameId)).limit(1),
@@ -507,7 +533,10 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { gameId, role } = request.gameContext
-      if (!gmOrOwner(role)) return reply.status(403).send({ error: 'GM or owner role required' })
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId: request.gameContext.userId, role, gameId }, "non-staff tried to perform GM action on character")
+        return reply.status(403).send({ error: 'GM or owner role required' })
+      }
 
       const { id } = request.params as { id: string }
       const [character] = await db
@@ -515,7 +544,10 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         .from(characters)
         .where(and(eq(characters.id, id), eq(characters.gameId, gameId)))
         .limit(1)
-      if (!character) return reply.status(404).send({ error: 'Character not found' })
+      if (!character) {
+        request.log.warn({ id, gameId }, "character not found")
+        return reply.status(404).send({ error: 'Character not found' })
+      }
 
       // Fetch spent XP total and schemas in parallel — neither depends on the other
       const [[spentRow], [raceSchema, classSchemaRow]] = await Promise.all([
@@ -593,11 +625,17 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { gameId, role } = request.gameContext
-      if (!gmOrOwner(role)) return reply.status(403).send({ error: 'GM or owner role required' })
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId: request.gameContext.userId, role, gameId }, "non-staff tried to perform GM action on character")
+        return reply.status(403).send({ error: 'GM or owner role required' })
+      }
 
       const { id } = request.params as { id: string }
       const [existing] = await db.select().from(characters).where(and(eq(characters.id, id), eq(characters.gameId, gameId))).limit(1)
-      if (!existing) return reply.status(404).send({ error: 'Character not found' })
+      if (!existing) {
+        request.log.warn({ id, gameId }, "character not found")
+        return reply.status(404).send({ error: 'Character not found' })
+      }
 
       const result = GmDataInput.safeParse(request.body)
       if (!result.success) return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
@@ -736,7 +774,10 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         .where(and(eq(characters.id, id), eq(characters.gameId, gameId)))
         .limit(1)
 
-      if (!character) return reply.status(404).send({ error: 'Character not found' })
+      if (!character) {
+        request.log.warn({ id, gameId }, "character not found")
+        return reply.status(404).send({ error: 'Character not found' })
+      }
       if (role === 'player' && character.userId !== userId) {
         return reply.status(403).send({ error: 'Forbidden' })
       }
@@ -749,6 +790,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         await tx.delete(xpTransactions).where(eq(xpTransactions.characterId, id))
         await tx.delete(characters).where(eq(characters.id, id))
       })
+      request.log.info({ id, gameId }, "character deleted")
       return reply.status(204).send()
     },
   )

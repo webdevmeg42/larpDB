@@ -39,6 +39,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { gameId, role } = request.gameContext
       if (role !== 'owner') {
+        request.log.warn({ userId: request.gameContext.userId, role }, "non-owner tried to create store item")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -48,7 +49,10 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       const [event] = await db.select().from(events).where(and(eq(events.id, result.data.eventId), eq(events.gameId, gameId))).limit(1)
-      if (!event) return reply.status(404).send({ error: 'Event not found' })
+      if (!event) {
+        request.log.warn({ eventId: result.data.eventId, gameId }, "event not found when creating store item")
+        return reply.status(404).send({ error: 'Event not found' })
+      }
 
       const [item] = await db.insert(storeItems).values({
         eventId: result.data.eventId,
@@ -59,6 +63,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         isAvailable: result.data.isAvailable ?? true,
       }).returning()
 
+      request.log.info({ id: item!.id, name: item!.name, price: item!.price, gameId }, "store item created")
       return reply.status(201).send(item)
     },
   )
@@ -228,11 +233,17 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         .innerJoin(events, and(eq(events.id, storeItems.eventId), eq(events.gameId, gameId)))
         .where(eq(storeItems.id, storeItemId))
         .limit(1)
-      if (!item) return reply.status(404).send({ error: 'Store item not found' })
+      if (!item) {
+        request.log.warn({ storeItemId, gameId }, "store item not found when creating purchase")
+        return reply.status(404).send({ error: 'Store item not found' })
+      }
       if (!item.isAvailable) return reply.status(409).send({ error: 'Store item is not available' })
 
       const [character] = await db.select().from(characters).where(and(eq(characters.id, characterId), eq(characters.gameId, gameId))).limit(1)
-      if (!character) return reply.status(404).send({ error: 'Character not found' })
+      if (!character) {
+        request.log.warn({ characterId, gameId }, "character not found when creating purchase")
+        return reply.status(404).send({ error: 'Character not found' })
+      }
 
       const [registration] = await db
         .select()
@@ -290,6 +301,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         throw err
       }
 
+      request.log.info({ purchaseId: purchase!.id, userId: request.gameContext.userId, itemId: storeItemId, gameId }, "store purchase recorded")
       return reply.status(201).send(purchase)
     },
   )

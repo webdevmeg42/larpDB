@@ -61,9 +61,11 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
       const { role, gameId, userId, gameStatus } = request.gameContext
 
       if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role }, "non-staff tried to create a post")
         return reply.status(403).send({ error: 'Owner or GM role required' })
       }
       if (gameStatus !== 'active') {
+        request.log.warn({ userId, role, gameId }, "post creation rejected — adventure is not active")
         return reply.status(403).send({ error: 'Posts can only be created while the Adventure is active' })
       }
 
@@ -81,6 +83,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
         mediaUrls: result.data.mediaUrls ?? null,
       }).returning()
 
+      request.log.info({ id: post!.id, gameId }, "post created")
       return reply.status(201).send(post)
     },
   )
@@ -94,13 +97,18 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
       const { role, gameId } = request.gameContext
 
       if (!gmOrOwner(role)) {
+        request.log.warn({ userId: request.gameContext.userId, role }, "non-staff tried to delete a post")
         return reply.status(403).send({ error: 'Owner or GM role required' })
       }
 
       const [post] = await db.select().from(posts).where(and(eq(posts.id, postId), eq(posts.gameId, gameId))).limit(1)
-      if (!post) return reply.status(404).send({ error: 'Post not found' })
+      if (!post) {
+        request.log.warn({ postId, gameId }, "post not found for delete")
+        return reply.status(404).send({ error: 'Post not found' })
+      }
 
       await db.delete(posts).where(eq(posts.id, postId))
+      request.log.info({ id: postId, gameId }, "post deleted")
       return reply.status(204).send()
     },
   )

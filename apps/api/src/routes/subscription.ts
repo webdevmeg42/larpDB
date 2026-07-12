@@ -21,7 +21,10 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
         .from(game)
         .where(eq(game.id, gameId))
         .limit(1)
-      if (!targetGame) return reply.status(404).send({ error: 'Game not found' })
+      if (!targetGame) {
+        request.log.warn({ gameId, userId }, "subscription rejected — game not found")
+        return reply.status(404).send({ error: 'Game not found' })
+      }
 
       await db.transaction(async (tx) => {
         await tx
@@ -48,6 +51,7 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
         }
       })
 
+      request.log.info({ gameId, userId, joinMode: targetGame.joinMode }, "user subscribed to adventure")
       return reply.status(201).send({})
     },
   )
@@ -80,6 +84,7 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
           ))
       }).catch(() => {})
 
+      request.log.info({ gameId, userId }, "user unsubscribed from adventure")
       return reply.status(204).send()
     },
   )

@@ -9,6 +9,7 @@ export const userRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       if (request.gameContext.role !== 'owner') {
+        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-owner tried to list users")
         return reply.status(403).send({ error: 'Owner role required' })
       }
       const { gameId } = request.gameContext

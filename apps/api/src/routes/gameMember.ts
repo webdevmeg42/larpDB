@@ -68,10 +68,14 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { gameId, userId } = request.params as { gameId: string; userId: string }
       if (request.gameContext.gameId !== gameId) return reply.status(403).send({ error: 'Forbidden' })
-      if (request.gameContext.role !== 'owner') return reply.status(403).send({ error: 'Owner role required' })
+      if (request.gameContext.role !== 'owner') {
+        request.log.warn({ requestingUserId: request.gameContext.userId, targetUserId: userId, gameId }, "non-owner tried to change member role")
+        return reply.status(403).send({ error: 'Owner role required' })
+      }
 
       const { role } = request.body as { role: string }
       if (role !== 'gm' && role !== 'player') {
+        request.log.warn({ role }, "invalid role value in role-change request")
         return reply.status(400).send({ error: 'Role must be gm or player' })
       }
 
@@ -80,8 +84,14 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .from(gameMembers)
         .where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId)))
         .limit(1)
-      if (!member) return reply.status(404).send({ error: 'Member not found' })
-      if (member.role === 'owner') return reply.status(400).send({ error: 'Cannot change owner role' })
+      if (!member) {
+        request.log.warn({ userId, gameId }, "member not found for role change")
+        return reply.status(404).send({ error: 'Member not found' })
+      }
+      if (member.role === 'owner') {
+        request.log.warn({ userId, gameId }, "attempted to change owner role — not allowed")
+        return reply.status(400).send({ error: 'Cannot change owner role' })
+      }
 
       const [updated] = await db
         .update(gameMembers)
@@ -89,6 +99,7 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId)))
         .returning()
 
+      request.log.info({ userId, gameId, newRole: role }, "member role updated")
       return reply.send(updated)
     },
   )
@@ -99,7 +110,10 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { gameId, userId } = request.params as { gameId: string; userId: string }
       if (request.gameContext.gameId !== gameId) return reply.status(403).send({ error: 'Forbidden' })
-      if (!gmOrOwner(request.gameContext.role)) return reply.status(403).send({ error: 'GM or owner role required' })
+      if (!gmOrOwner(request.gameContext.role)) {
+        request.log.warn({ requestingUserId: request.gameContext.userId, gameId }, "non-staff tried to update member")
+        return reply.status(403).send({ error: 'GM or owner role required' })
+      }
 
       const result = UpdateMemberInput.safeParse(request.body)
       if (!result.success) {
@@ -111,7 +125,10 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .from(gameMembers)
         .where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId)))
         .limit(1)
-      if (!member) return reply.status(404).send({ error: 'Member not found' })
+      if (!member) {
+        request.log.warn({ userId, gameId }, "member not found for update")
+        return reply.status(404).send({ error: 'Member not found' })
+      }
 
       const [updated] = await db
         .update(gameMembers)

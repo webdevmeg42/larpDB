@@ -47,6 +47,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
           .where(eq(users.email, result.data.email))
           .limit(1)
         if (conflict && conflict.id !== userId) {
+          request.log.warn({ userId, email: result.data.email }, "profile update rejected — email already in use by another account")
           return reply.status(409).send({ error: 'Email already in use' })
         }
       }
@@ -86,6 +87,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         role,
       })
 
+      request.log.info({ userId }, "profile updated")
       return reply.send({ user: safeUser, token })
     },
   )
@@ -155,11 +157,15 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
       if (!user) return reply.status(404).send({ error: 'User not found' })
 
       const valid = await bcrypt.compare(result.data.currentPassword, user.passwordHash)
-      if (!valid) return reply.status(401).send({ error: 'Current password is incorrect' })
+      if (!valid) {
+        request.log.warn({ userId: user.id }, "password change failed — current password incorrect")
+        return reply.status(401).send({ error: 'Current password is incorrect' })
+      }
 
       const passwordHash = await bcrypt.hash(result.data.newPassword, 12)
       await db.update(users).set({ passwordHash }).where(eq(users.id, user.id))
 
+      request.log.info({ userId: user.id }, "password changed")
       return reply.status(204).send()
     },
   )

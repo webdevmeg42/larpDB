@@ -177,8 +177,14 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId, role } = request.gameContext
       const { id } = request.params as { id: string }
       const [event] = await db.select().from(events).where(and(eq(events.id, id), eq(events.gameId, gameId))).limit(1)
-      if (!event) return reply.status(404).send({ error: 'Event not found' })
-      if (!gmOrOwner(role) && event.status !== 'published') return reply.status(404).send({ error: 'Event not found' })
+      if (!event) {
+        request.log.warn({ id, gameId }, "event not found")
+        return reply.status(404).send({ error: 'Event not found' })
+      }
+      if (!gmOrOwner(role) && event.status !== 'published') {
+        request.log.warn({ id, status: event.status }, "player tried to view an unpublished event")
+        return reply.status(404).send({ error: 'Event not found' })
+      }
       return reply.send(event)
     },
   )
@@ -188,7 +194,10 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { gameId, role } = request.gameContext
-      if (!gmOrOwner(role)) return reply.status(403).send({ error: 'GM or owner role required' })
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId: request.gameContext.userId, role }, "non-staff tried to create an event")
+        return reply.status(403).send({ error: 'GM or owner role required' })
+      }
 
       const result = CreateEventInput.safeParse(request.body)
       if (!result.success) return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
@@ -207,6 +216,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
         status: 'draft',
       }).returning()
 
+      request.log.info({ id: event!.id, title: event!.title, gameId }, "event created")
       return reply.status(201).send(event)
     },
   )
@@ -247,12 +257,22 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
   ) {
     fastify.post(path, { preHandler: [fastify.requireGameContext] }, async (request, reply) => {
       const { gameId, role } = request.gameContext
-      if (!gmOrOwner(role)) return reply.status(403).send({ error: 'GM or owner role required' })
+      if (!gmOrOwner(role)) {
+        request.log.warn({ role }, "non-staff tried to change event status")
+        return reply.status(403).send({ error: 'GM or owner role required' })
+      }
       const { id } = request.params as { id: string }
       const [event] = await db.select().from(events).where(and(eq(events.id, id), eq(events.gameId, gameId))).limit(1)
-      if (!event) return reply.status(404).send({ error: 'Event not found' })
-      if (event.status !== fromStatus) return reply.status(400).send({ error: transitionError })
+      if (!event) {
+        request.log.warn({ id, gameId }, "event not found for status transition")
+        return reply.status(404).send({ error: 'Event not found' })
+      }
+      if (event.status !== fromStatus) {
+        request.log.warn({ id, currentStatus: event.status, expectedStatus: fromStatus }, "event status transition rejected")
+        return reply.status(400).send({ error: transitionError })
+      }
       const [updated] = await db.update(events).set({ status: toStatus }).where(and(eq(events.id, id), eq(events.gameId, gameId))).returning()
+      request.log.info({ id, status: toStatus }, `event ${toStatus}`)
       return reply.send(updated)
     })
   }
@@ -278,6 +298,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
         .limit(1)
 
       if (existing && existing.status !== 'cancelled') {
+        request.log.warn({ eventId: id, userId }, "duplicate registration attempt")
         return reply.status(409).send({ error: 'Already registered for this event' })
       }
 
@@ -350,6 +371,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
         }
       }
 
+      request.log.info({ eventId: id, userId, status: registration.status }, "event registration recorded")
       return reply.status(existing ? 200 : 201).send(registration)
     },
   )
