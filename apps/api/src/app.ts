@@ -89,6 +89,7 @@ export function buildApp() {
       await seedBuiltinTemplates()
       await purgeOldLogs()
       const timer = setInterval(purgeOldLogs, 24 * 60 * 60 * 1000)
+      // unref so the timer doesn't keep the process alive if everything else has shut down
       timer.unref()
     }
   })

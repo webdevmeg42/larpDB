@@ -7,6 +7,9 @@ import { LoginInput, RegisterInput } from '@plotrunner/shared'
 
 const ROLE_ORDER = { owner: 3, gm: 2, player: 1 } as const
 
+// We fetch all active memberships and pick the best role in JS rather than using
+// ORDER BY + LIMIT 1 because the list is always tiny (one row per game) and future
+// JWT claims may need all membership data anyway — not worth an extra round-trip
 async function highestRole(userId: string): Promise<'owner' | 'gm' | 'player'> {
   const rows = await db
     .select({ role: gameMembers.role })
@@ -39,11 +42,18 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     const { email, password } = result.data
 
     const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1)
-    if (!user) return reply.status(401).send({ error: 'Invalid credentials' })
+    if (!user) {
+      request.log.warn({ email }, "login attempt for unknown email")
+      return reply.status(401).send({ error: 'Invalid credentials' })
+    }
 
     const valid = await bcrypt.compare(password, user.passwordHash)
-    if (!valid) return reply.status(401).send({ error: 'Invalid credentials' })
+    if (!valid) {
+      request.log.warn({ email }, "login failed — password didn't match")
+      return reply.status(401).send({ error: 'Invalid credentials' })
+    }
 
+    request.log.info({ userId: user.id, email }, "user logged in")
     return reply.status(200).send(await signResponse(user))
   })
 
@@ -54,8 +64,13 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     }
     const { email, password, displayName } = result.data
 
+    // Pre-check for the common case, but concurrent registrations can both pass this
+    // before either commits — the 23505 catch below is the real uniqueness guard
     const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1)
-    if (existing) return reply.status(409).send({ error: 'Email already in use' })
+    if (existing) {
+      request.log.warn({ email }, "registration rejected — email already in use")
+      return reply.status(409).send({ error: 'Email already in use' })
+    }
 
     const passwordHash = await bcrypt.hash(password, 12)
     let newUser: typeof users.$inferSelect | undefined
@@ -69,6 +84,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     }
     if (!newUser) throw new Error('Failed to create user')
 
+    request.log.info({ userId: newUser.id, email }, "new user registered")
     return reply.status(201).send(await signResponse(newUser))
   })
 }

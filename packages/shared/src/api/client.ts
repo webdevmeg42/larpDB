@@ -11,20 +11,30 @@ export function createApiClient(
   async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const token = getToken()
     const gameId = getGameId?.()
-    const res = await fetch(`${baseUrl}${path}`, {
-      method,
-      headers: {
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(gameId ? { 'X-Game-Id': gameId } : {}),
-      },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    })
+
+    let res: Response
+    try {
+      res = await fetch(`${baseUrl}${path}`, {
+        method,
+        headers: {
+          ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(gameId ? { 'X-Game-Id': gameId } : {}),
+        },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      })
+    } catch (err) {
+      console.error(`[api] ${method} ${path} — fetch threw, server might be unreachable`, err)
+      throw err
+    }
 
     if (res.status === 204) return undefined as T
 
     const data: unknown = await res.json()
     if (!res.ok) {
+      // Build an error that carries the HTTP status and response body so callers
+      // can branch on status codes without re-parsing the response themselves
+      console.warn(`[api] ${method} ${path} → ${res.status}`, data)
       const err = Object.assign(new Error((data as { error?: string }).error ?? 'Request failed'), {
         status: res.status,
         data,
