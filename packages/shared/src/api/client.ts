@@ -24,7 +24,7 @@ export function createApiClient(
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
       })
     } catch (err) {
-      console.error(`[api] ${method} ${path} — fetch threw, server might be unreachable`, err)
+      console.error(`[api] ${method} ${path} — network error or request aborted`, err)
       throw err
     }
 
