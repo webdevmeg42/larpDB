@@ -350,7 +350,6 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         const rows = await db.update(game).set(patch).where(eq(game.id, id)).returning()
         updated = rows[0]
       } catch (err: unknown) {
-        // 23505 is PostgreSQL's unique_violation error code
         const pgErr = err as { code?: string; constraint?: string }
         if (pgErr.code === '23505' && pgErr.constraint === 'game_name_lower_idx') {
           request.log.warn({ id, name: result.data.name }, "patch rejected — adventure name already taken")
@@ -360,7 +359,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       if (!updated) return reply.status(404).send({ error: 'Game not found' })
-      request.log.info({ id }, "adventure updated")
+      request.log.info({ id, ...patch }, "adventure updated")
       return reply.send(updated)
     },
   )
