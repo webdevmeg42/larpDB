@@ -16,7 +16,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(404).send({ error: 'User not found' })
       }
       if (target.isSysAdmin) {
-        request.log.warn({ id, requesterId: request.user.sub }, "user is already a sys_admin")
+        request.log.warn({ id, requesterId: request.user.sub }, "user is already a system admin")
         return reply.status(409).send({ error: 'User is already a sys_admin' })
       }
 
@@ -26,7 +26,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(users.id, id))
         .returning()
 
-      request.log.info({ id, requesterId: request.user.sub }, "user promoted to sys_admin")
+      request.log.info({ id, requesterId: request.user.sub }, "user promoted to system admin")
       const { passwordHash: _, ...safeUser } = updated!
       return reply.send(safeUser)
     },
@@ -40,7 +40,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       const requesterId = request.user.sub
 
       if (id === requesterId) {
-        request.log.warn({ id }, "sys_admin tried to self-demote")
+        request.log.warn({ id }, "system admin tried to self-demote")
         return reply.status(400).send({ error: 'Cannot self-demote' })
       }
 
@@ -56,7 +56,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(users.id, id))
         .returning()
 
-      request.log.info({ id, requesterId }, "user demoted from sys_admin")
+      request.log.info({ id, requesterId }, "user demoted from system admin")
       const { passwordHash: _, ...safeUser } = updated!
       return reply.send(safeUser)
     },
