@@ -10,6 +10,16 @@ Cypress.Commands.add('loginOwner', () => {
   cy.url().should('not.include', '/login')
 })
 
+Cypress.Commands.add('loginPlayer', () => {
+  cy.clearCookies()
+  cy.clearLocalStorage()
+  cy.visit('/login')
+  cy.get('#email').type(Cypress.env('PLAYER_EMAIL') as string)
+  cy.get('#password').type(Cypress.env('PLAYER_PASSWORD') as string)
+  cy.contains('button', 'Sign in').click()
+  cy.url().should('not.include', '/login')
+})
+
 Cypress.Commands.add('createUser', () => {
   const ts = testDateTime(new Date())
   const username = `Cypress Testuser ${ts}`
@@ -72,6 +82,7 @@ declare global {
     interface Chainable {
       createUser(): Chainable<void>
       loginOwner(): Chainable<void>
+      loginPlayer(): Chainable<void>
       loginUser(email: string, password: string): Chainable<void>
       logout(): Chainable<void>
       schemaBuilderAddField(testId: string, expectedLabel?: string): Chainable<void>

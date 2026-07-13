@@ -16,6 +16,8 @@ export default defineConfig({
     env: {
       OWNER_EMAIL: process.env.OWNER_EMAIL ?? '',
       OWNER_PASSWORD: process.env.OWNER_PASSWORD ?? '',
+      PLAYER_EMAIL: process.env.PLAYER_EMAIL ?? '',
+      PLAYER_PASSWORD: process.env.PLAYER_PASSWORD ?? '',
     },
   },
 })
