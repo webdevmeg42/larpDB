@@ -96,7 +96,7 @@ export default function RulebookPage() {
                         href={`/rulebook/${g.id}`}
                         className={buttonVariants({ variant: 'outline', size: 'sm' })}
                       >
-                        {g.role === 'owner' ? 'Edit Rulebook' : 'View Rulebook'}
+                        {(g.role === 'owner' || g.role === 'gm') ? 'Edit Rulebook' : 'View Rulebook'}
                       </Link>
                     </td>
                   </tr>

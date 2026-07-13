@@ -27,8 +27,8 @@ export default function RulebookDetailPage() {
 
   if (!user) return null
 
-  // Owner: full editor (same component and data source as Adventure Builder)
-  if (user.role === 'owner') {
+  // Owner/GM: full editor (same component and data source as Adventure Builder)
+  if (user.role === 'owner' || user.role === 'gm') {
     return (
       <div className="p-6 max-w-6xl">
         <Link
@@ -45,7 +45,7 @@ export default function RulebookDetailPage() {
     )
   }
 
-  // Player/GM: reader view
+  // Player: reader view
   const chapters = config?.codex?.rulebook?.chapters ?? []
   const rulebookLink = config?.codex?.rulebookLink
 
