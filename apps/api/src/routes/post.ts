@@ -61,7 +61,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
       const { role, gameId, userId, gameStatus } = request.gameContext
 
       if (!gmOrOwner(role)) {
-        request.log.warn({ userId, role }, "non-staff tried to create a post")
+        request.log.warn({ userId, role, gameId }, "non-staff tried to create a post")
         return reply.status(403).send({ error: 'Owner or GM role required' })
       }
       if (gameStatus !== 'active') {

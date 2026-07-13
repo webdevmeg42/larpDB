@@ -111,7 +111,7 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId, userId } = request.params as { gameId: string; userId: string }
       if (request.gameContext.gameId !== gameId) return reply.status(403).send({ error: 'Forbidden' })
       if (!gmOrOwner(request.gameContext.role)) {
-        request.log.warn({ requestingUserId: request.gameContext.userId, gameId }, "non-staff tried to update member")
+        request.log.warn({ requestingUserId: request.gameContext.userId, targetUserId: userId, gameId }, "non-staff tried to update member")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 

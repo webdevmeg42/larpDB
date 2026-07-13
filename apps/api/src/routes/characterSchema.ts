@@ -24,7 +24,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string }
       const [row] = await db.select().from(characterSchemas).where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId))).limit(1)
       if (!row) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "character schema not found")
+        request.log.warn({ id, gameId }, "character schema not found")
         return reply.status(404).send({ error: 'Schema not found' })
       }
       return reply.send(row)
@@ -57,7 +57,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
         isActive: false,
       }).returning()
 
-      request.log.info({ id: schema!.id, name: schema!.name, type: schema!.type, gameId: request.gameContext.gameId }, "character schema created")
+      request.log.info({ id: schema!.id, name: schema!.name, type: schema!.type, gameId }, "character schema created")
       return reply.status(201).send(schema)
     },
   )
@@ -75,7 +75,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string }
       const [existing] = await db.select().from(characterSchemas).where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId))).limit(1)
       if (!existing) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "character schema not found for update")
+        request.log.warn({ id, gameId }, "character schema not found for update")
         return reply.status(404).send({ error: 'Schema not found' })
       }
 
@@ -116,7 +116,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
         .where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId)))
         .limit(1)
       if (!schema) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "character schema not found for activation")
+        request.log.warn({ id, gameId }, "character schema not found for activation")
         return reply.status(404).send({ error: 'Schema not found' })
       }
 
@@ -159,7 +159,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
         .returning()
 
       if (!deactivated) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "character schema not found for deactivation")
+        request.log.warn({ id, gameId }, "character schema not found for deactivation")
         return reply.status(404).send({ error: 'Schema not found' })
       }
       return reply.send(deactivated)
@@ -179,7 +179,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string }
       const [target] = await db.select().from(characterSchemas).where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId))).limit(1)
       if (!target) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "character schema not found for delete")
+        request.log.warn({ id, gameId }, "character schema not found for delete")
         return reply.status(404).send({ error: 'Schema not found' })
       }
 

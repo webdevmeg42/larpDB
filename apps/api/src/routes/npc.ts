@@ -30,7 +30,7 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string }
       const [npc] = await db.select().from(npcs).where(and(eq(npcs.id, id), eq(npcs.gameId, request.gameContext.gameId))).limit(1)
       if (!npc) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "NPC not found")
+        request.log.warn({ id, gameId: request.gameContext.gameId }, "npc not found")
         return reply.status(404).send({ error: 'NPC not found' })
       }
       return reply.send(npc)
@@ -55,7 +55,7 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
         notes: result.data.notes ?? null,
         createdBy: request.gameContext.userId,
       }).returning()
-      request.log.info({ id: npc!.id, name: npc!.name, gameId: request.gameContext.gameId }, "NPC created")
+      request.log.info({ id: npc!.id, name: npc!.name, gameId: request.gameContext.gameId }, "npc created")
       return reply.status(201).send(npc)
     },
   )
@@ -76,7 +76,7 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
         .where(and(eq(npcs.id, id), eq(npcs.gameId, request.gameContext.gameId)))
         .returning()
       if (!updated) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "NPC not found for update")
+        request.log.warn({ id, gameId: request.gameContext.gameId }, "npc not found for update")
         return reply.status(404).send({ error: 'NPC not found' })
       }
       return reply.send(updated)
@@ -96,10 +96,10 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
         .where(and(eq(npcs.id, id), eq(npcs.gameId, request.gameContext.gameId)))
         .returning({ id: npcs.id })
       if (!deleted.length) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "NPC not found for delete")
+        request.log.warn({ id, gameId: request.gameContext.gameId }, "npc not found for delete")
         return reply.status(404).send({ error: 'NPC not found' })
       }
-      request.log.info({ id, gameId: request.gameContext.gameId }, "NPC deleted")
+      request.log.info({ id, gameId: request.gameContext.gameId }, "npc deleted")
       return reply.status(204).send()
     },
   )

@@ -258,7 +258,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
     fastify.post(path, { preHandler: [fastify.requireGameContext] }, async (request, reply) => {
       const { gameId, role } = request.gameContext
       if (!gmOrOwner(role)) {
-        request.log.warn({ role }, "non-staff tried to change event status")
+        request.log.warn({ userId: request.gameContext.userId, role, gameId }, "non-staff tried to change event status")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
       const { id } = request.params as { id: string }
@@ -272,7 +272,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: transitionError })
       }
       const [updated] = await db.update(events).set({ status: toStatus }).where(and(eq(events.id, id), eq(events.gameId, gameId))).returning()
-      request.log.info({ id, status: toStatus }, `event ${toStatus}`)
+      request.log.info({ id, status: toStatus }, "event status changed")
       return reply.send(updated)
     })
   }

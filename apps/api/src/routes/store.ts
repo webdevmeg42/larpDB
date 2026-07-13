@@ -237,7 +237,10 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         request.log.warn({ storeItemId, gameId }, "store item not found when creating purchase")
         return reply.status(404).send({ error: 'Store item not found' })
       }
-      if (!item.isAvailable) return reply.status(409).send({ error: 'Store item is not available' })
+      if (!item.isAvailable) {
+        request.log.warn({ storeItemId, gameId }, "purchase rejected — store item is not available")
+        return reply.status(409).send({ error: 'Store item is not available' })
+      }
 
       const [character] = await db.select().from(characters).where(and(eq(characters.id, characterId), eq(characters.gameId, gameId))).limit(1)
       if (!character) {
