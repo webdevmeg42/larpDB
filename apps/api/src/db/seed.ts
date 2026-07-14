@@ -1,44 +1,61 @@
 import bcrypt from 'bcrypt'
+import { eq } from 'drizzle-orm'
 import { db } from './index.js'
 import { users, game, siteConfig, gameMembers } from './schema.js'
 
-const existingGame = await db.select().from(game).limit(1)
-if (existingGame.length > 0) {
-  console.log('Database already seeded — skipping.')
-  process.exit(0)
-}
-
 const passwordHash = await bcrypt.hash('password', 12)
 
-const [newUser] = await db.insert(users).values({
+// Upsert owner
+await db.insert(users).values({
   email: 'webdevmeg@gmail.com',
   passwordHash,
   displayName: 'Megan',
   isSysAdmin: true,
-}).returning()
+}).onConflictDoNothing()
 
-if (!newUser) throw new Error('Failed to create user')
+const [owner] = await db.select().from(users).where(eq(users.email, 'webdevmeg@gmail.com'))
+if (!owner) throw new Error('Failed to find/create owner')
 
-const [newGame] = await db.insert(game).values({
+// Upsert test player (used by Cypress playerFlow tests)
+// Use onConflictDoUpdate to reset the password to the seeded value,
+// in case the account was previously created via the UI with a different password.
+await db.insert(users).values({
+  email: 'webdevmeg+testuser1@gmail.com',
+  passwordHash,
+  displayName: 'Test Player',
+}).onConflictDoUpdate({
+  target: users.email,
+  set: { passwordHash },
+})
+
+const [player] = await db.select().from(users).where(eq(users.email, 'webdevmeg+testuser1@gmail.com'))
+if (!player) throw new Error('Failed to find/create player')
+
+// Upsert game
+await db.insert(game).values({
   name: 'My Adventure',
   slug: 'my-adventure',
   isPublic: true,
   status: 'active',
-}).returning()
+}).onConflictDoNothing()
 
-if (!newGame) throw new Error('Failed to create game')
+const [testGame] = await db.select().from(game).where(eq(game.slug, 'my-adventure'))
+if (!testGame) throw new Error('Failed to find/create game')
 
-await db.insert(gameMembers).values({
-  gameId: newGame.id,
-  userId: newUser.id,
-  role: 'owner',
-  status: 'active',
-})
+// Upsert memberships
+await db.insert(gameMembers).values([
+  { gameId: testGame.id, userId: owner.id, role: 'owner', status: 'active' },
+  { gameId: testGame.id, userId: player.id, role: 'player', status: 'active' },
+]).onConflictDoNothing()
 
-await db.insert(siteConfig).values({
-  gameId: newGame.id,
-  siteTitle: 'My Adventure',
-})
+// Upsert site config (no unique constraint on gameId, so check first)
+const [existingConfig] = await db.select().from(siteConfig).where(eq(siteConfig.gameId, testGame.id)).limit(1)
+if (!existingConfig) {
+  await db.insert(siteConfig).values({
+    gameId: testGame.id,
+    siteTitle: 'My Adventure',
+  })
+}
 
-console.log(`Seeded: ${newUser.email} as owner of game ${newGame.id}`)
+console.log(`Seeded: ${owner.email} as owner, ${player.email} as player of game ${testGame.id}`)
 process.exit(0)
