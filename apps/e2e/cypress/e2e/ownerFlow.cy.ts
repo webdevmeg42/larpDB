@@ -29,6 +29,7 @@ const sel = {
   // branding tab
   formErrorBanner: '[data-testid="form-error-banner"]',
   taglineError: '[data-testid="tagline-error"]',
+  taglineInput: '[data-testid="tagline-input"]',
   // codex tab
   safetyError: '[data-testid="safety-error"]',
   levelingError: '[data-testid="leveling-error"]',
@@ -141,6 +142,15 @@ describe('Owner Flow', () => {
     cy.contains('button', 'Save chapter').click()
     cy.get(sel.chapterTitleError)
       .scrollIntoView().should('be.visible').and('contain', 'Chapter title is required')
+  })
+
+  it('Owner can save branding changes', () => {
+    cy.visit(adventureEditUrl)
+    cy.get(sel.taglineInput).type('Test tagline')
+    cy.get(sel.saveChangesBtn).click()
+    cy.get(sel.saveChangesBtn).should('contain', 'Saved!')
+    cy.reload()
+    cy.get(sel.taglineInput).should('have.value', 'Test tagline')
   })
 
   it('Owner can build a race with all common fields pre-populated', () => {
