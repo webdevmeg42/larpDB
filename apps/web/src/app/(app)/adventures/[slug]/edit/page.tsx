@@ -103,7 +103,7 @@ export default function BuilderPage() {
   }, [game])
 
   if (user?.role !== 'owner') {
-    return <div className="p-6 text-muted-foreground">Owner access required.</div>
+    return <div className="p-6 text-muted-foreground">This page doesn&apos;t exist.</div>
   }
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -223,6 +223,7 @@ export default function BuilderPage() {
                 <div className="space-y-1">
                   <Label>Tagline <span className="text-destructive">*</span></Label>
                   <Input
+                    data-testid="tagline-input"
                     value={form.tagline ?? ''}
                     onChange={e => set('tagline', e.target.value || null)}
                     maxLength={150}
