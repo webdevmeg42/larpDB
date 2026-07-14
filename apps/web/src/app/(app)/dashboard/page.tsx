@@ -7,6 +7,7 @@ import { api } from '@/lib/api'
 import { PostCard } from '@/components/posts/PostCard'
 import type { FeedPost } from '@plotrunner/shared'
 import { buttonVariants } from '@/components/ui/button'
+import { DiscoverSection } from './_components/DiscoverSection'
 
 interface FeedResponse {
   items: FeedPost[]
@@ -64,24 +65,14 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 max-w-2xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold">Feed</h1>
-        <Link href="/browse" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
-          Browse Adventures
-        </Link>
-      </div>
+      <h1 className="text-2xl font-semibold mb-6">Feed</h1>
 
       {loading ? (
         <p className="text-muted-foreground">Loading…</p>
       ) : feed.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">
-            You're not following any Adventures yet.
-          </p>
-          <Link href="/browse" className={buttonVariants()}>
-            Browse active Adventures
-          </Link>
-        </div>
+        <p className="text-muted-foreground py-12 text-center">
+          You're not following any Adventures yet.
+        </p>
       ) : (
         <div className="space-y-4">
           {feed.map(post => (
@@ -110,6 +101,7 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+      <DiscoverSection />
     </div>
   )
 }
