@@ -46,12 +46,12 @@ describe('Player role — restricted UI not accessible', () => {
   context('Direct URL access — restricted pages are blocked', () => {
     it('blocks direct navigation to /admin/community', () => {
       cy.visit('/admin/community')
-      cy.contains('GM or owner role required').should('be.visible')
+      cy.contains("This page doesn't exist.").should('be.visible')
     })
 
     it('blocks direct navigation to /adventures', () => {
       cy.visit('/adventures')
-      cy.contains('Owner access required').should('be.visible')
+      cy.contains("This page doesn't exist.").should('be.visible')
     })
   })
 })
