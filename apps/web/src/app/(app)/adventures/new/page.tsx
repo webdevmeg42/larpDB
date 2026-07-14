@@ -40,7 +40,7 @@ export default function NewAdventurePage() {
   const { status: nameStatus, baseSlug } = useNameAvailability(form.siteTitle)
 
   if (user?.role !== 'owner') {
-    return <div className="p-6 text-muted-foreground">Owner access required.</div>
+    return <div className="p-6 text-muted-foreground">This page doesn&apos;t exist.</div>
   }
 
   function set<K extends keyof NewFormState>(key: K, value: NewFormState[K]) {

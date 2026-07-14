@@ -110,7 +110,7 @@ export default function AuditLogsPage() {
   if (!user?.isSysAdmin) {
     return (
       <div className="p-6">
-        <p className="text-muted-foreground text-sm">Access denied. Sys-admin privileges required.</p>
+        <p className="text-muted-foreground text-sm">This page doesn&apos;t exist.</p>
       </div>
     )
   }

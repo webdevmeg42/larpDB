@@ -12,7 +12,7 @@ export default function CommunityPage() {
   const { user } = useAuth()
   if (!user) return null
   if (user.role !== 'owner' && user.role !== 'gm') {
-    return <div className="p-6 text-muted-foreground">GM or owner role required.</div>
+    return <div className="p-6 text-muted-foreground">This page doesn&apos;t exist.</div>
   }
 
   return (
