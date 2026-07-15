@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
@@ -11,8 +11,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Game, SiteConfig } from '@plotrunner/shared'
+import type { Game, MyGame, SiteConfig } from '@plotrunner/shared'
 import { useNameAvailability } from '@/hooks/useNameAvailability'
+import NewAdventureWizard from './_components/NewAdventureWizard'
 
 type NewFormState = {
   siteTitle: string
@@ -26,6 +27,7 @@ type NewFormState = {
 export default function NewAdventurePage() {
   const { user } = useAuth()
   const router = useRouter()
+  const [hasAdventures, setHasAdventures] = useState<boolean | null>(null)
   const [form, setForm] = useState<NewFormState>({
     siteTitle: '',
     tagline: '',
@@ -39,8 +41,23 @@ export default function NewAdventurePage() {
   const [titleError, setTitleError] = useState(false)
   const { status: nameStatus, baseSlug } = useNameAvailability(form.siteTitle)
 
+  useEffect(() => {
+    if (!user) return
+    api.get<MyGame[]>('/my-games')
+      .then(games => setHasAdventures(games.length > 0))
+      .catch(() => setHasAdventures(true)) // on error, fall back to flat form
+  }, [user])
+
   if (user?.role !== 'owner') {
     return <div className="p-6 text-muted-foreground">This page doesn&apos;t exist.</div>
+  }
+
+  if (hasAdventures === null) {
+    return <div className="p-6 text-muted-foreground">Loading…</div>
+  }
+
+  if (!hasAdventures) {
+    return <NewAdventureWizard />
   }
 
   function set<K extends keyof NewFormState>(key: K, value: NewFormState[K]) {
