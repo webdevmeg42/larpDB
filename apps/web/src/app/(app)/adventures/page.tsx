@@ -95,7 +95,14 @@ export default function AdventureBuilderPage() {
       {loading ? (
         <p className="text-muted-foreground">Loading…</p>
       ) : games.length === 0 ? (
-        <p className="text-muted-foreground">No games yet. Build your first Adventure!</p>
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+          <div className="text-5xl">🗺️</div>
+          <h2 className="text-xl font-semibold">Build your first Adventure</h2>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            Adventures are persistent LARP worlds where players join, build characters, and attend events.
+          </p>
+          <Button onClick={() => router.push('/adventures/new')}>+ Build New Adventure</Button>
+        </div>
       ) : visibleGames.length === 0 ? (
         <p className="text-muted-foreground">No games match your search.</p>
       ) : (
