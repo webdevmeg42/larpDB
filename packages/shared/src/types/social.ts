@@ -5,6 +5,7 @@ export interface Post {
   authorName: string
   title: string
   body: string
+  status: 'draft' | 'published'
   likeCount: number
   commentCount: number
   likedByMe?: boolean
