@@ -21,6 +21,7 @@ import dynamic from 'next/dynamic'
 import CodexTab, { BrandingSection, type BrandingSectionRef } from '../../_components/CodexTab'
 import StoreTab from '../../_components/StoreTab'
 import BuildsTab from '../../_components/BuildsTab'
+import SetupChecklist from '../_components/SetupChecklist'
 
 const RulebookTab = dynamic(() => import('../../_components/RulebookTab'), { ssr: false })
 
@@ -58,6 +59,7 @@ export default function BuilderPage() {
     },
   )
 
+  const [activeTab, setActiveTab] = useState('branding')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -163,7 +165,9 @@ export default function BuilderPage() {
       </Link>
       <h1 className="text-2xl font-semibold mb-6">Adventure Builder</h1>
 
-      <Tabs defaultValue="branding">
+      <div className="flex gap-6 items-start">
+        <div className="flex-1 min-w-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-6">
           <TabsTrigger value="branding" data-testid="tab-branding">Branding</TabsTrigger>
           <TabsTrigger value="codex" data-testid="tab-codex">The Codex</TabsTrigger>
@@ -396,6 +400,9 @@ export default function BuilderPage() {
           <BuildsTab type="class" hasLevelingSystem={!!config?.codex?.levelingSystem} />
         </TabsContent>
       </Tabs>
+        </div>
+        <SetupChecklist config={config} game={game} onTabChange={setActiveTab} />
+      </div>
     </div>
   )
 }
