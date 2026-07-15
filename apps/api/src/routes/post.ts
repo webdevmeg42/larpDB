@@ -69,6 +69,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
           gameName: game.name,
           mediaType: posts.mediaType,
           mediaUrls: posts.mediaUrls,
+          status: posts.status,
           updatedAt: posts.updatedAt,
         })
         .from(posts)
@@ -122,7 +123,11 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { postId } = request.params as { postId: string }
-      const { gameId, userId } = request.gameContext
+      const { gameId, userId, role } = request.gameContext
+
+      if (!gmOrOwner(role)) {
+        return reply.status(403).send({ error: 'Owner or GM role required' })
+      }
 
       const [post] = await db
         .select()
@@ -137,17 +142,20 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
-      // Validate mediaType/mediaUrls consistency when both are present in the payload
-      const { mediaType, mediaUrls } = result.data
-      if (mediaType === 'photo' && mediaUrls !== undefined) {
-        if (mediaUrls.length < 1 || mediaUrls.length > 8) {
+      // Merge patch over existing values, then validate effective media state
+      const effectiveMediaType = result.data.mediaType !== undefined ? result.data.mediaType : post.mediaType
+      const effectiveMediaUrls = result.data.mediaUrls !== undefined ? result.data.mediaUrls : post.mediaUrls
+
+      if (effectiveMediaType === 'photo') {
+        if (!effectiveMediaUrls || effectiveMediaUrls.length < 1 || effectiveMediaUrls.length > 8) {
           return reply.status(400).send({ error: 'Invalid input', details: { fieldErrors: { mediaUrls: ['Photo posts require 1–8 URLs'] } } })
         }
-      }
-      if (mediaType === 'video' && mediaUrls !== undefined) {
-        if (mediaUrls.length !== 1) {
+      } else if (effectiveMediaType === 'video') {
+        if (!effectiveMediaUrls || effectiveMediaUrls.length !== 1) {
           return reply.status(400).send({ error: 'Invalid input', details: { fieldErrors: { mediaUrls: ['Video posts require exactly 1 URL'] } } })
         }
+      } else if (!effectiveMediaType && effectiveMediaUrls && effectiveMediaUrls.length > 0) {
+        return reply.status(400).send({ error: 'Invalid input', details: { fieldErrors: { mediaUrls: ['mediaUrls provided without mediaType'] } } })
       }
 
       const [updated] = await db

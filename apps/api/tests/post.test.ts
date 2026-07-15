@@ -649,6 +649,52 @@ describe('GET /posts/drafts', () => {
     expect(res.statusCode).toBe(401)
     await app.close()
   })
+
+  it('does not return drafts belonging to another user', async () => {
+    const { app, token, gameId } = await createAndLogin('drafts-isolation-a@test.com')
+
+    // User A creates a draft
+    await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { title: 'User A Draft', body: 'body', status: 'draft' },
+    })
+
+    // User B registers, creates their own game, and creates a draft there
+    const userBRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'drafts-isolation-b@test.com', password: 'password123', displayName: 'UserB' },
+    })
+    const { token: tokenB } = userBRes.json()
+
+    const gameBRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${tokenB}` },
+      payload: { name: 'User B Game' },
+    })
+    const { id: gameBId } = gameBRes.json()
+    await app.inject({
+      method: 'PATCH', url: `/games/${gameBId}/status`,
+      headers: { authorization: `Bearer ${tokenB}` },
+      payload: { status: 'active' },
+    })
+    await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${tokenB}`, 'x-game-id': gameBId },
+      payload: { title: "User B Draft", body: 'body', status: 'draft' },
+    })
+
+    // User A's draft list must not include User B's draft
+    const res = await app.inject({
+      method: 'GET', url: '/posts/drafts',
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(res.statusCode).toBe(200)
+    const drafts = res.json()
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0].title).toBe('User A Draft')
+    await app.close()
+  })
 })
 
 describe('PATCH /posts/:postId', () => {
@@ -754,6 +800,33 @@ describe('PATCH /posts/:postId', () => {
       payload: { title: 'No auth' },
     })
     expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+
+  it('returns 400 when PATCHing only mediaType:video on a photo post with 3 URLs', async () => {
+    const { app, token, gameId } = await createAndLogin('patch-media-xfield@test.com')
+
+    // Create a photo post with 3 URLs
+    const createRes = await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: {
+        title: 'Photo Post',
+        body: 'body',
+        status: 'published',
+        mediaType: 'photo',
+        mediaUrls: ['https://example.com/1.jpg', 'https://example.com/2.jpg', 'https://example.com/3.jpg'],
+      },
+    })
+    const { id: postId } = createRes.json()
+
+    // PATCH with only mediaType: 'video' — effective mediaUrls would still be 3, which is invalid for video
+    const res = await app.inject({
+      method: 'PATCH', url: `/posts/${postId}`,
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { mediaType: 'video' },
+    })
+    expect(res.statusCode).toBe(400)
     await app.close()
   })
 })
