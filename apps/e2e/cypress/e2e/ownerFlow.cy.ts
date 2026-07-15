@@ -102,6 +102,11 @@ const sel = {
   createEventBtn:        '[data-testid="create-event-btn"]',
   eventTitleInput:       '#title',
   eventStartAtInput:     '#startAt',
+  // setup checklist / onboarding wizard
+  setupChecklist:        '[data-testid="setup-checklist"]',
+  wizardNameInput:       '[data-testid="wizard-name-input"]',
+  wizardContinueBtn:     '[data-testid="wizard-continue-btn"]',
+  wizardGoToEdit:        '[data-testid="wizard-go-to-edit"]',
 }
 
 describe('Owner Flow', () => {
@@ -150,6 +155,17 @@ describe('Owner Flow', () => {
     cy.contains('button', 'Save chapter').click()
     cy.get(sel.chapterTitleError)
       .scrollIntoView().should('be.visible').and('contain', 'Chapter title is required')
+  })
+
+  it('Setup checklist appears on the edit page before setup is complete', () => {
+    cy.visit(adventureEditUrl)
+    // Checklist should be visible because setup is not yet complete
+    cy.get(sel.setupChecklist).should('be.visible')
+    // "Set a tagline" is not yet set
+    cy.contains(sel.setupChecklist, 'Set a tagline').should('be.visible')
+    // Clicking "→ Branding" action button switches to the Branding tab
+    cy.contains('button', '→ Branding').click()
+    cy.get(sel.tabBranding).should('have.attr', 'data-state', 'active')
   })
 
   it('Owner can save branding changes', () => {
