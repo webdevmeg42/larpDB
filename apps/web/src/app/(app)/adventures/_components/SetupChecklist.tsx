@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import type { SiteConfig, Game } from '@plotrunner/shared'
 
 interface Props {
@@ -16,9 +17,10 @@ interface ChecklistItem {
 }
 
 export default function SetupChecklist({ config, game, onTabChange }: Props) {
+  const router = useRouter()
   const hasTagline = Boolean(config?.tagline?.trim())
   const hasCodexEntry = config?.codex
-    ? Object.entries(config.codex).some(([k, v]) => k !== 'rulebook' && Boolean(v))
+    ? Object.entries(config.codex).some(([k, v]) => k !== 'rulebook' && Boolean(v) && !(Array.isArray(v) && v.length === 0))
     : false
   const hasChapter = (config?.codex?.rulebook?.chapters?.length ?? 0) > 0
   const isEnabled = game?.status === 'active'
@@ -27,7 +29,7 @@ export default function SetupChecklist({ config, game, onTabChange }: Props) {
     { label: 'Set a tagline', done: hasTagline, action: () => onTabChange('branding'), actionLabel: '→ Branding' },
     { label: 'Configure Codex', done: hasCodexEntry, action: () => onTabChange('codex'), actionLabel: '→ Codex' },
     { label: 'Add a rulebook chapter', done: hasChapter, action: () => onTabChange('rulebook'), actionLabel: '→ Rulebook' },
-    { label: 'Enable the adventure', done: isEnabled, action: () => window.location.assign('/adventures'), actionLabel: '→ Builder' },
+    { label: 'Enable the adventure', done: isEnabled, action: () => router.push('/adventures'), actionLabel: '→ Adventures' },
   ]
 
   const doneCount = items.filter(i => i.done).length

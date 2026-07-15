@@ -167,239 +167,239 @@ export default function BuilderPage() {
 
       <div className="flex gap-6 items-start">
         <div className="flex-1 min-w-0">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="branding" data-testid="tab-branding">Branding</TabsTrigger>
-          <TabsTrigger value="codex" data-testid="tab-codex">The Codex</TabsTrigger>
-          <TabsTrigger value="rulebook" data-testid="tab-rulebook">Rulebook</TabsTrigger>
-          <TabsTrigger value="store" data-testid="tab-store">The Store</TabsTrigger>
-          <TabsTrigger value="race-builds" data-testid="tab-race-builds">Race Builds</TabsTrigger>
-          <TabsTrigger value="class-builds" data-testid="tab-class-builds">Class Builds</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="branding">
-          <div className="space-y-6">
-              <form id="branding-form" onSubmit={handleSave} className="space-y-6">
-            <Card>
-              <CardHeader><CardTitle>Identity</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1">
-                  <Label>Adventure Name <span className="text-destructive">*</span></Label>
-                  <Input
-                    value={form.siteTitle ?? ''}
-                    onChange={e => set('siteTitle', e.target.value)}
-                    maxLength={150}
-                    className={validationErrors.siteTitle || nameStatus === 'taken' || nameStatus === 'invalid-slug' ? 'border-destructive' : ''}
-                  />
-                  {validationErrors.siteTitle && (
-                    <p className="text-xs text-destructive">{validationErrors.siteTitle}</p>
-                  )}
-                  {game?.slug && (
-                    <p
-                      data-testid="adv-slug-display"
-                      data-slug={game.slug}
-                      className="text-xs text-muted-foreground"
-                    >
-                      Public URL: plotrunner.run/adventures/<strong>{game.slug}</strong>
-                    </p>
-                  )}
-                  {nameStatus !== 'idle' && (
-                    <p className={`text-xs ${
-                      nameStatus === 'available' ? 'text-green-600' :
-                      nameStatus === 'taken' || nameStatus === 'invalid-slug' ? 'text-destructive' :
-                      'text-muted-foreground'
-                    }`}>
-                      {nameStatus === 'checking' && `New URL preview: plotrunner.run/adventures/${baseSlug} — Checking availability…`}
-                      {nameStatus === 'available' && `New URL will be: plotrunner.run/adventures/${baseSlug} ✓ Available`}
-                      {nameStatus === 'taken' && '✗ That name is already taken'}
-                      {nameStatus === 'invalid-slug' && 'Name must contain at least one letter or number'}
-                    </p>
-                  )}
-                  {(() => {
-                    const len = (form.siteTitle ?? '').length
-                    return (
-                      <p className={`text-xs text-right ${len >= 150 ? 'text-destructive' : len >= 130 ? 'text-amber-500' : 'text-muted-foreground'}`}>
-                        {len} / 150
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="branding" data-testid="tab-branding">Branding</TabsTrigger>
+            <TabsTrigger value="codex" data-testid="tab-codex">The Codex</TabsTrigger>
+            <TabsTrigger value="rulebook" data-testid="tab-rulebook">Rulebook</TabsTrigger>
+            <TabsTrigger value="store" data-testid="tab-store">The Store</TabsTrigger>
+            <TabsTrigger value="race-builds" data-testid="tab-race-builds">Race Builds</TabsTrigger>
+            <TabsTrigger value="class-builds" data-testid="tab-class-builds">Class Builds</TabsTrigger>
+          </TabsList>
+  
+          <TabsContent value="branding">
+            <div className="space-y-6">
+                <form id="branding-form" onSubmit={handleSave} className="space-y-6">
+              <Card>
+                <CardHeader><CardTitle>Identity</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1">
+                    <Label>Adventure Name <span className="text-destructive">*</span></Label>
+                    <Input
+                      value={form.siteTitle ?? ''}
+                      onChange={e => set('siteTitle', e.target.value)}
+                      maxLength={150}
+                      className={validationErrors.siteTitle || nameStatus === 'taken' || nameStatus === 'invalid-slug' ? 'border-destructive' : ''}
+                    />
+                    {validationErrors.siteTitle && (
+                      <p className="text-xs text-destructive">{validationErrors.siteTitle}</p>
+                    )}
+                    {game?.slug && (
+                      <p
+                        data-testid="adv-slug-display"
+                        data-slug={game.slug}
+                        className="text-xs text-muted-foreground"
+                      >
+                        Public URL: plotrunner.run/adventures/<strong>{game.slug}</strong>
                       </p>
-                    )
-                  })()}
-                </div>
-                <div className="space-y-1">
-                  <Label>Tagline <span className="text-destructive">*</span></Label>
-                  <Input
-                    data-testid="tagline-input"
-                    value={form.tagline ?? ''}
-                    onChange={e => set('tagline', e.target.value || null)}
-                    maxLength={150}
-                    className={validationErrors.tagline ? 'border-destructive' : ''}
-                  />
-                  {validationErrors.tagline && (
-                    <p data-testid="tagline-error" className="text-xs text-destructive">{validationErrors.tagline}</p>
-                  )}
-                  {(() => {
-                    const len = (form.tagline ?? '').length
-                    return (
-                      <p className={`text-xs text-right ${len >= 150 ? 'text-destructive' : len >= 130 ? 'text-amber-500' : 'text-muted-foreground'}`}>
-                        {len} / 150
+                    )}
+                    {nameStatus !== 'idle' && (
+                      <p className={`text-xs ${
+                        nameStatus === 'available' ? 'text-green-600' :
+                        nameStatus === 'taken' || nameStatus === 'invalid-slug' ? 'text-destructive' :
+                        'text-muted-foreground'
+                      }`}>
+                        {nameStatus === 'checking' && `New URL preview: plotrunner.run/adventures/${baseSlug} — Checking availability…`}
+                        {nameStatus === 'available' && `New URL will be: plotrunner.run/adventures/${baseSlug} ✓ Available`}
+                        {nameStatus === 'taken' && '✗ That name is already taken'}
+                        {nameStatus === 'invalid-slug' && 'Name must contain at least one letter or number'}
                       </p>
-                    )
-                  })()}
-                </div>
-                <div className="space-y-1">
-                  <Label>Visibility</Label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsPublic(true)}
-                      className={cn(
-                        'px-3 py-1 rounded text-sm border',
-                        isPublic === true
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'border-input text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      Public
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsPublic(false)}
-                      className={cn(
-                        'px-3 py-1 rounded text-sm border',
-                        isPublic === false
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'border-input text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      Private
-                    </button>
+                    )}
+                    {(() => {
+                      const len = (form.siteTitle ?? '').length
+                      return (
+                        <p className={`text-xs text-right ${len >= 150 ? 'text-destructive' : len >= 130 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                          {len} / 150
+                        </p>
+                      )
+                    })()}
                   </div>
-                </div>
-                <div className="space-y-1">
-                  <Label>Logo URL</Label>
-                  <div className="flex gap-2">
-                    <Input value={form.logoUrl ?? ''} onChange={e => set('logoUrl', e.target.value || null)} placeholder="https://…" />
-                    <Button type="button" variant="outline" onClick={logoUpload.trigger} disabled={logoUpload.uploading}>
-                      {logoUpload.uploading ? 'Uploading…' : 'Upload'}
-                    </Button>
-                    <input
-                      ref={logoUpload.inputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) logoUpload.handleFile(f); e.target.value = '' }}
+                  <div className="space-y-1">
+                    <Label>Tagline <span className="text-destructive">*</span></Label>
+                    <Input
+                      data-testid="tagline-input"
+                      value={form.tagline ?? ''}
+                      onChange={e => set('tagline', e.target.value || null)}
+                      maxLength={150}
+                      className={validationErrors.tagline ? 'border-destructive' : ''}
                     />
+                    {validationErrors.tagline && (
+                      <p data-testid="tagline-error" className="text-xs text-destructive">{validationErrors.tagline}</p>
+                    )}
+                    {(() => {
+                      const len = (form.tagline ?? '').length
+                      return (
+                        <p className={`text-xs text-right ${len >= 150 ? 'text-destructive' : len >= 130 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                          {len} / 150
+                        </p>
+                      )
+                    })()}
                   </div>
-                  {logoUpload.error && <p className="text-sm text-destructive">{logoUpload.error}</p>}
-                </div>
-                <div className="space-y-1">
-                  <Label>Banner URL</Label>
-                  <div className="flex gap-2">
-                    <Input value={form.bannerUrl ?? ''} onChange={e => set('bannerUrl', e.target.value || null)} placeholder="https://…" />
-                    <Button type="button" variant="outline" onClick={bannerUpload.trigger} disabled={bannerUpload.uploading}>
-                      {bannerUpload.uploading ? 'Uploading…' : 'Upload'}
-                    </Button>
-                    <input
-                      ref={bannerUpload.inputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) bannerUpload.handleFile(f); e.target.value = '' }}
+                  <div className="space-y-1">
+                    <Label>Visibility</Label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsPublic(true)}
+                        className={cn(
+                          'px-3 py-1 rounded text-sm border',
+                          isPublic === true
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'border-input text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        Public
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsPublic(false)}
+                        className={cn(
+                          'px-3 py-1 rounded text-sm border',
+                          isPublic === false
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'border-input text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        Private
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Logo URL</Label>
+                    <div className="flex gap-2">
+                      <Input value={form.logoUrl ?? ''} onChange={e => set('logoUrl', e.target.value || null)} placeholder="https://…" />
+                      <Button type="button" variant="outline" onClick={logoUpload.trigger} disabled={logoUpload.uploading}>
+                        {logoUpload.uploading ? 'Uploading…' : 'Upload'}
+                      </Button>
+                      <input
+                        ref={logoUpload.inputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) logoUpload.handleFile(f); e.target.value = '' }}
+                      />
+                    </div>
+                    {logoUpload.error && <p className="text-sm text-destructive">{logoUpload.error}</p>}
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Banner URL</Label>
+                    <div className="flex gap-2">
+                      <Input value={form.bannerUrl ?? ''} onChange={e => set('bannerUrl', e.target.value || null)} placeholder="https://…" />
+                      <Button type="button" variant="outline" onClick={bannerUpload.trigger} disabled={bannerUpload.uploading}>
+                        {bannerUpload.uploading ? 'Uploading…' : 'Upload'}
+                      </Button>
+                      <input
+                        ref={bannerUpload.inputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) bannerUpload.handleFile(f); e.target.value = '' }}
+                      />
+                    </div>
+                    {bannerUpload.error && <p className="text-sm text-destructive">{bannerUpload.error}</p>}
+                  </div>
+                  <div className="pt-4 border-t space-y-2">
+                    <Label className="text-sm font-medium">Landing Page</Label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        id="show-directory"
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={form.showDirectory ?? false}
+                        onChange={e => set('showDirectory', e.target.checked)}
+                      />
+                      <label htmlFor="show-directory" className="text-sm">
+                        Show Directory to the public
+                      </label>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      When on, visitors who haven't joined can see links to the Codex, Rulebook, Store, and Builds pages. When off, only members see the directory.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+  
+              <Card>
+                <CardHeader><CardTitle>Content</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1">
+                    <Label>Welcome message</Label>
+                    <Textarea
+                      value={form.welcomeMessage ?? ''}
+                      onChange={e => set('welcomeMessage', e.target.value || null)}
+                      rows={4}
+                      placeholder="Displayed on the player dashboard"
+                      maxLength={1000}
                     />
+                    {(() => {
+                      const len = (form.welcomeMessage ?? '').length
+                      return (
+                        <p className={`text-xs text-right ${len >= 1000 ? 'text-destructive' : len >= 900 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                          {len} / 1000
+                        </p>
+                      )
+                    })()}
                   </div>
-                  {bannerUpload.error && <p className="text-sm text-destructive">{bannerUpload.error}</p>}
-                </div>
-                <div className="pt-4 border-t space-y-2">
-                  <Label className="text-sm font-medium">Landing Page</Label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      id="show-directory"
-                      type="checkbox"
-                      className="h-4 w-4"
-                      checked={form.showDirectory ?? false}
-                      onChange={e => set('showDirectory', e.target.checked)}
-                    />
-                    <label htmlFor="show-directory" className="text-sm">
-                      Show Directory to the public
-                    </label>
+                  <div className="space-y-1">
+                    <Label>Footer text</Label>
+                    <Input value={form.footerText ?? ''} onChange={e => set('footerText', e.target.value || null)} />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    When on, visitors who haven't joined can see links to the Codex, Rulebook, Store, and Builds pages. When off, only members see the directory.
+  
+                </CardContent>
+              </Card>
+  
+                </form>
+                <BrandingSection ref={brandingRef} codex={config?.codex ?? {}} />
+                {Object.keys(validationErrors).length > 0 && (
+                  <p data-testid="form-error-banner" className="text-sm text-destructive">
+                    Please fill out the following required fields:{' '}
+                    {Object.keys(validationErrors)
+                      .map(k => ({ siteTitle: 'Adventure Name', tagline: 'Tagline' })[k] ?? k)
+                      .join(', ')}
                   </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle>Content</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-1">
-                  <Label>Welcome message</Label>
-                  <Textarea
-                    value={form.welcomeMessage ?? ''}
-                    onChange={e => set('welcomeMessage', e.target.value || null)}
-                    rows={4}
-                    placeholder="Displayed on the player dashboard"
-                    maxLength={1000}
-                  />
-                  {(() => {
-                    const len = (form.welcomeMessage ?? '').length
-                    return (
-                      <p className={`text-xs text-right ${len >= 1000 ? 'text-destructive' : len >= 900 ? 'text-amber-500' : 'text-muted-foreground'}`}>
-                        {len} / 1000
-                      </p>
-                    )
-                  })()}
-                </div>
-                <div className="space-y-1">
-                  <Label>Footer text</Label>
-                  <Input value={form.footerText ?? ''} onChange={e => set('footerText', e.target.value || null)} />
-                </div>
-
-              </CardContent>
-            </Card>
-
-              </form>
-              <BrandingSection ref={brandingRef} codex={config?.codex ?? {}} />
-              {Object.keys(validationErrors).length > 0 && (
-                <p data-testid="form-error-banner" className="text-sm text-destructive">
-                  Please fill out the following required fields:{' '}
-                  {Object.keys(validationErrors)
-                    .map(k => ({ siteTitle: 'Adventure Name', tagline: 'Tagline' })[k] ?? k)
-                    .join(', ')}
-                </p>
-              )}
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button
-                type="submit"
-                form="branding-form"
-                data-testid="save-changes-btn"
-                disabled={saving || logoUpload.uploading || bannerUpload.uploading || nameStatus === 'taken' || nameStatus === 'invalid-slug'}
-              >
-                {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
-              </Button>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="codex">
-          <CodexTab config={config} reload={reload} />
-        </TabsContent>
-
-        <TabsContent value="rulebook">
-          <RulebookTab config={config} reload={reload} />
-        </TabsContent>
-
-        <TabsContent value="store">
-          <StoreTab config={config} reload={reload} />
-        </TabsContent>
-
-        <TabsContent value="race-builds">
-          <BuildsTab type="race" hasLevelingSystem={!!config?.codex?.levelingSystem} />
-        </TabsContent>
-
-        <TabsContent value="class-builds">
-          <BuildsTab type="class" hasLevelingSystem={!!config?.codex?.levelingSystem} />
-        </TabsContent>
-      </Tabs>
+                )}
+                {error && <p className="text-sm text-destructive">{error}</p>}
+                <Button
+                  type="submit"
+                  form="branding-form"
+                  data-testid="save-changes-btn"
+                  disabled={saving || logoUpload.uploading || bannerUpload.uploading || nameStatus === 'taken' || nameStatus === 'invalid-slug'}
+                >
+                  {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
+                </Button>
+            </div>
+          </TabsContent>
+  
+          <TabsContent value="codex">
+            <CodexTab config={config} reload={reload} />
+          </TabsContent>
+  
+          <TabsContent value="rulebook">
+            <RulebookTab config={config} reload={reload} />
+          </TabsContent>
+  
+          <TabsContent value="store">
+            <StoreTab config={config} reload={reload} />
+          </TabsContent>
+  
+          <TabsContent value="race-builds">
+            <BuildsTab type="race" hasLevelingSystem={!!config?.codex?.levelingSystem} />
+          </TabsContent>
+  
+          <TabsContent value="class-builds">
+            <BuildsTab type="class" hasLevelingSystem={!!config?.codex?.levelingSystem} />
+          </TabsContent>
+          </Tabs>
         </div>
         <SetupChecklist config={config} game={game} onTabChange={setActiveTab} />
       </div>
