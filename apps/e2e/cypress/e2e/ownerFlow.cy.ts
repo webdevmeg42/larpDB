@@ -86,6 +86,10 @@ const sel = {
   // adventures list — enable/disable toggle
   enableAdvBtn:         '[data-testid="enable-adv-btn"]',
   advNameAvailability: '[data-testid="adv-name-availability"]',
+  draftList: '[data-testid="draft-list"]',
+  saveDraftBtn: '[data-testid="save-draft-btn"]',
+  draftResumeBtn: '[data-testid="draft-resume-btn"]',
+  draftDeleteBtn: '[data-testid="draft-delete-btn"]',
   advSlugDisplay:      '[data-testid="adv-slug-display"]',
   // my characters page
   navMyCharacters:       '[data-testid="nav-my-characters"]',
@@ -353,6 +357,54 @@ describe('Owner Flow', () => {
     cy.get(sel.createEventBtn).click()
 
     cy.contains('h1', `Event ${adventureName}`)
+  })
+
+  it('Owner can save a draft and resume it', () => {
+    const draftTitle = `Draft ${Date.now()}`
+
+    cy.visit('/admin/posts/new')
+    cy.get('#adventure').select(adventureName)
+    cy.get('#title').type(draftTitle)
+    cy.get('#body').type('draft body content')
+
+    cy.get(sel.saveDraftBtn).click()
+    cy.get(sel.saveDraftBtn).should('contain', 'Draft saved!')
+
+    // Revisit the page — draft appears in the list
+    cy.visit('/admin/posts/new')
+    cy.get(sel.draftList).should('be.visible')
+    cy.contains(sel.draftList, draftTitle).should('be.visible')
+
+    // Resume populates the form
+    cy.get(sel.draftResumeBtn).first().click()
+    cy.get('#title').should('have.value', draftTitle)
+    cy.get('#body').should('have.value', 'draft body content')
+    cy.get(sel.draftList).should('not.exist')
+  })
+
+  it('Owner can publish from a resumed draft', () => {
+    const draftTitle = `Publish Draft ${Date.now()}`
+
+    // Create a draft
+    cy.visit('/admin/posts/new')
+    cy.get('#adventure').select(adventureName)
+    cy.get('#title').type(draftTitle)
+    cy.get('#body').type('ready to publish')
+    cy.get(sel.saveDraftBtn).click()
+    cy.get(sel.saveDraftBtn).should('contain', 'Draft saved!')
+
+    // Revisit and resume
+    cy.visit('/admin/posts/new')
+    cy.get(sel.draftList).should('be.visible')
+    cy.get(sel.draftResumeBtn).first().click()
+
+    // Publish
+    cy.contains('button', 'Publish').click()
+    cy.url().should('not.include', '/admin/posts/new')
+
+    // Draft no longer appears on revisit
+    cy.visit('/admin/posts/new')
+    cy.contains(draftTitle).should('not.exist')
   })
 
   it('Owner cannot publish a post without required fields', () => {
