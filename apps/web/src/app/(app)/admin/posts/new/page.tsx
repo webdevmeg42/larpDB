@@ -158,6 +158,7 @@ export default function NewPostPage() {
     setMediaMode(mode)
     setPhotoUrls([])
     setVideoUrl(null)
+    setIsDirty(true)
   }
 
   function handleGameChange(gameId: string) {
@@ -186,8 +187,10 @@ export default function NewPostPage() {
       await api.delete(`/posts/${draft.id}`)
       setDrafts(prev => prev.filter(d => d.id !== draft.id))
       if (draftId === draft.id) setDraftId(null)
+    } catch (err) {
+      setError((err as Error).message ?? 'Failed to delete draft')
     } finally {
-      if (prevGameId) setGameId(prevGameId)
+      setGameId(prevGameId)
     }
   }
 
@@ -206,11 +209,11 @@ export default function NewPostPage() {
       if (draftId) {
         await api.patch(`/posts/${draftId}`, { title, body, ...mediaPayload })
       } else {
-        const created = await api.post<{ id: string }>('/posts', {
+        const created = await api.post<Draft>('/posts', {
           title, body, ...mediaPayload, status: 'draft',
         })
         setDraftId(created.id)
-        api.get<Draft[]>('/posts/drafts').then(setDrafts).catch(() => {})
+        setDrafts(prev => [created, ...prev])
       }
       setIsDirty(false)
       setDraftSaved(true)
@@ -376,7 +379,7 @@ export default function NewPostPage() {
                       <img src={url} alt="" className="h-16 w-16 rounded object-cover" />
                       <button
                         type="button"
-                        onClick={() => setPhotoUrls(prev => prev.filter((_, j) => j !== i))}
+                        onClick={() => { setPhotoUrls(prev => prev.filter((_, j) => j !== i)); setIsDirty(true) }}
                         className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs leading-none"
                       >
                         ×
@@ -402,7 +405,7 @@ export default function NewPostPage() {
                   <video src={videoUrl} controls preload="metadata" className="max-h-48 rounded" />
                   <button
                     type="button"
-                    onClick={() => setVideoUrl(null)}
+                    onClick={() => { setVideoUrl(null); setIsDirty(true) }}
                     className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs"
                   >
                     ×
