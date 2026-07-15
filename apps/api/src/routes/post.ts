@@ -2,11 +2,11 @@ import type { FastifyPluginAsync } from 'fastify'
 import { eq, and, desc, count, sql, inArray, asc } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { game, posts, comments, postLikes, users, gameMembers, adventureSubscriptions } from '../db/schema.js'
-import { CreatePostInput, CreateCommentInput } from '@plotrunner/shared'
+import { CreatePostInput, UpdatePostInput, CreateCommentInput } from '@plotrunner/shared'
 import { gmOrOwner } from '../lib/roles.js'
 
 export const postRoutes: FastifyPluginAsync = async (fastify) => {
-  // GET /games/:slug/posts — public, paginated
+  // GET /games/:slug/posts — public, paginated, published only
   fastify.get('/games/:slug/posts', async (request, reply) => {
     const { slug } = request.params as { slug: string }
     const { limit = '20', offset = '0' } = request.query as { limit?: string; offset?: string }
@@ -23,7 +23,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
     const [{ total }] = await db
       .select({ total: count() })
       .from(posts)
-      .where(eq(posts.gameId, targetGame.id))
+      .where(and(eq(posts.gameId, targetGame.id), eq(posts.status, 'published')))
 
     const rows = await db
       .select({
@@ -44,7 +44,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
       .innerJoin(users, eq(users.id, posts.authorId))
       .leftJoin(postLikes, eq(postLikes.postId, posts.id))
       .leftJoin(comments, eq(comments.postId, posts.id))
-      .where(eq(posts.gameId, targetGame.id))
+      .where(and(eq(posts.gameId, targetGame.id), eq(posts.status, 'published')))
       .groupBy(posts.id, users.displayName)
       .orderBy(desc(posts.createdAt))
       .limit(limitN)
@@ -52,6 +52,33 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
 
     return reply.send({ items: rows, total, limit: limitN, offset: offsetN })
   })
+
+  // GET /posts/drafts — auth only, returns all caller's drafts across all their games
+  fastify.get(
+    '/posts/drafts',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const userId = request.user.sub
+
+      const rows = await db
+        .select({
+          id: posts.id,
+          title: posts.title,
+          body: posts.body,
+          gameId: posts.gameId,
+          gameName: game.name,
+          mediaType: posts.mediaType,
+          mediaUrls: posts.mediaUrls,
+          updatedAt: posts.updatedAt,
+        })
+        .from(posts)
+        .innerJoin(game, eq(game.id, posts.gameId))
+        .where(and(eq(posts.authorId, userId), eq(posts.status, 'draft')))
+        .orderBy(desc(posts.updatedAt))
+
+      return reply.send(rows)
+    },
+  )
 
   // POST /posts — game-context, owner/gm, active game
   fastify.post(
@@ -81,10 +108,56 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
         body: result.data.body,
         mediaType: result.data.mediaType ?? null,
         mediaUrls: result.data.mediaUrls ?? null,
+        status: result.data.status ?? 'published',
       }).returning()
 
-      request.log.info({ id: post!.id, gameId }, "post created")
+      request.log.info({ id: post!.id, gameId, status: post!.status }, "post created")
       return reply.status(201).send(post)
+    },
+  )
+
+  // PATCH /posts/:postId — game-context, owner/gm, own post only
+  fastify.patch(
+    '/posts/:postId',
+    { preHandler: [fastify.requireGameContext] },
+    async (request, reply) => {
+      const { postId } = request.params as { postId: string }
+      const { gameId, userId } = request.gameContext
+
+      const [post] = await db
+        .select()
+        .from(posts)
+        .where(and(eq(posts.id, postId), eq(posts.gameId, gameId), eq(posts.authorId, userId)))
+        .limit(1)
+
+      if (!post) return reply.status(404).send({ error: 'Post not found' })
+
+      const result = UpdatePostInput.safeParse(request.body)
+      if (!result.success) {
+        return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
+      }
+
+      // Validate mediaType/mediaUrls consistency when both are present in the payload
+      const { mediaType, mediaUrls } = result.data
+      if (mediaType === 'photo' && mediaUrls !== undefined) {
+        if (mediaUrls.length < 1 || mediaUrls.length > 8) {
+          return reply.status(400).send({ error: 'Invalid input', details: { fieldErrors: { mediaUrls: ['Photo posts require 1–8 URLs'] } } })
+        }
+      }
+      if (mediaType === 'video' && mediaUrls !== undefined) {
+        if (mediaUrls.length !== 1) {
+          return reply.status(400).send({ error: 'Invalid input', details: { fieldErrors: { mediaUrls: ['Video posts require exactly 1 URL'] } } })
+        }
+      }
+
+      const [updated] = await db
+        .update(posts)
+        .set({ ...result.data, updatedAt: new Date() })
+        .where(eq(posts.id, postId))
+        .returning()
+
+      request.log.info({ id: postId, gameId, status: updated!.status }, "post updated")
+      return reply.send(updated)
     },
   )
 
@@ -117,7 +190,6 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/posts/:postId/comments', async (request, reply) => {
     const { postId } = request.params as { postId: string }
 
-    // Join the post's game to check visibility
     const [postWithGame] = await db
       .select({
         postId: posts.id,
@@ -132,7 +204,6 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
 
     if (!postWithGame) return reply.status(404).send({ error: 'Post not found' })
 
-    // Allow access if: game is public+active, OR caller is an authenticated active member
     const isPublicGame = postWithGame.gameIsPublic && postWithGame.gameStatus === 'active'
     if (!isPublicGame) {
       const token = (request.headers['authorization'] ?? '').replace('Bearer ', '')
@@ -290,7 +361,6 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
         try {
           await db.insert(postLikes).values({ postId, userId })
         } catch (err: unknown) {
-          // Concurrent duplicate insert — unique constraint (23505) means already liked
           if ((err as { code?: string }).code !== '23505') throw err
         }
         return reply.send({ liked: true })
@@ -298,7 +368,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
     },
   )
 
-  // GET /feed — auth, posts from subscribed games, paginated
+  // GET /feed — auth, posts from subscribed games, paginated, published only
   fastify.get(
     '/feed',
     { preHandler: [fastify.authenticate] },
@@ -322,7 +392,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
       const [{ total }] = await db
         .select({ total: count() })
         .from(posts)
-        .where(inArray(posts.gameId, subscribedGameIds))
+        .where(and(inArray(posts.gameId, subscribedGameIds), eq(posts.status, 'published')))
 
       const rows = await db
         .select({
@@ -350,7 +420,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
         .innerJoin(users, eq(users.id, posts.authorId))
         .leftJoin(postLikes, eq(postLikes.postId, posts.id))
         .leftJoin(comments, eq(comments.postId, posts.id))
-        .where(inArray(posts.gameId, subscribedGameIds))
+        .where(and(inArray(posts.gameId, subscribedGameIds), eq(posts.status, 'published')))
         .groupBy(posts.id, game.name, game.slug, users.displayName)
         .orderBy(desc(posts.createdAt))
         .limit(limitN)
