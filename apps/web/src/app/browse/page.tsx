@@ -59,6 +59,7 @@ export default function BrowsePage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Search</p>
             <input
+              data-testid="browse-search-input"
               type="text"
               placeholder="Name or description…"
               value={search}
@@ -96,6 +97,7 @@ export default function BrowsePage() {
             filtered.map(g => (
               <div
                 key={g.id}
+                data-testid="browse-game-row"
                 className="flex items-start justify-between gap-4 rounded-lg border p-4"
               >
                 <div className="min-w-0">

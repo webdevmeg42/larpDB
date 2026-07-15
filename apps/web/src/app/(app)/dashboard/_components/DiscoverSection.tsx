@@ -50,6 +50,7 @@ export function DiscoverSection() {
           {games.map(g => (
             <div
               key={g.id}
+              data-testid="discover-game-row"
               className="flex items-center justify-between gap-4 rounded-lg border p-3"
             >
               <div className="min-w-0">

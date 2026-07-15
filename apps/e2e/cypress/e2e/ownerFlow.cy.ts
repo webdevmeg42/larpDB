@@ -62,13 +62,23 @@ const sel = {
   startBuildingBtn: '[data-testid="start-building-btn"]',
   // schema builder
   schemaActivateBtn: '[data-testid="schema-activate-btn"]',
+  // dashboard / browse
+  discoverGameRow:  '[data-testid="discover-game-row"]',
+  browseSearchInput:'[data-testid="browse-search-input"]',
+  browseGameRow:    '[data-testid="browse-game-row"]',
   // adventures list
   gamesSearchInput: '[data-testid="games-search-input"]',
   deleteAdvBtn: '[data-testid="delete-adv-btn"]',
   confirmDeleteBtn: '[data-testid="confirm-delete-btn"]',
   // nav
-  navAdvBuilder: '[data-testid="nav-adv-builder"]',
-  navEvents:      '[data-testid="nav-events"]',
+  navAdvBuilder:   '[data-testid="nav-adv-builder"]',
+  navEvents:       '[data-testid="nav-events"]',
+  navRulebook:     '[data-testid="nav-rulebook"]',
+  // rulebook nav page
+  rulebookSearchInput:  '[data-testid="rulebook-search-input"]',
+  rulebookAdventureRow: '[data-testid="rulebook-adventure-row"]',
+  chapterTitleInput:    '[data-testid="chapter-title-input"]',
+  rulebookChapterItem:  '[data-testid="rulebook-chapter-item"]',
   // builds tab (race + class list)
   buildsSearchInput: '[data-testid="builds-search-input"]',
   buildsExpandBtn: '[data-testid="builds-expand-btn"]',
@@ -97,6 +107,7 @@ const sel = {
 describe('Owner Flow', () => {
   before(() => {
     cy.loginOwner()
+    cy.get(sel.navAdvBuilder, { timeout: 10000 }).should('be.visible')
   })
 
   it('Owner cannot build an incorrect Adventure', () => {
@@ -108,20 +119,17 @@ describe('Owner Flow', () => {
     cy.get(sel.advNameError)
       .should('be.visible').and('contain', 'Adventure Name is required')
 
+    cy.contains('button', 'Public').click()
     cy.get(sel.advNameInput).type(adventureName)
     cy.contains('button', 'Create Adventure').click()
 
+    cy.url({ timeout: 10000 }).should('include', '/edit')
     cy.get(sel.tabBranding).should('be.visible')
     cy.url().then(url => { adventureEditUrl = url })
     cy.get(sel.advSlugDisplay)
       .should('be.visible')
       .invoke('attr', 'data-slug')
-      .then(slug => {
-        adventureSlug = slug as string
-        cy.visit(`/adventures/${adventureSlug}`)
-        cy.contains(adventureName)
-        cy.visit(adventureEditUrl)
-      })
+      .then(slug => { adventureSlug = slug as string })
     cy.get(sel.saveChangesBtn).click()
     cy.get(sel.formErrorBanner)
       .should('be.visible').and('contain', 'Tagline')
@@ -146,7 +154,7 @@ describe('Owner Flow', () => {
 
   it('Owner can save branding changes', () => {
     cy.visit(adventureEditUrl)
-    cy.get(sel.taglineInput).type('Test tagline')
+    cy.get(sel.taglineInput).should('not.be.disabled').clear().type('Test tagline')
     cy.get(sel.saveChangesBtn).click()
     cy.get(sel.saveChangesBtn).should('contain', 'Saved!')
     cy.reload()
@@ -283,6 +291,11 @@ describe('Owner Flow', () => {
     cy.get(sel.enableAdvBtn).first().click()
     cy.get(sel.enableAdvBtn).first().should('contain', 'Disable')
 
+    // Public adventure page is accessible once active
+    cy.visit(`/adventures/${adventureSlug}`)
+    cy.contains(adventureName)
+    cy.visit(adventureEditUrl)
+
     // Navigate to My Characters and locate the Adventure
     cy.get(sel.navMyCharacters).click()
     cy.get(sel.charactersSearchInput).type(adventureName)
@@ -326,6 +339,55 @@ describe('Owner Flow', () => {
     cy.contains('h1', `Event ${adventureName}`)
   })
 
+  it('Owner cannot publish a post without required fields', () => {
+    cy.visit('/admin/posts/new')
+    cy.contains('h1', 'New Post')
+
+    // Publish is disabled until an adventure is selected (2 active games → no default)
+    cy.contains('button', 'Publish').should('be.disabled')
+
+    // Selecting an adventure enables the button
+    cy.get('#adventure').select(adventureName)
+    cy.contains('button', 'Publish').should('not.be.disabled')
+
+    // Clicking Publish with no title shows a title error
+    cy.contains('button', 'Publish').click()
+    cy.get('[data-testid="post-title-error"]').should('be.visible').and('contain', 'Title is required')
+
+    // Typing in the title clears the error
+    cy.get('#title').type('Test post title')
+    cy.get('[data-testid="post-title-error"]').should('not.exist')
+  })
+
+  it('Owner can publish a post with a photo and see it in the Dashboard feed', () => {
+    const postTitle = `Test Post ${adventureName}`
+
+    // Subscribe to the adventure so the post appears in the feed
+    cy.visit('/dashboard')
+    cy.contains(sel.discoverGameRow, adventureName).within(() => {
+      cy.contains('button', /Follow/).click()
+      cy.contains('button', /Following/).should('be.visible')
+    })
+
+    cy.visit('/admin/posts/new')
+    cy.get('#adventure').select(adventureName)
+    cy.get('#title').type(postTitle)
+    cy.get('#body').type('test')
+    cy.get('input[type="file"][accept="image/*"]').selectFile('cypress/fixtures/PRLogo.png', { force: true })
+
+    // Wait for upload to finish (button is disabled while uploading)
+    cy.contains('button', 'Publish', { timeout: 15000 }).should('not.be.disabled')
+    cy.contains('button', 'Publish').click()
+
+    // Successful publish redirects away from the form
+    cy.url().should('not.include', '/admin/posts/new')
+
+    // Post appears in the Dashboard feed
+    cy.visit('/dashboard')
+    cy.contains('h1', 'Feed')
+    cy.contains(postTitle).should('be.visible')
+  })
+
   it('Owner cannot create an adventure with a duplicate name', () => {
     cy.get(sel.navAdvBuilder).click()
     cy.contains('Build New Adventure').click()
@@ -335,10 +397,89 @@ describe('Owner Flow', () => {
     cy.contains('button', 'Create Adventure').should('be.disabled')
   })
 
+  it('Owner can view and edit the Rulebook via the navbar', () => {
+    cy.get(sel.navRulebook).click()
+    cy.contains('h1', 'Rulebook')
+
+    // Adventure appears in the list
+    cy.contains(sel.rulebookAdventureRow, adventureName).should('be.visible')
+
+    // Search filters the list
+    cy.get(sel.rulebookSearchInput).type(adventureName)
+    cy.contains(sel.rulebookAdventureRow, adventureName).should('be.visible')
+    cy.contains(sel.rulebookAdventureRow, 'My Adventure').should('not.exist')
+    cy.get(sel.rulebookSearchInput).clear()
+
+    // Open the rulebook editor for the Cypress adventure
+    cy.contains(sel.rulebookAdventureRow, adventureName)
+      .contains('a', 'Edit Rulebook')
+      .click()
+
+    // Wait for config to load
+    cy.contains('h1', `${adventureName} Rulebook`, { timeout: 10000 })
+
+    // Add a chapter
+    cy.contains('+ Add chapter').click()
+    cy.get(sel.chapterTitleInput).type('Introduction')
+    cy.contains('button', 'Save chapter').click()
+
+    // Chapter is visible in the list
+    cy.contains(sel.rulebookChapterItem, 'Introduction').should('be.visible')
+
+    // Data persists after reload
+    cy.reload()
+    cy.contains(sel.rulebookChapterItem, 'Introduction').should('be.visible')
+  })
+
+  it('Dashboard shows feed heading, empty state, and Discover section', () => {
+    cy.visit('/dashboard')
+    cy.contains('h1', 'Feed')
+    // cy.contains("You're not following any Adventures yet.")
+    cy.contains('h2', 'Discover Adventures')
+    cy.get(sel.discoverGameRow).should('have.length.gte', 1)
+    cy.contains(sel.discoverGameRow, adventureName).should('be.visible')
+    cy.contains('a', 'Browse all →').should('have.attr', 'href', '/browse')
+  })
+
+  it('Disabled adventure disappears from Dashboard Discover section', () => {
+    cy.get(sel.navAdvBuilder).click()
+    cy.get(sel.gamesSearchInput).clear().type(adventureName)
+    cy.get(sel.enableAdvBtn).first().click()
+    cy.get(sel.enableAdvBtn).first().should('contain', 'Enable')
+
+    cy.visit('/dashboard')
+    cy.contains('h2', 'Discover Adventures')
+    cy.contains(sel.discoverGameRow, adventureName).should('not.exist')
+  })
+
+  it('Browse page shows adventures, search filter, and join mode filter', () => {
+    cy.visit('/browse')
+    cy.contains('h1', 'Browse Adventures')
+    cy.contains('a', 'My feed →').should('have.attr', 'href', '/dashboard')
+
+    cy.get(sel.browseGameRow).should('have.length.gte', 1)
+    cy.get(sel.browseGameRow).first().within(() => {
+      cy.contains('button', /Follow|Following/).should('be.visible')
+    })
+
+    // Search filters the list
+    cy.get(sel.browseSearchInput).type('My Adventure')
+    cy.contains(sel.browseGameRow, 'My Adventure').should('be.visible')
+    cy.get(sel.browseSearchInput).clear()
+    cy.get(sel.browseGameRow).should('have.length.gte', 1)
+
+    // Join mode filter toggles active state
+    cy.contains('button', 'Open only').click()
+    cy.contains('button', 'Open only').should('have.class', 'bg-primary')
+    cy.contains('button', 'Any').click()
+    cy.contains('button', 'Any').should('have.class', 'bg-primary')
+  })
+
   after(() => {
     cy.visit('/adventures')
     cy.contains('h1', 'Adventure Builder')
     cy.get(sel.gamesSearchInput).clear().type(adventureName)
+    cy.contains(adventureName).should('be.visible')
     cy.get(sel.deleteAdvBtn).first().click()
     cy.get(sel.confirmDeleteBtn).click()
   })

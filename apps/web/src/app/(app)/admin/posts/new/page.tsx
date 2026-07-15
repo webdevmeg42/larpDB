@@ -37,6 +37,7 @@ export default function NewPostPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [titleError, setTitleError] = useState(false)
 
   useEffect(() => {
     api.get<MyGame[]>('/my-games')
@@ -128,7 +129,8 @@ export default function NewPostPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!selectedGameId || !title.trim() || !body.trim()) return
+    if (!selectedGameId) return
+    if (!title.trim()) { setTitleError(true); return }
     setSubmitting(true)
     setError(null)
     try {
@@ -158,7 +160,6 @@ export default function NewPostPage() {
             id="adventure"
             value={selectedGameId}
             onChange={e => setSelectedGameId(e.target.value)}
-            required
             className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             {games.length > 1 && <option value="">Select an Adventure…</option>}
@@ -173,10 +174,10 @@ export default function NewPostPage() {
           <Input
             id="title"
             value={title}
-            onChange={e => setTitle(e.target.value)}
+            onChange={e => { setTitle(e.target.value); setTitleError(false) }}
             placeholder="Post title"
-            required
           />
+          {titleError && <p data-testid="post-title-error" className="text-xs text-destructive">Title is required</p>}
         </div>
 
         <div className="space-y-1.5">
@@ -187,7 +188,6 @@ export default function NewPostPage() {
             onChange={e => setBody(e.target.value)}
             placeholder="What's happening?"
             rows={10}
-            required
           />
         </div>
 

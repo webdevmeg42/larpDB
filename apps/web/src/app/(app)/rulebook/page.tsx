@@ -58,6 +58,7 @@ export default function RulebookPage() {
           onChange={e => setSearch(e.target.value)}
           placeholder="Search Adventures…"
           aria-label="Search Adventures"
+          data-testid="rulebook-search-input"
           className="w-full px-4 py-2 rounded-md border border-border bg-card text-sm pr-10 focus:outline-none focus:ring-1 focus:ring-ring"
         />
         {search && (
@@ -88,7 +89,7 @@ export default function RulebookPage() {
               </thead>
               <tbody>
                 {filteredGames.map(g => (
-                  <tr key={g.id} className="border-b border-border last:border-b-0 hover:bg-muted/30">
+                  <tr key={g.id} data-testid="rulebook-adventure-row" className="border-b border-border last:border-b-0 hover:bg-muted/30">
                     <td className="px-4 py-3 font-medium">{g.name}</td>
                     <td className="px-4 py-3 text-muted-foreground capitalize">{g.role}</td>
                     <td className="px-4 py-3 text-right">
