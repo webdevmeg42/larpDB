@@ -20,6 +20,17 @@ interface MyGame {
   role: string
 }
 
+interface Draft {
+  id: string
+  title: string
+  body: string
+  gameId: string
+  gameName: string
+  mediaType: 'photo' | 'video' | null
+  mediaUrls: string[] | null
+  updatedAt: string
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export default function NewPostPage() {
@@ -39,6 +50,12 @@ export default function NewPostPage() {
   const [error, setError] = useState<string | null>(null)
   const [titleError, setTitleError] = useState(false)
 
+  const [drafts, setDrafts] = useState<Draft[]>([])
+  const [draftId, setDraftId] = useState<string | null>(null)
+  const [isDirty, setIsDirty] = useState(false)
+  const [draftSaved, setDraftSaved] = useState(false)
+  const [savingDraft, setSavingDraft] = useState(false)
+
   useEffect(() => {
     api.get<MyGame[]>('/my-games')
       .then(all => {
@@ -50,7 +67,21 @@ export default function NewPostPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
+
+    api.get<Draft[]>('/posts/drafts')
+      .then(setDrafts)
+      .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
 
   if (!user) return null
   if (user.role !== 'owner' && user.role !== 'gm') return null
@@ -94,6 +125,7 @@ export default function NewPostPage() {
         setError(`${batch.length - urls.length} photo(s) failed to upload — please try again.`)
       }
       setPhotoUrls(prev => [...prev, ...urls])
+      setIsDirty(true)
     } catch {
       setError('Upload failed — please try again.')
     } finally {
@@ -110,6 +142,7 @@ export default function NewPostPage() {
       const url = await uploadFile(file)
       if (url) {
         setVideoUrl(url)
+        setIsDirty(true)
       } else {
         setError('Video upload failed — please try again.')
       }
@@ -127,6 +160,68 @@ export default function NewPostPage() {
     setVideoUrl(null)
   }
 
+  function handleGameChange(gameId: string) {
+    setSelectedGameId(gameId)
+    if (draftId) setDraftId(null)
+    setIsDirty(title.trim() !== '' || body.trim() !== '')
+  }
+
+  function resumeDraft(draft: Draft) {
+    setTitle(draft.title)
+    setBody(draft.body)
+    setSelectedGameId(draft.gameId)
+    setGameId(draft.gameId)
+    setMediaMode((draft.mediaType as MediaMode) ?? 'photo')
+    setPhotoUrls(draft.mediaType === 'photo' ? (draft.mediaUrls ?? []) : [])
+    setVideoUrl(draft.mediaType === 'video' ? (draft.mediaUrls?.[0] ?? null) : null)
+    setDraftId(draft.id)
+    setIsDirty(false)
+    setDraftSaved(false)
+  }
+
+  async function handleDeleteDraft(draft: Draft) {
+    const prevGameId = selectedGameId
+    setGameId(draft.gameId)
+    try {
+      await api.delete(`/posts/${draft.id}`)
+      setDrafts(prev => prev.filter(d => d.id !== draft.id))
+      if (draftId === draft.id) setDraftId(null)
+    } finally {
+      if (prevGameId) setGameId(prevGameId)
+    }
+  }
+
+  async function handleSaveDraft() {
+    if (!selectedGameId) return
+    if (!title.trim()) { setTitleError(true); return }
+    setSavingDraft(true)
+    setError(null)
+    try {
+      setGameId(selectedGameId)
+      const hasMedia = mediaMode === 'photo' ? photoUrls.length > 0 : videoUrl !== null
+      const mediaPayload = hasMedia
+        ? { mediaType: mediaMode, mediaUrls: mediaMode === 'photo' ? photoUrls : [videoUrl!] }
+        : {}
+
+      if (draftId) {
+        await api.patch(`/posts/${draftId}`, { title, body, ...mediaPayload })
+      } else {
+        const created = await api.post<{ id: string }>('/posts', {
+          title, body, ...mediaPayload, status: 'draft',
+        })
+        setDraftId(created.id)
+        api.get<Draft[]>('/posts/drafts').then(setDrafts).catch(() => {})
+      }
+      setIsDirty(false)
+      setDraftSaved(true)
+      setTimeout(() => setDraftSaved(false), 2000)
+    } catch (err: unknown) {
+      setError((err as Error).message ?? 'Failed to save draft')
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedGameId) return
@@ -139,7 +234,12 @@ export default function NewPostPage() {
       const mediaPayload = hasMedia
         ? { mediaType: mediaMode, mediaUrls: mediaMode === 'photo' ? photoUrls : [videoUrl!] }
         : {}
-      await api.post('/posts', { title, body, ...mediaPayload })
+
+      if (draftId) {
+        await api.patch(`/posts/${draftId}`, { title, body, ...mediaPayload, status: 'published' })
+      } else {
+        await api.post('/posts', { title, body, ...mediaPayload })
+      }
       const selected = games.find(g => g.id === selectedGameId)
       router.push(selected ? `/adventures/${selected.slug}` : '/dashboard')
     } catch (err) {
@@ -153,13 +253,47 @@ export default function NewPostPage() {
   return (
     <div className="p-6 max-w-2xl">
       <h1 className="text-2xl font-semibold mb-6">New Post</h1>
+
+      {drafts.length > 0 && !draftId && (
+        <div className="mb-6 rounded-lg border p-4 space-y-2" data-testid="draft-list">
+          <p className="text-sm font-medium">Your drafts</p>
+          {drafts.map(draft => (
+            <div key={draft.id} className="flex items-center justify-between gap-2 text-sm">
+              <span className="truncate flex-1">
+                {draft.title}
+                {' · '}
+                <span className="text-muted-foreground">{draft.gameName}</span>
+              </span>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  type="button"
+                  data-testid="draft-resume-btn"
+                  onClick={() => resumeDraft(draft)}
+                  className="text-primary hover:underline"
+                >
+                  Resume
+                </button>
+                <button
+                  type="button"
+                  data-testid="draft-delete-btn"
+                  onClick={() => handleDeleteDraft(draft)}
+                  className="text-destructive hover:underline"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="adventure">Adventure</Label>
           <select
             id="adventure"
             value={selectedGameId}
-            onChange={e => setSelectedGameId(e.target.value)}
+            onChange={e => handleGameChange(e.target.value)}
             className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
             {games.length > 1 && <option value="">Select an Adventure…</option>}
@@ -174,7 +308,7 @@ export default function NewPostPage() {
           <Input
             id="title"
             value={title}
-            onChange={e => { setTitle(e.target.value); setTitleError(false) }}
+            onChange={e => { setTitle(e.target.value); setTitleError(false); setIsDirty(true) }}
             placeholder="Post title"
           />
           {titleError && <p data-testid="post-title-error" className="text-xs text-destructive">Title is required</p>}
@@ -185,13 +319,12 @@ export default function NewPostPage() {
           <Textarea
             id="body"
             value={body}
-            onChange={e => setBody(e.target.value)}
+            onChange={e => { setBody(e.target.value); setIsDirty(true) }}
             placeholder="What's happening?"
             rows={10}
           />
         </div>
 
-        {/* Media section */}
         <div className="space-y-3 rounded-lg border p-4">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium">
@@ -285,7 +418,23 @@ export default function NewPostPage() {
           <Button type="submit" disabled={submitting || !selectedGameId || isUploading}>
             {isUploading ? 'Uploading…' : submitting ? 'Publishing…' : 'Publish'}
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.back()}>
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="save-draft-btn"
+            disabled={savingDraft || !selectedGameId || isUploading}
+            onClick={handleSaveDraft}
+          >
+            {savingDraft ? 'Saving…' : draftSaved ? 'Draft saved!' : 'Save Draft'}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (isDirty && !window.confirm('You have unsaved changes. Leave anyway?')) return
+              router.back()
+            }}
+          >
             Cancel
           </Button>
         </div>
