@@ -65,7 +65,7 @@ export default function NewAdventureWizard() {
   function handleContinue() {
     if (step === 1) {
       if (!name.trim()) { setNameError(true); return }
-      if (nameStatus === 'taken' || nameStatus === 'invalid-slug' || nameStatus === 'checking') return
+      if (nameStatus !== 'available') return
       setStep(2)
     } else if (step === 2) {
       setStep(3)
@@ -80,7 +80,7 @@ export default function NewAdventureWizard() {
 
   const continueDisabled =
     saving ||
-    (step === 1 && (nameStatus === 'taken' || nameStatus === 'invalid-slug' || nameStatus === 'checking' || !name.trim()))
+    (step === 1 && (nameStatus !== 'available' || !name.trim()))
 
   return (
     <div className="p-6 max-w-2xl">
@@ -101,9 +101,7 @@ export default function NewAdventureWizard() {
                   key={s.n}
                   className={cn(
                     'flex items-center gap-2.5 px-3 py-2 rounded-md text-sm',
-                    isActive && 'bg-primary/10 border-l-2 border-primary font-medium text-primary',
-                    isDone && 'text-muted-foreground',
-                    !isActive && !isDone && 'text-muted-foreground',
+                    isActive ? 'bg-primary/10 border-l-2 border-primary font-medium text-primary' : 'text-muted-foreground',
                   )}
                 >
                   <span className={cn('text-xs font-bold w-4 text-center', isActive ? 'text-primary' : isDone ? 'text-green-600' : '')}>

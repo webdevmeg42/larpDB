@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import type { SiteConfig, Game } from '@plotrunner/shared'
 
 interface Props {
@@ -14,10 +14,10 @@ interface ChecklistItem {
   done: boolean
   action: () => void
   actionLabel: string
+  href?: string
 }
 
 export default function SetupChecklist({ config, game, onTabChange }: Props) {
-  const router = useRouter()
   const hasTagline = Boolean(config?.tagline?.trim())
   const hasCodexEntry = config?.codex
     ? Object.entries(config.codex).some(([k, v]) => k !== 'rulebook' && Boolean(v) && !(Array.isArray(v) && v.length === 0))
@@ -25,11 +25,13 @@ export default function SetupChecklist({ config, game, onTabChange }: Props) {
   const hasChapter = (config?.codex?.rulebook?.chapters?.length ?? 0) > 0
   const isEnabled = game?.status === 'active'
 
+  if (!config || !game) return null
+
   const items: ChecklistItem[] = [
     { label: 'Set a tagline', done: hasTagline, action: () => onTabChange('branding'), actionLabel: '→ Branding' },
     { label: 'Configure Codex', done: hasCodexEntry, action: () => onTabChange('codex'), actionLabel: '→ Codex' },
     { label: 'Add a rulebook chapter', done: hasChapter, action: () => onTabChange('rulebook'), actionLabel: '→ Rulebook' },
-    { label: 'Enable the adventure', done: isEnabled, action: () => router.push('/adventures'), actionLabel: '→ Adventures' },
+    { label: 'Enable the adventure', done: isEnabled, action: () => {}, actionLabel: '→ Adventures', href: '/adventures' },
   ]
 
   const doneCount = items.filter(i => i.done).length
@@ -63,12 +65,21 @@ export default function SetupChecklist({ config, game, onTabChange }: Props) {
               </span>
             </div>
             {!item.done && (
-              <button
-                onClick={item.action}
-                className="ml-5 text-xs text-primary hover:underline text-left"
-              >
-                {item.actionLabel}
-              </button>
+              item.href ? (
+                <Link
+                  href={item.href}
+                  className="ml-5 text-xs text-primary hover:underline"
+                >
+                  {item.actionLabel}
+                </Link>
+              ) : (
+                <button
+                  onClick={item.action}
+                  className="ml-5 text-xs text-primary hover:underline text-left"
+                >
+                  {item.actionLabel}
+                </button>
+              )
             )}
           </div>
         ))}

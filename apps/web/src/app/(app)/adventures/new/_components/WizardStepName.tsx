@@ -41,7 +41,7 @@ export default function WizardStepName({ name, onChange, nameError, onClearNameE
             URL: plotrunner.run/adventures/<strong>{baseSlug}</strong>
           </p>
         )}
-        {!nameError && (
+        {!nameError && nameStatus !== 'idle' && (
           <p className={`text-xs ${
             nameStatus === 'available' ? 'text-green-600' :
             nameStatus === 'taken' || nameStatus === 'invalid-slug' ? 'text-destructive' :
