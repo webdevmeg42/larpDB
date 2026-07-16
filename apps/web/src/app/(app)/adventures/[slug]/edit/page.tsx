@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { useToast } from '@/components/ui/toast'
 import type { SiteConfig, GameCodex, Game } from '@plotrunner/shared'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import { useNameAvailability } from '@/hooks/useNameAvailability'
@@ -60,8 +61,8 @@ export default function BuilderPage() {
 
   const [activeTab, setActiveTab] = useState('branding')
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [isPublic, setIsPublic] = useState<boolean | null>(null)
 
@@ -145,8 +146,7 @@ export default function BuilderPage() {
       } else {
         reload()
       }
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      toast('Branding saved')
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Save failed'))
     } finally {
@@ -380,7 +380,7 @@ export default function BuilderPage() {
                   data-testid="save-changes-btn"
                   disabled={saving || logoUpload.uploading || bannerUpload.uploading || nameStatus === 'taken' || nameStatus === 'invalid-slug'}
                 >
-                  {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
+                  {saving ? 'Saving…' : 'Save changes'}
                 </Button>
             </div>
           </TabsContent>
