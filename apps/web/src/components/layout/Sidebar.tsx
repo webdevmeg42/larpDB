@@ -4,40 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
-import {
-  LayoutDashboard,
-  Calendar,
-  Users,
-  Settings,
-  LogOut,
-  UserRound,
-  UserCircle,
-  BookOpen,
-  PenSquare,
-  ShieldCheck,
-  ScrollText,
-  type LucideIcon,
-} from 'lucide-react'
-
-interface NavItem {
-  label: string
-  href: string
-  icon: LucideIcon
-  roles: ('owner' | 'gm' | 'player')[]
-  testId?: string
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['owner', 'gm', 'player'] },
-  { label: 'My Characters', href: '/characters', icon: UserRound, roles: ['owner', 'gm', 'player'] },
-  { label: 'My Profile', href: '/profile', icon: UserCircle, roles: ['owner', 'gm', 'player'] },
-  { label: 'Events', href: '/events', icon: Calendar, roles: ['owner', 'gm', 'player'] },
-  { label: 'Rulebook', href: '/rulebook', icon: BookOpen, roles: ['owner', 'gm', 'player'] },
-  { label: 'Admin', href: '/admin/community', icon: ShieldCheck, roles: ['owner', 'gm'] },
-  { label: 'Adventure Builder', href: '/adventures', icon: Settings, roles: ['owner'], testId: 'nav-adv-builder' },
-  { label: 'Users', href: '/admin/users', icon: Users, roles: ['owner'] },
-  { label: 'Posts', href: '/admin/posts', icon: PenSquare, roles: ['owner', 'gm'] },
-]
+import { LogOut, ScrollText } from 'lucide-react'
+import { NAV_ITEMS } from '@/lib/nav-items'
 
 export function Sidebar() {
   const { user, logout } = useAuth()
@@ -48,7 +16,7 @@ export function Sidebar() {
   const visibleItems = NAV_ITEMS.filter(item => item.roles.includes(user.role))
 
   return (
-    <div className="flex h-full w-56 flex-col border-r bg-background">
+    <div className="hidden md:flex h-full w-56 flex-col border-r bg-background">
       <div className="flex h-14 items-center border-b px-4">
         <span className="font-semibold">PlotRunner</span>
       </div>
