@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { useToast } from '@/components/ui/toast'
 import type { SiteConfig, StoreItem, PurchaseDetail, AdventureEvent } from '@plotrunner/shared'
 import { ChevronDown, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react'
 
@@ -21,7 +22,7 @@ interface Props {
 export default function StoreTab({ config, reload }: Props) {
   const [currencyName, setCurrencyName] = useState('monies')
   const [savingCurrency, setSavingCurrency] = useState(false)
-  const [currencySaved, setCurrencySaved] = useState(false)
+  const { toast } = useToast()
 
   const [events, setEvents] = useState<AdventureEvent[]>([])
   const [items, setItems] = useState<StoreItem[]>([])
@@ -50,8 +51,7 @@ export default function StoreTab({ config, reload }: Props) {
     try {
       await api.patch<SiteConfig>('/config', { currencyName })
       reload()
-      setCurrencySaved(true)
-      setTimeout(() => setCurrencySaved(false), 2000)
+      toast('Currency saved')
     } finally {
       setSavingCurrency(false)
     }
@@ -88,7 +88,7 @@ export default function StoreTab({ config, reload }: Props) {
               />
             </div>
             <Button type="submit" disabled={savingCurrency}>
-              {savingCurrency ? 'Saving…' : currencySaved ? 'Saved!' : 'Save'}
+              {savingCurrency ? 'Saving…' : 'Save'}
             </Button>
           </form>
         </CardContent>
