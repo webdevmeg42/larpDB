@@ -111,6 +111,11 @@ const sel = {
   wizardNameInput:       '[data-testid="wizard-name-input"]',
   wizardContinueBtn:     '[data-testid="wizard-continue-btn"]',
   wizardGoToEdit:        '[data-testid="wizard-go-to-edit"]',
+  // adventure panel (shared left panel in Rulebook and Posts pages)
+  adventurePanelItem: '[data-testid="adventure-panel-item"]',
+  // posts landing page
+  newPostBtn:         '[data-testid="new-post-btn"]',
+  navPosts:           '[data-testid="nav-posts"]',
 }
 
 describe('Owner Flow', () => {
@@ -427,6 +432,68 @@ describe('Owner Flow', () => {
     cy.get('[data-testid="post-title-error"]').should('not.exist')
   })
 
+  describe('Master-detail layout and cross-page persistence', () => {
+    it('persists selected adventure from Characters to Events', () => {
+      cy.loginOwner()
+
+      // Visit Characters, wait for adventure list to load
+      cy.visit('/characters')
+      cy.contains('button', adventureName, { timeout: 10000 }).should('be.visible')
+
+      // Click the adventure to select it (writes to localStorage)
+      cy.contains('button', adventureName).click()
+
+      // Navigate to Events — same adventure should be pre-selected
+      cy.get(sel.navEvents).click()
+      cy.url().should('include', '/events')
+
+      // The adventure should be highlighted (bg-muted class indicates selection)
+      cy.contains('button', adventureName, { timeout: 10000 })
+        .should('have.class', 'bg-muted')
+    })
+
+    it('Posts page shows adventures and navigates to compose with no dropdown', () => {
+      cy.loginOwner()
+      cy.visit('/admin/posts')
+
+      // Left panel shows adventures
+      cy.get(sel.adventurePanelItem, { timeout: 10000 }).should('have.length.gte', 1)
+
+      // Click the adventure we created
+      cy.contains(sel.adventurePanelItem, adventureName).click()
+
+      // Right panel shows "New Post" button
+      cy.get(sel.newPostBtn).should('be.visible')
+
+      // Navigate to compose via "New Post"
+      cy.get(sel.newPostBtn).click()
+      cy.url().should('include', '/admin/posts/new')
+
+      // Adventure dropdown hidden — game pre-selected from localStorage
+      cy.get('select#adventure').should('not.exist')
+    })
+
+    it('Rulebook page shows master-detail layout with inline editor for owner', () => {
+      cy.loginOwner()
+      cy.visit('/rulebook')
+
+      // Old search+table not present
+      cy.get(sel.rulebookSearchInput).should('not.exist')
+      cy.get(sel.rulebookAdventureRow).should('not.exist')
+
+      // Left panel with AdventurePanel items
+      cy.get(sel.adventurePanelItem, { timeout: 10000 }).should('have.length.gte', 1)
+
+      // Click the adventure
+      cy.contains(sel.adventurePanelItem, adventureName).click()
+
+      // Inline editor appears (not a navigation away)
+      cy.url().should('include', '/rulebook')
+      cy.url().should('not.include', '/rulebook/')
+      cy.get(sel.chapterTitleInput, { timeout: 10000 }).should('exist')
+    })
+  })
+
   it('Owner can publish a post with a photo and see it in the Dashboard feed', () => {
     const postTitle = `Test Post ${adventureName}`
 
@@ -469,22 +536,20 @@ describe('Owner Flow', () => {
     cy.get(sel.navRulebook).click()
     cy.contains('h1', 'Rulebook')
 
-    // Adventure appears in the list
-    cy.contains(sel.rulebookAdventureRow, adventureName).should('be.visible')
+    // Old search+table UI is gone
+    cy.get(sel.rulebookSearchInput).should('not.exist')
+    cy.get(sel.rulebookAdventureRow).should('not.exist')
 
-    // Search filters the list
-    cy.get(sel.rulebookSearchInput).type(adventureName)
-    cy.contains(sel.rulebookAdventureRow, adventureName).should('be.visible')
-    cy.contains(sel.rulebookAdventureRow, 'My Adventure').should('not.exist')
-    cy.get(sel.rulebookSearchInput).clear()
+    // Adventure appears in the AdventurePanel left panel
+    cy.get(sel.adventurePanelItem).should('have.length.gte', 1)
+    cy.contains(sel.adventurePanelItem, adventureName).should('be.visible')
 
-    // Open the rulebook editor for the Cypress adventure
-    cy.contains(sel.rulebookAdventureRow, adventureName)
-      .contains('a', 'Edit Rulebook')
-      .click()
+    // Click the adventure to load it inline
+    cy.contains(sel.adventurePanelItem, adventureName).click()
 
-    // Wait for config to load
-    cy.contains('h1', `${adventureName} Rulebook`, { timeout: 10000 })
+    // Owner sees the inline rulebook editor (not navigating away)
+    cy.url().should('include', '/rulebook')
+    cy.url().should('not.include', '/rulebook/')
 
     // Add a chapter
     cy.contains('+ Add chapter').click()
