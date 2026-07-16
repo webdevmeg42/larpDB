@@ -438,10 +438,9 @@ describe('Owner Flow', () => {
 
       // Visit Characters, wait for adventure list to load
       cy.visit('/characters')
-      cy.contains('button', adventureName, { timeout: 10000 }).should('be.visible')
 
       // Click the adventure to select it (writes to localStorage)
-      cy.contains('button', adventureName).click()
+      cy.contains('button', adventureName, { timeout: 10000 }).click()
 
       // Navigate to Events — same adventure should be pre-selected
       cy.get(sel.navEvents).click()
@@ -460,7 +459,7 @@ describe('Owner Flow', () => {
       cy.get(sel.adventurePanelItem, { timeout: 10000 }).should('have.length.gte', 1)
 
       // Click the adventure we created
-      cy.contains(sel.adventurePanelItem, adventureName).click()
+      cy.contains(sel.adventurePanelItem, adventureName, { timeout: 5000 }).click()
 
       // Right panel shows "New Post" button
       cy.get(sel.newPostBtn).should('be.visible')
@@ -468,6 +467,7 @@ describe('Owner Flow', () => {
       // Navigate to compose via "New Post"
       cy.get(sel.newPostBtn).click()
       cy.url().should('include', '/admin/posts/new')
+      cy.contains('h1', 'New Post').should('be.visible')
 
       // Adventure dropdown hidden — game pre-selected from localStorage
       cy.get('select#adventure').should('not.exist')
@@ -485,11 +485,10 @@ describe('Owner Flow', () => {
       cy.get(sel.adventurePanelItem, { timeout: 10000 }).should('have.length.gte', 1)
 
       // Click the adventure
-      cy.contains(sel.adventurePanelItem, adventureName).click()
+      cy.contains(sel.adventurePanelItem, adventureName, { timeout: 5000 }).click()
 
       // Inline editor appears (not a navigation away)
-      cy.url().should('include', '/rulebook')
-      cy.url().should('not.include', '/rulebook/')
+      cy.url().should('match', /\/rulebook$/)
       cy.get(sel.chapterTitleInput, { timeout: 10000 }).should('exist')
     })
   })
@@ -548,8 +547,7 @@ describe('Owner Flow', () => {
     cy.contains(sel.adventurePanelItem, adventureName).click()
 
     // Owner sees the inline rulebook editor (not navigating away)
-    cy.url().should('include', '/rulebook')
-    cy.url().should('not.include', '/rulebook/')
+    cy.url().should('match', /\/rulebook$/)
 
     // Add a chapter
     cy.contains('+ Add chapter').click()
