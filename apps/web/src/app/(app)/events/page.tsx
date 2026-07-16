@@ -9,12 +9,15 @@ import { getGameId, setGameId } from '@/lib/auth'
 import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { CalendarDays, Plus, X } from 'lucide-react'
+import { EventCalendar } from './_components/EventCalendar'
 
 type EventWithReg = {
   id: string
   title: string
   startAt: string
+  endAt: string | null
   location: string | null
   status: 'draft' | 'published' | 'archived'
   userRegistration: { status: 'confirmed' | 'pending' | 'waitlist' | 'cancelled' } | null
@@ -41,6 +44,13 @@ export default function EventsPage() {
   const [search, setSearch] = useState('')
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('upcoming')
   const [loading, setLoading] = useState(true)
+  const [calendarView, setCalendarView] = useState(false)
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date()
+    d.setDate(1)
+    return d
+  })
+  const [calendarDayFilter, setCalendarDayFilter] = useState<Date | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -66,7 +76,14 @@ export default function EventsPage() {
       timeFilter === 'upcoming' ? e.startAt >= today && e.status !== 'archived' :
       timeFilter === 'past'     ? e.startAt < today :
       true
-    return matchesTime && (!search || e.title.toLowerCase().includes(search.toLowerCase()))
+    const matchesSearch = !search || e.title.toLowerCase().includes(search.toLowerCase())
+    const matchesDay = !calendarDayFilter || (() => {
+      const evtStart = new Date(new Date(e.startAt).toDateString())
+      const evtEnd = e.endAt ? new Date(new Date(e.endAt).toDateString()) : evtStart
+      const filterDay = new Date(calendarDayFilter.toDateString())
+      return evtStart <= filterDay && filterDay <= evtEnd
+    })()
+    return matchesTime && matchesSearch && matchesDay
   }
 
   const filteredGames = games.filter(
@@ -187,17 +204,40 @@ export default function EventsPage() {
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     {selectedGame.name}
                   </span>
-                  {(selectedGame.role === 'owner' || selectedGame.role === 'gm') && (
+                  <div className="flex items-center gap-2">
                     <button
-                      data-testid="new-event-btn"
-                      onClick={() => { setGameId(selectedGame.id); router.push('/events/new') }}
-                      className={buttonVariants({ variant: 'default', size: 'sm' })}
+                      data-testid="calendar-toggle"
+                      type="button"
+                      onClick={() => { setCalendarView(v => !v); setCalendarDayFilter(null) }}
+                      className={cn(buttonVariants({ variant: calendarView ? 'default' : 'outline', size: 'sm' }))}
                     >
-                      <Plus className="h-4 w-4 mr-1" />
-                      New Event
+                      <CalendarDays className="h-4 w-4 mr-1" />
+                      {calendarView ? 'List' : 'Calendar'}
                     </button>
-                  )}
+                    {(selectedGame.role === 'owner' || selectedGame.role === 'gm') && (
+                      <button
+                        data-testid="new-event-btn"
+                        type="button"
+                        onClick={() => { setGameId(selectedGame.id); router.push('/events/new') }}
+                        className={buttonVariants({ variant: 'default', size: 'sm' })}
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        New Event
+                      </button>
+                    )}
+                  </div>
                 </div>
+
+                {calendarView && (
+                  <EventCalendar
+                    key={selectedGame.id}
+                    events={selectedGame.events}
+                    games={games}
+                    month={calendarMonth}
+                    onMonthChange={setCalendarMonth}
+                    onDayFilter={setCalendarDayFilter}
+                  />
+                )}
 
                 {visibleEvents.length === 0 ? (
                   <div className="flex items-center justify-center h-40">
