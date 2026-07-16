@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
-import { setGameId } from '@/lib/auth'
+import { getGameId, setGameId } from '@/lib/auth'
 import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -48,7 +48,11 @@ export default function EventsPage() {
       .get<{ games: GameWithEvents[] }>('/my-events')
       .then(data => {
         setGames(data.games)
-        if (data.games.length > 0) setSelectedGameId(data.games[0]!.id)
+        if (data.games.length > 0) {
+          const saved = getGameId()
+          const initial = data.games.find(g => g.id === saved) ?? data.games[0]!
+          setSelectedGameId(initial.id)
+        }
       })
       .catch(() => setGames([]))
       .finally(() => setLoading(false))
@@ -147,7 +151,7 @@ export default function EventsPage() {
                 return (
                   <button
                     key={g.id}
-                    onClick={() => setSelectedGameId(g.id)}
+                    onClick={() => { setSelectedGameId(g.id); setGameId(g.id) }}
                     className={`w-full text-left px-3 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors ${
                       selectedGame?.id === g.id ? 'bg-muted' : ''
                     }`}
