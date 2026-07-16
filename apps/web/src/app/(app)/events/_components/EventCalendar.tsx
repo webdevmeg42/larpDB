@@ -53,15 +53,66 @@ function isSameDay(a: Date, b: Date): boolean {
   )
 }
 
+const PALETTE = [
+  'hsl(var(--primary))',
+  'hsl(220 60% 55%)',
+  'hsl(160 50% 45%)',
+  'hsl(35 80% 55%)',
+  'hsl(290 45% 55%)',
+  'hsl(10 70% 55%)',
+]
+
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+}
+
+type BarPosition = 'solo' | 'start' | 'mid' | 'end'
+
+function getBarPosition(
+  cellDate: Date,
+  rowDates: Date[],
+  eventStart: Date,
+  eventEnd: Date,
+): BarPosition | null {
+  const s = startOfDay(eventStart)
+  const e = startOfDay(eventEnd)
+  const d = startOfDay(cellDate)
+  if (d < s || d > e) return null
+
+  const covered = rowDates.map(startOfDay).filter(rd => rd >= s && rd <= e)
+  if (covered.length === 0) return null
+  const first = covered[0]!
+  const last = covered[covered.length - 1]!
+
+  const isFirst = isSameDay(d, first)
+  const isLast = isSameDay(d, last)
+  if (isFirst && isLast) return 'solo'
+  if (isFirst) return 'start'
+  if (isLast) return 'end'
+  return 'mid'
+}
+
 export function EventCalendar({
   events,
   games,
   month,
   onMonthChange,
+  onDayFilter,
 }: EventCalendarProps) {
   const [showAllAdventures, setShowAllAdventures] = useState(false)
   const today = new Date()
   const weeks = buildWeeks(month)
+
+  interface EventEntry {
+    event: CalendarEvent
+    color: string
+  }
+
+  const activeEvents: EventEntry[] = showAllAdventures
+    ? games.flatMap((g, gi) =>
+        g.events.map(e => ({ event: e, color: PALETTE[gi % PALETTE.length]! }))
+      )
+    : events.map(e => ({ event: e, color: PALETTE[0]! }))
 
   return (
     <div data-testid="event-calendar" className="border-b border-border select-none">
@@ -136,6 +187,19 @@ export function EventCalendar({
           {week.map((day, di) => {
             const isCurrentMonth = day.getMonth() === month.getMonth()
             const isToday = isSameDay(day, today)
+
+            const bars: Array<{ entry: EventEntry; pos: BarPosition }> = []
+            for (const entry of activeEvents) {
+              const evtStart = new Date(entry.event.startAt)
+              const evtEnd = entry.event.endAt ? new Date(entry.event.endAt) : evtStart
+              const pos = getBarPosition(day, week, evtStart, evtEnd)
+              if (pos) bars.push({ entry, pos })
+            }
+
+            const SHOW_MAX = 2
+            const overflowCount = bars.length - SHOW_MAX
+            const visibleBars = bars.slice(0, SHOW_MAX)
+
             return (
               <div
                 key={di}
@@ -151,6 +215,44 @@ export function EventCalendar({
                   )}
                 >
                   {day.getDate()}
+                </div>
+
+                <div className="flex flex-col gap-[2px]">
+                  {visibleBars.map(({ entry, pos }, bi) => (
+                    <div
+                      key={`${entry.event.id}-${bi}`}
+                      data-testid="event-bar"
+                      data-event-id={entry.event.id}
+                      title={entry.event.title}
+                      style={{
+                        backgroundColor: entry.color,
+                        borderRadius:
+                          pos === 'solo'  ? '3px' :
+                          pos === 'start' ? '3px 0 0 3px' :
+                          pos === 'end'   ? '0 3px 3px 0' :
+                          '0',
+                        marginLeft:  pos === 'start' || pos === 'solo' ? '0' : '-4px',
+                        marginRight: pos === 'end'   || pos === 'solo' ? '0' : '-4px',
+                      }}
+                      className="h-[18px] flex items-center overflow-hidden cursor-pointer hover:opacity-80"
+                    >
+                      {(pos === 'start' || pos === 'solo') && (
+                        <span className="text-[10px] text-white font-medium truncate leading-none px-1">
+                          {entry.event.title}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+
+                  {overflowCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => onDayFilter?.(startOfDay(day))}
+                      className="text-[10px] text-muted-foreground hover:text-foreground text-left px-1 leading-tight"
+                    >
+                      +{overflowCount} more
+                    </button>
+                  )}
                 </div>
               </div>
             )
