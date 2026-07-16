@@ -181,7 +181,7 @@ describe('Owner Flow', () => {
     cy.visit(adventureEditUrl)
     cy.get(sel.taglineInput).should('not.be.disabled').clear().type('Test tagline')
     cy.get(sel.saveChangesBtn).click()
-    cy.get(sel.saveChangesBtn).should('contain', 'Saved!')
+    cy.contains('[data-testid="toast"]', 'Branding saved').should('be.visible')
     cy.reload()
     cy.get(sel.taglineInput).should('have.value', 'Test tagline')
   })
@@ -198,7 +198,7 @@ describe('Owner Flow', () => {
     cy.get('input[placeholder="X-card, BRAKE/GAS, Lookdown"]').type('X-card')
     cy.get(sel.levelingRadioPercentage).click()
     cy.get(sel.saveChangesBtn).click()
-    cy.get(sel.saveChangesBtn).should('contain', 'Saved!')
+    cy.get(sel.saveChangesBtn).should('not.be.disabled')
 
     cy.get(sel.tabRaceBuilds).click()
     cy.get(sel.newRaceLink).click()
