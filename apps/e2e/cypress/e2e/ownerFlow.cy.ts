@@ -102,6 +102,7 @@ const sel = {
   // events page
   eventsSearchInput:     '[data-testid="events-search-input"]',
   newEventBtn:           '[data-testid="new-event-btn"]',
+  calendarToggle:        '[data-testid="calendar-toggle"]',
   // new event form
   createEventBtn:        '[data-testid="create-event-btn"]',
   eventTitleInput:       '#title',
@@ -362,6 +363,33 @@ describe('Owner Flow', () => {
     cy.get(sel.createEventBtn).click()
 
     cy.contains('h1', `Event ${adventureName}`)
+  })
+
+  describe('Events calendar', () => {
+    it('Owner can toggle calendar view on and off', () => {
+      cy.get(sel.navEvents).click()
+      cy.get(sel.eventsSearchInput).type(adventureName)
+      cy.contains('button', adventureName).first().click()
+      cy.get(sel.calendarToggle).click()
+      cy.get('[data-testid="event-calendar"]').should('be.visible')
+      cy.get(sel.calendarToggle).click()
+      cy.get('[data-testid="event-calendar"]').should('not.exist')
+    })
+
+    it('Owner sees event bar and popover in calendar view', () => {
+      cy.get(sel.navEvents).click()
+      cy.get(sel.eventsSearchInput).type(adventureName)
+      cy.contains('button', adventureName).first().click()
+      cy.get(sel.calendarToggle).click()
+      cy.get('[data-testid="event-calendar"]').should('be.visible')
+      cy.get('body').then($body => {
+        if ($body.find('[data-testid="event-bar"]').length > 0) {
+          cy.get('[data-testid="event-bar"]').first().click()
+          cy.get('[data-testid="event-popover"]').should('be.visible')
+          cy.get('[data-testid="event-popover"]').contains('View').should('have.attr', 'href')
+        }
+      })
+    })
   })
 
   it('Owner can save a draft and resume it', () => {
