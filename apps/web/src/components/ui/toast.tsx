@@ -14,7 +14,6 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | null>(null)
 
 function ToastContainer({ toasts }: { toasts: Toast[] }) {
-  if (toasts.length === 0) return null
   return (
     <>
       <style>{`
@@ -25,6 +24,8 @@ function ToastContainer({ toasts }: { toasts: Toast[] }) {
         .toast-item { animation: toast-in 0.15s ease-out forwards; }
       `}</style>
       <div
+        role="status"
+        aria-live="polite"
         style={{
           position: 'fixed',
           top: '1rem',
