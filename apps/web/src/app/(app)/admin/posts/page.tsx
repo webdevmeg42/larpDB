@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
@@ -27,13 +27,15 @@ interface Post {
 function formatRelativeDate(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  if (days < 0) return 'just now'
   if (days === 0) return 'today'
   if (days === 1) return 'yesterday'
   if (days < 30) return `${days} days ago`
   const months = Math.floor(days / 30)
   if (months === 1) return '1 month ago'
-  if (months < 12) return `${months} months ago`
-  return `${Math.floor(months / 12)} year${Math.floor(months / 12) === 1 ? '' : 's'} ago`
+  const years = Math.floor(months / 12)
+  if (years === 0) return `${months} months ago`
+  return `${years} year${years === 1 ? '' : 's'} ago`
 }
 
 export default function PostsPage() {
@@ -63,19 +65,18 @@ export default function PostsPage() {
       .finally(() => setLoadingGames(false))
   }, [user])
 
-  const fetchPosts = useCallback((slug: string) => {
-    setLoadingPosts(true)
-    api.get<{ posts: Post[]; total: number }>(`/games/${slug}/posts`)
-      .then(data => setPosts(data.posts))
-      .catch(() => setPosts([]))
-      .finally(() => setLoadingPosts(false))
-  }, [])
 
   useEffect(() => {
     const game = games.find(g => g.id === selectedGameId)
     if (!game) return
-    fetchPosts(game.slug)
-  }, [selectedGameId, games, fetchPosts])
+    let cancelled = false
+    setLoadingPosts(true)
+    api.get<{ posts: Post[]; total: number }>(`/games/${game.slug}/posts`)
+      .then(data => { if (!cancelled) setPosts(data.posts) })
+      .catch(() => { if (!cancelled) setPosts([]) })
+      .finally(() => { if (!cancelled) setLoadingPosts(false) })
+    return () => { cancelled = true }
+  }, [selectedGameId, games])
 
   function handleSelect(id: string) {
     setSelectedGameId(id)
