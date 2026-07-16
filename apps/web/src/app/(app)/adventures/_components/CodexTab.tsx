@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { useToast } from '@/components/ui/toast'
 import type { SiteConfig, GameCodex, LevelingSystemType, Faction, AdditionalWebsite } from '@plotrunner/shared'
 
 interface Props {
@@ -35,8 +36,8 @@ function pick(obj: Record<string, string>): Partial<GameCodex> {
 export default function CodexTab({ config, reload }: Props) {
   const [codex, setCodex] = useState<GameCodex>({})
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
   const [validationSummary, setValidationSummary] = useState<string[]>([])
 
   const gameSettingRef = useRef<SectionRef>(null)
@@ -68,8 +69,7 @@ export default function CodexTab({ config, reload }: Props) {
       await api.patch<SiteConfig>('/config', { codex: merged })
       setCodex(merged)
       reload()
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      toast('Settings saved')
     } catch (err) {
       setError(getErrorMessage(err, 'Save failed'))
     } finally {
@@ -92,7 +92,7 @@ export default function CodexTab({ config, reload }: Props) {
       )}
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button data-testid="save-changes-btn" onClick={handleSave} disabled={saving}>
-        {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
+        {saving ? 'Saving…' : 'Save changes'}
       </Button>
     </div>
   )
