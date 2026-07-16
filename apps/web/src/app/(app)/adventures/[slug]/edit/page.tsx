@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useSiteConfig } from '@/hooks/useSiteConfig'
@@ -17,13 +17,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import type { SiteConfig, GameCodex, Game } from '@plotrunner/shared'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import { useNameAvailability } from '@/hooks/useNameAvailability'
-import dynamic from 'next/dynamic'
 import CodexTab, { BrandingSection, type BrandingSectionRef } from '../../_components/CodexTab'
 import StoreTab from '../../_components/StoreTab'
 import BuildsTab from '../../_components/BuildsTab'
 import SetupChecklist from '../_components/SetupChecklist'
 
-const RulebookTab = dynamic(() => import('../../_components/RulebookTab'), { ssr: false })
 
 type FormState = Partial<{
   siteTitle: string
@@ -46,6 +44,7 @@ type FormState = Partial<{
 
 export default function BuilderPage() {
   const params = useParams<{ slug: string }>()
+  const router = useRouter()
   const { user } = useAuth()
   const { config, game, reload } = useSiteConfig()
 
@@ -167,7 +166,13 @@ export default function BuilderPage() {
 
       <div className="flex gap-6 items-start">
         <div className="flex-1 min-w-0">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={(tab) => {
+            if (tab === 'rulebook') {
+              router.push(`/rulebook/${params.slug}`)
+            } else {
+              setActiveTab(tab)
+            }
+          }}>
           <TabsList className="mb-6">
             <TabsTrigger value="branding" data-testid="tab-branding">Branding</TabsTrigger>
             <TabsTrigger value="codex" data-testid="tab-codex">The Codex</TabsTrigger>
@@ -382,10 +387,6 @@ export default function BuilderPage() {
   
           <TabsContent value="codex">
             <CodexTab config={config} reload={reload} />
-          </TabsContent>
-  
-          <TabsContent value="rulebook">
-            <RulebookTab config={config} reload={reload} />
           </TabsContent>
   
           <TabsContent value="store">
