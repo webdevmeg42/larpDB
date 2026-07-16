@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/layout/AppShell'
+import { ToastProvider } from '@/components/ui/toast'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -15,5 +16,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (loading || !user) return null
 
-  return <AppShell>{children}</AppShell>
+  return (
+    <ToastProvider>
+      <AppShell>{children}</AppShell>
+    </ToastProvider>
+  )
 }
