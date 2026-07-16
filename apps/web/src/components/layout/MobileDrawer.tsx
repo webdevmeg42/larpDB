@@ -36,6 +36,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
         data-testid="mobile-drawer"
         data-state={open ? 'open' : 'closed'}
         aria-hidden={!open}
+        {...(!open ? ({ inert: '' } as Record<string, string>) : {})}
         className={cn(
           'absolute left-0 top-0 h-full w-64 bg-background border-r border-border flex flex-col',
           'transition-transform duration-200 ease-in-out',
