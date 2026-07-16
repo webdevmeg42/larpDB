@@ -44,7 +44,7 @@ export default function RulebookPage() {
       })
       .catch(() => setGames([]))
       .finally(() => setLoading(false))
-  // reload is stable (no deps change) — exclude to avoid infinite loop
+  // reload changes every render — including it in deps would cause an infinite loop
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
@@ -106,8 +106,8 @@ export default function RulebookPage() {
                 style={{
                   width: '200px',
                   flexShrink: 0,
-                  background: 'var(--background)',
-                  borderRight: '1px solid var(--border)',
+                  background: 'hsl(var(--background))',
+                  borderRight: '1px solid hsl(var(--border))',
                   overflowY: 'auto',
                   padding: '16px',
                 }}
@@ -116,7 +116,7 @@ export default function RulebookPage() {
                   Contents
                 </div>
                 {chapters.length === 0 && (
-                  <p style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>No chapters yet.</p>
+                  <p style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>No chapters yet.</p>
                 )}
                 {chapters.map(ch => {
                   const isActive = activeChapterId === ch.id || (activeChapterId === null && chapters[0]?.id === ch.id)
@@ -131,13 +131,13 @@ export default function RulebookPage() {
                         width: '100%',
                         textAlign: 'left',
                         padding: '4px 8px',
+                        border: 'none',
                         borderLeft: isActive ? '2px solid hsl(var(--primary))' : '2px solid transparent',
-                        color: isActive ? 'hsl(var(--primary))' : 'var(--muted-foreground)',
+                        color: isActive ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))',
                         fontWeight: isActive ? 500 : 400,
                         fontSize: '13px',
                         marginBottom: '4px',
                         background: 'none',
-                        border: 'none',
                         cursor: 'pointer',
                         lineHeight: '1.4',
                       }}
@@ -162,7 +162,7 @@ export default function RulebookPage() {
                     </a>
                   )}
                   {chapters.length === 0 && (
-                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '24px', color: 'var(--muted-foreground)' }}>
+                    <div style={{ border: '1px solid hsl(var(--border))', borderRadius: '8px', padding: '24px', color: 'hsl(var(--muted-foreground))' }}>
                       No rulebook chapters have been added yet.
                     </div>
                   )}
@@ -172,8 +172,8 @@ export default function RulebookPage() {
                       id={`chapter-${ch.id}`}
                       style={{ scrollMarginTop: '24px', marginBottom: '24px' }}
                     >
-                      <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '24px' }}>
-                        <h2 style={{ fontSize: '20px', fontWeight: 700, marginTop: 0, marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
+                      <div style={{ border: '1px solid hsl(var(--border))', borderRadius: '8px', padding: '24px' }}>
+                        <h2 style={{ fontSize: '20px', fontWeight: 700, marginTop: 0, marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid hsl(var(--border))' }}>
                           {ch.order + 1}. {ch.title}
                         </h2>
                         <div
