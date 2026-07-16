@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
-import { setGameId, getToken } from '@/lib/auth'
+import { getGameId, setGameId, getToken } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -63,7 +63,10 @@ export default function NewPostPage() {
           g => g.status === 'active' && (g.role === 'owner' || g.role === 'gm'),
         )
         setGames(active)
-        if (active.length === 1 && active[0]) setSelectedGameId(active[0].id)
+        const saved = getGameId()
+        const match = active.find(g => g.id === saved)
+        if (match) setSelectedGameId(match.id)
+        else if (active.length === 1 && active[0]) setSelectedGameId(active[0].id)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -291,20 +294,22 @@ export default function NewPostPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="adventure">Adventure</Label>
-          <select
-            id="adventure"
-            value={selectedGameId}
-            onChange={e => handleGameChange(e.target.value)}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            {games.length > 1 && <option value="">Select an Adventure…</option>}
-            {games.map(g => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select>
-        </div>
+        {games.length > 1 && !selectedGameId && (
+          <div className="space-y-1.5">
+            <Label htmlFor="adventure">Adventure</Label>
+            <select
+              id="adventure"
+              value={selectedGameId}
+              onChange={e => handleGameChange(e.target.value)}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">Select an Adventure…</option>
+              {games.map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <Label htmlFor="title">Title</Label>
