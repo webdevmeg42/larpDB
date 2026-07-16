@@ -8,28 +8,30 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Character, GmData, GmCondition } from '@plotrunner/shared'
+import { useToast } from '@/components/ui/toast'
 
 interface Props {
   character: Character
   onRefresh: () => Promise<void>
 }
 
-type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+type SaveState = 'idle' | 'saving' | 'error'
 
 function useSave() {
   const [state, setState] = useState<SaveState>('idle')
+  const { toast } = useToast()
   async function save(fn: () => Promise<void>) {
     setState('saving')
     try {
       await fn()
-      setState('saved')
-      setTimeout(() => setState('idle'), 2000)
+      setState('idle')
+      toast('Changes saved')
     } catch {
       setState('error')
       setTimeout(() => setState('idle'), 3000)
     }
   }
-  const label = state === 'saving' ? 'Saving…' : state === 'saved' ? 'Saved!' : state === 'error' ? 'Error — try again' : 'Save'
+  const label = state === 'saving' ? 'Saving…' : state === 'error' ? 'Error — try again' : 'Save'
   return { save, label, saving: state === 'saving' }
 }
 
