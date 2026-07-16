@@ -52,6 +52,7 @@ export default function EventsPage() {
           const saved = getGameId()
           const initial = data.games.find(g => g.id === saved) ?? data.games[0]!
           setSelectedGameId(initial.id)
+          setGameId(initial.id)
         }
       })
       .catch(() => setGames([]))

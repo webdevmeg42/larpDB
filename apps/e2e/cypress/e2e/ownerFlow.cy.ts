@@ -391,6 +391,7 @@ describe('Owner Flow', () => {
     const draftTitle = `Publish Draft ${Date.now()}`
 
     // Create a draft
+    cy.clearLocalStorage('plotrunner_game_id')
     cy.visit('/admin/posts/new')
     cy.get('#adventure').select(adventureName)
     cy.get('#title').type(draftTitle)
@@ -413,6 +414,7 @@ describe('Owner Flow', () => {
   })
 
   it('Owner cannot publish a post without required fields', () => {
+    cy.clearLocalStorage('plotrunner_game_id')
     cy.visit('/admin/posts/new')
     cy.contains('h1', 'New Post')
 

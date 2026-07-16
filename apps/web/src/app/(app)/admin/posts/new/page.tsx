@@ -166,6 +166,7 @@ export default function NewPostPage() {
 
   function handleGameChange(gameId: string) {
     setSelectedGameId(gameId)
+    setGameId(gameId)
     if (draftId) setDraftId(null)
     setIsDirty(title.trim() !== '' || body.trim() !== '')
   }
