@@ -36,7 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Admin', href: '/admin/community', icon: ShieldCheck, roles: ['owner', 'gm'] },
   { label: 'Adventure Builder', href: '/adventures', icon: Settings, roles: ['owner'], testId: 'nav-adv-builder' },
   { label: 'Users', href: '/admin/users', icon: Users, roles: ['owner'] },
-  { label: 'New Post', href: '/admin/posts/new', icon: PenSquare, roles: ['owner', 'gm'] },
+  { label: 'Posts', href: '/admin/posts', icon: PenSquare, roles: ['owner', 'gm'] },
 ]
 
 export function Sidebar() {
