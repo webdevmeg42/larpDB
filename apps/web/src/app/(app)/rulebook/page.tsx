@@ -1,33 +1,64 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
+import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { api } from '@/lib/api'
-import { buttonVariants } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { X } from 'lucide-react'
+import { getGameId, setGameId } from '@/lib/auth'
+import { AdventurePanel } from '@/components/layout/AdventurePanel'
+import dynamic from 'next/dynamic'
+
+const RulebookTab = dynamic(
+  () => import('../adventures/_components/RulebookTab'),
+  { ssr: false },
+)
 
 interface MyGame {
   id: string
   name: string
+  slug: string
   role: string
   status: string
 }
 
 export default function RulebookPage() {
   const { user } = useAuth()
+  const { config, reload } = useSiteConfig()
   const [games, setGames] = useState<MyGame[]>([])
-  const [search, setSearch] = useState('')
+  const [selectedGameId, setSelectedGameId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [activeChapterId, setActiveChapterId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
     api.get<MyGame[]>('/my-games')
-      .then(all => setGames(all))
+      .then(all => {
+        setGames(all)
+        if (all.length > 0) {
+          const saved = getGameId()
+          const initial = all.find(g => g.id === saved) ?? all[0]!
+          setSelectedGameId(initial.id)
+          setGameId(initial.id)
+          reload()
+        }
+      })
       .catch(() => setGames([]))
       .finally(() => setLoading(false))
+  // reload is stable (no deps change) — exclude to avoid infinite loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
+
+  function handleSelect(id: string) {
+    setSelectedGameId(id)
+    setGameId(id)
+    setActiveChapterId(null)
+    reload()
+  }
+
+  function scrollToChapter(id: string) {
+    setActiveChapterId(id)
+    document.getElementById(`chapter-${id}`)?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   if (!user) return null
 
@@ -43,70 +74,120 @@ export default function RulebookPage() {
     )
   }
 
-  const filteredGames = games.filter(g =>
-    g.name.toLowerCase().includes(search.toLowerCase())
-  )
+  const isEditorRole = user.role === 'owner' || user.role === 'gm'
+  const chapters = config?.codex?.rulebook?.chapters ?? []
+  const rulebookLink = config?.codex?.rulebookLink
 
   return (
-    <div className="p-6 max-w-2xl flex flex-col gap-4">
+    <div className="p-6 flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">Rulebook</h1>
 
-      <div className="relative max-w-md">
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search Adventures…"
-          aria-label="Search Adventures"
-          data-testid="rulebook-search-input"
-          className="w-full px-4 py-2 rounded-md border border-border bg-card text-sm pr-10 focus:outline-none focus:ring-1 focus:ring-ring"
+      <div className="flex gap-4 min-h-[400px]">
+        <AdventurePanel
+          games={games}
+          selectedId={selectedGameId}
+          onSelect={handleSelect}
         />
-        {search && (
-          <button
-            onClick={() => setSearch('')}
-            aria-label="Clear search"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
-      </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {filteredGames.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-muted-foreground italic">
-              No results for &ldquo;{search}&rdquo;
-            </p>
+        <div className="flex-1 overflow-hidden">
+          {!selectedGameId ? (
+            <div className="flex items-center justify-center h-40">
+              <p className="text-sm text-muted-foreground">Select an Adventure to view its rulebook.</p>
+            </div>
+          ) : isEditorRole ? (
+            <RulebookTab config={config} reload={reload} />
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="px-4 py-2 font-medium">Adventure</th>
-                  <th className="px-4 py-2 font-medium">Role</th>
-                  <th className="px-4 py-2 font-medium" />
-                </tr>
-              </thead>
-              <tbody>
-                {filteredGames.map(g => (
-                  <tr key={g.id} data-testid="rulebook-adventure-row" className="border-b border-border last:border-b-0 hover:bg-muted/30">
-                    <td className="px-4 py-3 font-medium">{g.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground capitalize">{g.role}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/rulebook/${g.id}`}
-                        className={buttonVariants({ variant: 'outline', size: 'sm' })}
-                      >
-                        {(g.role === 'owner' || g.role === 'gm') ? 'Edit Rulebook' : 'View Rulebook'}
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            /* Player reader — same content as /rulebook/[slug] player view */
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: '400px' }}>
+              {/* Sticky ToC */}
+              <nav
+                aria-label="Table of contents"
+                style={{
+                  width: '200px',
+                  flexShrink: 0,
+                  background: 'var(--background)',
+                  borderRight: '1px solid var(--border)',
+                  overflowY: 'auto',
+                  padding: '16px',
+                }}
+              >
+                <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Contents
+                </div>
+                {chapters.length === 0 && (
+                  <p style={{ fontSize: '12px', color: 'var(--muted-foreground)' }}>No chapters yet.</p>
+                )}
+                {chapters.map(ch => {
+                  const isActive = activeChapterId === ch.id || (activeChapterId === null && chapters[0]?.id === ch.id)
+                  return (
+                    <button
+                      key={ch.id}
+                      type="button"
+                      onClick={() => scrollToChapter(ch.id)}
+                      aria-current={isActive ? 'true' : undefined}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '4px 8px',
+                        borderLeft: isActive ? '2px solid hsl(var(--primary))' : '2px solid transparent',
+                        color: isActive ? 'hsl(var(--primary))' : 'var(--muted-foreground)',
+                        fontWeight: isActive ? 500 : 400,
+                        fontSize: '13px',
+                        marginBottom: '4px',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        lineHeight: '1.4',
+                      }}
+                    >
+                      {ch.order + 1}. {ch.title}
+                    </button>
+                  )
+                })}
+              </nav>
+
+              {/* Reading area */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+                <div style={{ maxWidth: '680px', margin: '0 auto' }}>
+                  {rulebookLink && (
+                    <a
+                      href={rulebookLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ display: 'inline-block', marginBottom: '16px', fontSize: '14px', color: 'hsl(var(--primary))', textDecoration: 'none' }}
+                    >
+                      ↗ View external rulebook
+                    </a>
+                  )}
+                  {chapters.length === 0 && (
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '24px', color: 'var(--muted-foreground)' }}>
+                      No rulebook chapters have been added yet.
+                    </div>
+                  )}
+                  {chapters.map(ch => (
+                    <section
+                      key={ch.id}
+                      id={`chapter-${ch.id}`}
+                      style={{ scrollMarginTop: '24px', marginBottom: '24px' }}
+                    >
+                      <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '24px' }}>
+                        <h2 style={{ fontSize: '20px', fontWeight: 700, marginTop: 0, marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
+                          {ch.order + 1}. {ch.title}
+                        </h2>
+                        <div
+                          className="prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: ch.content }}
+                        />
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }
