@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
 import { getToken } from '@/lib/auth'
+import { useToast } from '@/components/ui/toast'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!
 
@@ -18,6 +19,7 @@ interface ProfileUser {
 
 export default function ProfilePage() {
   const { updateToken } = useAuth()
+  const { toast } = useToast()
 
   const [profile, setProfile] = useState<ProfileUser | null>(null)
 
@@ -26,7 +28,6 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [saveSuccess, setSaveSuccess] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -55,7 +56,6 @@ export default function ProfilePage() {
     e.preventDefault()
     setSaving(true)
     setSaveError(null)
-    setSaveSuccess(false)
     try {
       const res = await api.patch<{ user: ProfileUser; token: string }>('/profile', {
         displayName,
@@ -64,7 +64,7 @@ export default function ProfilePage() {
       })
       setProfile(res.user)
       updateToken(res.token)
-      setSaveSuccess(true)
+      toast('Profile saved')
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
@@ -205,7 +205,6 @@ export default function ProfilePage() {
         </div>
 
         {saveError && <p className="text-sm text-destructive">{saveError}</p>}
-        {saveSuccess && <p className="text-sm text-green-500">Changes saved.</p>}
 
         <button
           type="submit"
