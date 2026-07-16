@@ -1,4 +1,5 @@
 import { Card, CardContent } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 interface AdventurePanelGame {
   id: string
@@ -22,11 +23,14 @@ export function AdventurePanel({ games, selectedId, onSelect }: AdventurePanelPr
         {games.map(g => (
           <button
             key={g.id}
+            type="button"
             data-testid="adventure-panel-item"
+            aria-pressed={selectedId === g.id}
             onClick={() => onSelect(g.id)}
-            className={`w-full text-left px-3 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors ${
-              selectedId === g.id ? 'bg-muted' : ''
-            }`}
+            className={cn(
+              'w-full text-left px-3 py-3 border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors',
+              selectedId === g.id && 'bg-muted',
+            )}
           >
             <p className="text-sm font-medium truncate">{g.name}</p>
           </button>
