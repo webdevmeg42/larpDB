@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { useToast } from '@/components/ui/toast'
 
 interface Npc {
   id: string
@@ -32,7 +33,7 @@ export default function NpcDetailPage() {
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
-  const [saveLabel, setSaveLabel] = useState('Save changes')
+  const { toast } = useToast()
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -81,8 +82,7 @@ export default function NpcDetailPage() {
         description: description.trim() || null,
         notes: notes.trim() || null,
       })
-      setSaveLabel('Saved!')
-      setTimeout(() => setSaveLabel('Save changes'), 2000)
+      toast('NPC saved')
     } catch (err) {
       setError((err as Error).message ?? 'Failed to save NPC')
     } finally {
@@ -142,7 +142,7 @@ export default function NpcDetailPage() {
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex gap-3 items-center">
           <Button type="submit" disabled={saving || !name.trim()}>
-            {saving ? 'Saving…' : saveLabel}
+            {saving ? 'Saving…' : 'Save changes'}
           </Button>
           <Button type="button" variant="outline" onClick={() => router.back()}>
             Cancel
