@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Link from 'next/link'
 
 interface CalendarEvent {
   id: string
@@ -92,6 +93,19 @@ function getBarPosition(
   return 'mid'
 }
 
+function formatDateRange(startAt: string, endAt: string | null): string {
+  const start = new Date(startAt)
+  const end = endAt ? new Date(endAt) : null
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+  if (!end || end.toDateString() === start.toDateString()) {
+    return start.toLocaleDateString(undefined, { ...opts, year: 'numeric' })
+  }
+  if (start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth()) {
+    return `${start.toLocaleDateString(undefined, opts)}–${end.getDate()}, ${start.getFullYear()}`
+  }
+  return `${start.toLocaleDateString(undefined, opts)} – ${end.toLocaleDateString(undefined, opts)}, ${start.getFullYear()}`
+}
+
 export function EventCalendar({
   events,
   games,
@@ -113,6 +127,27 @@ export function EventCalendar({
         g.events.map(e => ({ event: e, color: PALETTE[gi % PALETTE.length]! }))
       )
     : events.map(e => ({ event: e, color: PALETTE[0]! }))
+
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!selectedEventId) return
+    function handleClick(e: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setSelectedEventId(null)
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setSelectedEventId(null)
+    }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [selectedEventId])
 
   return (
     <div data-testid="event-calendar" className="border-b border-border select-none">
@@ -200,6 +235,12 @@ export function EventCalendar({
             const overflowCount = bars.length - SHOW_MAX
             const visibleBars = bars.slice(0, SHOW_MAX)
 
+            // Show popover only anchored to the bar's start/solo cell so it renders exactly once
+            const selectedBar = selectedEventId
+              ? bars.find(b => b.entry.event.id === selectedEventId && (b.pos === 'start' || b.pos === 'solo'))
+              : null
+            const selectedEvent = selectedBar?.entry.event ?? null
+
             return (
               <div
                 key={di}
@@ -224,6 +265,7 @@ export function EventCalendar({
                       data-testid="event-bar"
                       data-event-id={entry.event.id}
                       title={entry.event.title}
+                      onClick={() => setSelectedEventId(entry.event.id)}
                       style={{
                         backgroundColor: entry.color,
                         borderRadius:
@@ -254,6 +296,29 @@ export function EventCalendar({
                     </button>
                   )}
                 </div>
+
+                {selectedEvent && (
+                  <div
+                    ref={popoverRef}
+                    data-testid="event-popover"
+                    className="absolute z-50 bg-background border border-border rounded-md shadow-lg p-3 w-56 text-sm"
+                    style={{ top: '100%', left: 0 }}
+                  >
+                    <p className="font-medium truncate">{selectedEvent.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {formatDateRange(selectedEvent.startAt, selectedEvent.endAt)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedEvent.location ?? '—'}
+                    </p>
+                    <Link
+                      href={`/events/${selectedEvent.id}`}
+                      className="text-xs text-primary hover:underline mt-2 block"
+                    >
+                      View →
+                    </Link>
+                  </div>
+                )}
               </div>
             )
           })}
