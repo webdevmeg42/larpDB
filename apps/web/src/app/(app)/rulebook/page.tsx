@@ -74,7 +74,8 @@ export default function RulebookPage() {
     )
   }
 
-  const isEditorRole = user.role === 'owner' || user.role === 'gm'
+  const selectedGame = games.find(g => g.id === selectedGameId) ?? null
+  const isEditorRole = selectedGame?.role === 'owner' || selectedGame?.role === 'gm'
   const chapters = config?.codex?.rulebook?.chapters ?? []
   const rulebookLink = config?.codex?.rulebookLink
 
