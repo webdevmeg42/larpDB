@@ -1,0 +1,13 @@
+.superpowers
+docs*
+node_modules/
+dist/
+*.env
+.env
+pnpm-lock.yaml
+.claude*
+.gitignore
+CLAUDE.md
+.next/
+tsconfig.tsbuildinfo
+apps/api/uploads/

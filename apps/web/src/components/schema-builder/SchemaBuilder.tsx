@@ -1,0 +1,335 @@
+'use client'
+
+import { useState, useCallback } from 'react'
+import { v4 as uuidv4 } from 'uuid'
+import { FieldList } from './FieldList'
+import { FieldPalette } from './FieldPalette'
+import { FieldEditor } from './FieldEditor'
+import { SchemaPreview } from './SchemaPreview'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import type { SchemaField, SchemaFieldType, CharacterSchemaType } from '@plotrunner/shared'
+import { getErrorMessage } from '@/lib/utils'
+
+const RACE_LOCKED_FIELDS: SchemaField[] = [
+  {
+    id: 'aaaaaaaa-0000-0000-0000-000000000001',
+    type: 'text',
+    label: 'Character Name',
+    required: true,
+    order: 0,
+    locked: true,
+  },
+  {
+    id: 'aaaaaaaa-0000-0000-0000-000000000002',
+    type: 'longtext',
+    label: 'Allies and Organizations',
+    required: false,
+    order: 1,
+    locked: true,
+  },
+]
+
+const DEFAULT_LEVEL_ENTRIES = [{ level: 1, value: 0 }, { level: 2, value: 0 }, { level: 3, value: 0 }]
+const DEFAULT_HP_ENTRIES = [{ level: 1, hp: 5 }, { level: 2, hp: 10 }, { level: 3, hp: 15 }]
+
+const CLASS_LOCKED_FIELDS: SchemaField[] = [
+  {
+    id: 'bbbbbbbb-0000-0000-0000-000000000001',
+    type: 'statblock',
+    label: 'Core Stats',
+    required: true,
+    order: 0,
+    locked: true,
+    stats: [
+      { key: 'str', label: 'Strength', min: 1, max: 20, levelEntries: DEFAULT_LEVEL_ENTRIES },
+      { key: 'dex', label: 'Dexterity', min: 1, max: 20, levelEntries: DEFAULT_LEVEL_ENTRIES },
+      { key: 'con', label: 'Constitution', min: 1, max: 20, levelEntries: DEFAULT_LEVEL_ENTRIES },
+      { key: 'int', label: 'Intelligence', min: 1, max: 20, levelEntries: DEFAULT_LEVEL_ENTRIES },
+      { key: 'wis', label: 'Wisdom', min: 1, max: 20, levelEntries: DEFAULT_LEVEL_ENTRIES },
+      { key: 'cha', label: 'Charisma', min: 1, max: 20, levelEntries: DEFAULT_LEVEL_ENTRIES },
+    ],
+  },
+  {
+    id: 'bbbbbbbb-0000-0000-0000-000000000002',
+    type: 'hitpoints',
+    label: 'Health Points',
+    required: true,
+    order: 1,
+    locked: true,
+    hitPointEntries: DEFAULT_HP_ENTRIES,
+  },
+]
+
+function getLockedDefaults(schemaType: CharacterSchemaType | undefined): SchemaField[] {
+  if (schemaType === 'race') return RACE_LOCKED_FIELDS
+  if (schemaType === 'class') return CLASS_LOCKED_FIELDS
+  return []
+}
+
+function initLockedFields(schemaType: CharacterSchemaType | undefined, initialFields: SchemaField[]): SchemaField[] {
+  const defaults = getLockedDefaults(schemaType)
+  return defaults.map(def => {
+    const stored = initialFields.find(f => f.id === def.id)
+    if (!stored) return def
+    const base = { ...stored, locked: true }
+    // Backfill pre-populated level entries for schemas saved before this requirement
+    if (def.type === 'hitpoints' && !(stored.hitPointEntries?.length)) {
+      return { ...base, hitPointEntries: def.hitPointEntries ?? [] } as SchemaField
+    }
+    if (def.type === 'statblock' && def.stats) {
+      const mergedStats = def.stats.map(defaultStat => {
+        const storedStat = stored.stats?.find(s => s.key === defaultStat.key) ?? defaultStat
+        if (!(storedStat.levelEntries?.length)) {
+          return { ...storedStat, levelEntries: defaultStat.levelEntries ?? [] }
+        }
+        return storedStat
+      })
+      return { ...base, stats: mergedStats } as SchemaField
+    }
+    return base as SchemaField
+  })
+}
+
+function makeDefaultField(type: SchemaFieldType, order: number, defaultLabel = ''): SchemaField {
+  const base = { id: uuidv4(), label: defaultLabel, type, required: false, order }
+  switch (type) {
+    case 'select':
+    case 'multiselect':
+      return { ...base, options: [] } as SchemaField
+    case 'number':
+      return { ...base } as SchemaField
+    case 'statblock':
+      return { ...base, stats: [] } as SchemaField
+    case 'equipment':
+      return { ...base, equipmentSlots: 3, treasureSlots: 3 } as SchemaField
+    case 'personality':
+      return { ...base, personalityTraitSlots: 2, idealSlots: 1, bondSlots: 1, flawSlots: 1 } as SchemaField
+    case 'features':
+      return { ...base, featureSlots: 3 } as SchemaField
+    case 'influences':
+      return { ...base, influenceSlots: 2 } as SchemaField
+    case 'languages':
+      return { ...base, languageSlots: 3 } as SchemaField
+    case 'appearance':
+      return { ...base } as SchemaField
+    case 'hitpoints':
+      return { ...base, hitPointEntries: [...DEFAULT_HP_ENTRIES] } as SchemaField
+    case 'attacks':
+      return { ...base, attackEntries: [
+        { kind: 'new', level: 1, name: '', hitPoints: 5 },
+        { kind: 'new', level: 2, name: '', hitPoints: 5 },
+        { kind: 'new', level: 3, name: '', hitPoints: 5 },
+      ] } as SchemaField
+    case 'spells':
+      return { ...base, spellEntries: [
+        { kind: 'new', level: 1, name: '', hitPoints: 5, effects: '' },
+        { kind: 'new', level: 2, name: '', hitPoints: 5, effects: '' },
+        { kind: 'new', level: 3, name: '', hitPoints: 5, effects: '' },
+      ] } as SchemaField
+    default:
+      return base as SchemaField
+  }
+}
+
+interface SchemaBuilderProps {
+  schemaId: string
+  initialName: string
+  initialFields: SchemaField[]
+  schemaType?: CharacterSchemaType
+  onSave: (name: string, fields: SchemaField[]) => Promise<void>
+  onActivate: () => Promise<void>
+  isActive: boolean
+  isSaving: boolean
+}
+
+export function SchemaBuilder({
+  schemaId,
+  initialName,
+  initialFields,
+  schemaType,
+  onSave,
+  onActivate,
+  isActive,
+  isSaving,
+}: SchemaBuilderProps) {
+  const [name, setName] = useState(initialName)
+  const [lockedFields, setLockedFields] = useState<SchemaField[]>(() => initLockedFields(schemaType, initialFields))
+  const [fields, setFields] = useState<SchemaField[]>(() => {
+    const lockedDefs = getLockedDefaults(schemaType)
+    return initialFields.filter(f => {
+      if (f.locked) return false
+      if (lockedDefs.some(def => def.type === f.type && def.label === f.label)) return false
+      // Level is system-managed; owners should not define it in any schema
+      if (f.type === 'number' && f.label.toLowerCase() === 'level') return false
+      return true
+    })
+  })
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveAttempted, setSaveAttempted] = useState(false)
+
+  const selectedField =
+    lockedFields.find(f => f.id === selectedId) ??
+    fields.find(f => f.id === selectedId) ??
+    null
+
+  const addField = useCallback((type: SchemaFieldType, defaultLabel?: string) => {
+    const field = makeDefaultField(type, fields.length, defaultLabel)
+    setFields(prev => [...prev, field])
+    setSelectedId(field.id)
+  }, [fields.length])
+
+  const updateField = useCallback((updated: SchemaField) => {
+    if (updated.locked) {
+      setLockedFields(prev => prev.map(f => f.id === updated.id ? { ...updated, locked: true } : f))
+    } else {
+      setFields(prev => prev.map(f => f.id === updated.id ? updated : f))
+    }
+  }, [])
+
+  const deleteField = useCallback((id: string) => {
+    setFields(prev => prev.filter(f => f.id !== id))
+    setSelectedId(s => s === id ? null : s)
+  }, [])
+
+  const reorderFields = useCallback((reordered: SchemaField[]) => {
+    setFields(reordered.map((f, i) => ({ ...f, order: lockedFields.length + i } as SchemaField)))
+  }, [lockedFields.length])
+
+  async function handleSave() {
+    setSaveError(null)
+    try {
+      const unlabeledField = fields.find(f => !f.label.trim())
+      if (unlabeledField) {
+        setSaveAttempted(true)
+        setSaveError('All fields must have a label before saving.')
+        return
+      }
+
+      const allFields: SchemaField[] = [
+        ...lockedFields.map((f, i) => ({ ...f, order: i })),
+        ...fields.map((f, i) => ({ ...f, order: lockedFields.length + i })),
+      ] as SchemaField[]
+
+      if (schemaType === 'class') {
+        for (const field of allFields) {
+          if (field.type === 'hitpoints' && (field.hitPointEntries ?? []).length < 3) {
+            setSaveError(`"${field.label}" requires at least 3 levels defined.`)
+            return
+          }
+          if (field.type === 'statblock') {
+            const statsWithEntries = (field.stats ?? []).filter(s => (s.levelEntries ?? []).length > 0)
+            if (statsWithEntries.length > 0) {
+              const under = statsWithEntries.find(s => (s.levelEntries ?? []).length < 3)
+              if (under) {
+                setSaveError(`"${field.label}" — ${under.label} requires at least 3 levels defined.`)
+                return
+              }
+            }
+          }
+          if (field.type === 'attacks' && (field.attackEntries ?? []).length < 3) {
+            setSaveError(`"${field.label}" requires at least 3 entries defined.`)
+            return
+          }
+          if (field.type === 'spells' && (field.spellEntries ?? []).length < 3) {
+            setSaveError(`"${field.label}" requires at least 3 entries defined.`)
+            return
+          }
+        }
+      }
+
+      setSaveAttempted(false)
+      await onSave(name, allFields)
+    } catch (err: unknown) {
+      setSaveError(getErrorMessage(err, 'Save failed'))
+    }
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b px-6 py-3 shrink-0">
+        {schemaType && (
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-muted text-muted-foreground uppercase tracking-wide shrink-0">
+            {schemaType === 'race' ? 'Race' : 'Class'}
+          </span>
+        )}
+        <Input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          className="max-w-xs font-medium"
+          placeholder="Schema name"
+        />
+        <div className="ml-auto flex items-center gap-2">
+          {saveError && <span data-testid="schema-save-error" className="text-sm text-destructive">{saveError}</span>}
+          {!isActive && !!schemaId && (
+            <Button data-testid="schema-activate-btn" variant="outline" onClick={() => void onActivate()} disabled={isSaving}>
+              Activate
+            </Button>
+          )}
+          <Button data-testid="schema-save-btn" onClick={() => void handleSave()} disabled={isSaving}>
+            {isSaving ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden min-w-0">
+        {/* Palette */}
+        <div className="w-40 shrink-0 border-r p-3 overflow-y-auto">
+          <FieldPalette onAdd={addField} {...(schemaType !== undefined ? { schemaType } : {})} />
+        </div>
+
+        {/* Center: field list (top) + live preview (bottom) */}
+        <div className="flex-1 flex flex-col overflow-hidden border-r min-w-0">
+          {/* Field list */}
+          <div className="shrink-0 flex flex-col" style={{ maxHeight: '45%' }}>
+            <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30 shrink-0">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fields</p>
+              {(lockedFields.length + fields.length) > 0 && (
+                <span className="text-xs text-muted-foreground">({lockedFields.length + fields.length})</span>
+              )}
+            </div>
+            <div className="overflow-y-auto p-3">
+              <FieldList
+                fields={fields}
+                lockedFields={lockedFields}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                onReorder={reorderFields}
+                onDelete={deleteField}
+                highlightUnlabeled={saveAttempted}
+              />
+            </div>
+          </div>
+
+          {/* Live preview */}
+          <div className="flex-1 flex flex-col overflow-hidden border-t bg-muted/10">
+            <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30 shrink-0">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Player preview</p>
+              <span className="text-xs text-muted-foreground">— interactive</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <SchemaPreview
+                fields={[...lockedFields, ...fields]}
+                schemaName={name}
+                {...(schemaType !== undefined ? { schemaType } : {})}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Field editor */}
+        <div className="w-72 shrink-0 overflow-y-auto">
+          {selectedField ? (
+            <FieldEditor field={selectedField} onChange={updateField} schemaType={schemaType} highlightUnlabeled={saveAttempted} />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground p-4 text-center">
+              Select a field to edit its properties
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

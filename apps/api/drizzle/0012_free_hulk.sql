@@ -1,0 +1,1 @@
+ALTER TABLE "characters" ADD COLUMN "gm_data" jsonb DEFAULT '{}'::jsonb;

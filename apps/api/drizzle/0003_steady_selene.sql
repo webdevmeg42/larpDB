@@ -1,0 +1,1 @@
+ALTER TABLE "character_schemas" ADD COLUMN "type" text DEFAULT 'race' NOT NULL;

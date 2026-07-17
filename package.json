@@ -1,0 +1,19 @@
+{
+  "name": "larpdb",
+  "private": true,
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "dev:api": "pnpm --filter @larpdb/api dev",
+    "test": "pnpm --filter @larpdb/api test",
+    "build": "pnpm --filter @plotrunner/shared build && pnpm --filter @larpdb/api build",
+    "db:generate": "pnpm --filter @larpdb/api db:generate",
+    "db:migrate": "pnpm --filter @larpdb/api db:migrate"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

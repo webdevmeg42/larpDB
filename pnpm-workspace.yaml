@@ -1,0 +1,8 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+allowBuilds:
+  bcrypt: true
+  cypress: true
+  es5-ext: false
+  esbuild: true
