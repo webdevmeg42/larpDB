@@ -8,9 +8,10 @@ import { api } from '@/lib/api'
 
 export default function RootPage() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
 
   useEffect(() => {
+    if (loading) return
     async function redirect() {
       try {
         if (!getGameId()) {
@@ -32,7 +33,7 @@ export default function RootPage() {
       }
     }
     void redirect()
-  }, [router, user])
+  }, [router, user, loading])
 
   return (
     <div className="flex h-screen items-center justify-center">
