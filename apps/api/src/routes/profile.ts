@@ -68,8 +68,6 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
       }
       if (!updated) return reply.status(404).send({ error: 'User not found' })
 
-      const { passwordHash: _, ...safeUser } = updated
-
       const ROLE_ORDER = { owner: 3, gm: 2, player: 1 } as const
       const memberships = await db
         .select({ role: gameMembers.role })
@@ -86,9 +84,24 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         isSysAdmin: updated.isSysAdmin,
         role,
       })
+      reply.setCookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
+      })
 
       request.log.info({ userId }, "profile updated")
-      return reply.send({ user: safeUser, token })
+      return reply.send({
+        user: {
+          id: updated.id,
+          email: updated.email,
+          displayName: updated.displayName,
+          role,
+          isSysAdmin: updated.isSysAdmin,
+        },
+      })
     },
   )
 
