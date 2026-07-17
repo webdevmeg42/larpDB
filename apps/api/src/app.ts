@@ -1,5 +1,8 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import helmet from '@fastify/helmet'
+import cookie from '@fastify/cookie'
+import rateLimit from '@fastify/rate-limit'
 import multipart from '@fastify/multipart'
 import fastifyStatic from '@fastify/static'
 import fs from 'fs'
@@ -39,7 +42,13 @@ export function buildApp() {
     logger: env.NODE_ENV !== 'test',
   })
 
-  app.register(cors, { origin: true })
+  // Security: cookie must be registered before jwtPlugin so JWT can read cookies
+  app.register(cookie)
+  app.register(helmet, {
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+  app.register(rateLimit, { global: false })
+  app.register(cors, { origin: env.ALLOWED_ORIGIN, credentials: true })
   app.register(multipart, { limits: { fileSize: 100 * 1024 * 1024 } })
   app.register(fastifyStatic, {
     root: UPLOADS_DIR,
@@ -89,7 +98,6 @@ export function buildApp() {
       await seedBuiltinTemplates()
       await purgeOldLogs()
       const timer = setInterval(purgeOldLogs, 24 * 60 * 60 * 1000)
-      // unref so the timer doesn't keep the process alive if everything else has shut down
       timer.unref()
     }
   })
