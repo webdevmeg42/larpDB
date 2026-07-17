@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { api } from '@/lib/api'
 import { getGameId, setGameId } from '@/lib/auth'
+import { sanitizeRulebookHtml } from '@/lib/sanitize'
 import { AdventurePanel } from '@/components/layout/AdventurePanel'
 import dynamic from 'next/dynamic'
 
@@ -178,7 +179,7 @@ export default function RulebookPage() {
                         </h2>
                         <div
                           className="prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ __html: ch.content }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeRulebookHtml(ch.content) }}
                         />
                       </div>
                     </section>

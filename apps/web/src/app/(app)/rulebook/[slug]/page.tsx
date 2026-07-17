@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useSiteConfig } from '@/hooks/useSiteConfig'
 import { setGameId } from '@/lib/auth'
+import { sanitizeRulebookHtml } from '@/lib/sanitize'
 import dynamic from 'next/dynamic'
 
 const RulebookTab = dynamic(
@@ -148,7 +149,7 @@ export default function RulebookDetailPage() {
                   </h2>
                   <div
                     className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: ch.content }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeRulebookHtml(ch.content) }}
                     style={{ color: '#374151' }}
                   />
                   <div style={{ textAlign: 'right', marginTop: '16px' }}>
