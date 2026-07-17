@@ -64,7 +64,7 @@ export function CommentList({ postId }: CommentListProps) {
               </span>
               <p className="mt-0.5">{c.body}</p>
             </div>
-            {user && (user.sub === c.authorId || user.role === 'owner' || user.role === 'gm') && (
+            {user && (user.id === c.authorId || user.role === 'owner' || user.role === 'gm') && (
               <button
                 onClick={() => deleteComment(c.id)}
                 className="text-xs text-muted-foreground hover:text-destructive"

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
-import { getGameId, setGameId, getToken } from '@/lib/auth'
+import { getGameId, setGameId } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -102,13 +102,13 @@ export default function NewPostPage() {
   }
 
   async function uploadFile(file: File): Promise<string | null> {
-    const token = getToken()
-    if (!token || !selectedGameId) return null
+    if (!selectedGameId) return null
     const fd = new FormData()
     fd.append('file', file)
     const res = await fetch(`${API_BASE}/upload`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'X-Game-Id': selectedGameId },
+      credentials: 'include',
+      headers: { 'X-Game-Id': selectedGameId },
       body: fd,
     })
     if (!res.ok) return null

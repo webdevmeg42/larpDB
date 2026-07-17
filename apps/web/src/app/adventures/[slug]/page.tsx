@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { getToken } from '@/lib/auth'
+import { useAuth } from '@/hooks/useAuth'
 import { SubscribeButton } from '@/components/SubscribeButton'
 import { useAdventureContext, type AdventurePublicData } from '@/contexts/AdventureContext'
 import { getContrastColor } from '@/lib/contrast'
@@ -33,32 +33,30 @@ export default function AdventureLandingPage() {
   const params = useParams<{ slug: string }>()
   const { data: larp, theme } = useAdventureContext()
   const { colorPrimary, colorSecondary, colorBackground, headingFamily, bodyFamily } = theme
+  const { user } = useAuth()
 
   const textColor = getContrastColor(colorBackground)
 
   const [isMember, setIsMember] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const isLoggedIn = !!user
 
   useEffect(() => {
-    const token = getToken()
-    if (token) setIsLoggedIn(true)
-    if (token) {
-      async function checkMembership() {
-        try {
-          const memRes = await fetch(`${API_BASE}/games/${params.slug}/membership`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-          if (memRes.ok) {
-            const { isMember: member } = await memRes.json() as { isMember: boolean }
-            setIsMember(member)
-          }
-        } catch {
-          // Non-fatal: membership check failing just means directory hidden for non-members
+    if (!user) return
+    async function checkMembership() {
+      try {
+        const memRes = await fetch(`${API_BASE}/games/${params.slug}/membership`, {
+          credentials: 'include',
+        })
+        if (memRes.ok) {
+          const { isMember: member } = await memRes.json() as { isMember: boolean }
+          setIsMember(member)
         }
+      } catch {
+        // Non-fatal: membership check failing just means directory hidden for non-members
       }
-      void checkMembership()
     }
-  }, [params.slug])
+    void checkMembership()
+  }, [params.slug, user])
 
   const initials = larp.siteTitle.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   const socials = SOCIAL_MAP.filter(s => larp[s.key])

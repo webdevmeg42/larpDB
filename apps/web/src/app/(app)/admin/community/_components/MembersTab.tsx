@@ -128,7 +128,7 @@ export function MembersTab() {
         <div className="space-y-2">
           {filteredGames.map(g => {
             const isOpen = openSections.has(g.id)
-            const isOwnerInThisGame = g.members.some(m => m.userId === user?.sub && m.role === 'owner')
+            const isOwnerInThisGame = g.members.some(m => m.userId === user?.id && m.role === 'owner')
             return (
               <Card key={g.id}>
                 <div

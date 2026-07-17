@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { api } from '@/lib/api'
-import { setToken } from '@/lib/auth'
 import type { SiteConfig, ApiError } from '@plotrunner/shared'
 
 export default function SetupPage() {
@@ -30,13 +29,12 @@ export default function SetupPage() {
     setError(null)
     setLoading(true)
     try {
-      const res = await api.post<{ token: string }>('/auth/setup', {
+      await api.post('/auth/setup', {
         email,
         password,
         displayName,
         gameName,
       })
-      setToken(res.token)
       router.push('/dashboard')
     } catch (err: unknown) {
       setError((err as ApiError).message ?? 'Setup failed')

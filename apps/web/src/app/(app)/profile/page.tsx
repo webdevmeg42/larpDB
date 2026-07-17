@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
-import { getToken } from '@/lib/auth'
 import { useToast } from '@/components/ui/toast'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!
@@ -18,7 +17,7 @@ interface ProfileUser {
 }
 
 export default function ProfilePage() {
-  const { updateToken } = useAuth()
+  const { refreshUser } = useAuth()
   const { toast } = useToast()
 
   const [profile, setProfile] = useState<ProfileUser | null>(null)
@@ -57,13 +56,13 @@ export default function ProfilePage() {
     setSaving(true)
     setSaveError(null)
     try {
-      const res = await api.patch<{ user: ProfileUser; token: string }>('/profile', {
+      const res = await api.patch<{ user: ProfileUser }>('/profile', {
         displayName,
         email,
         phone: phone || null,
       })
       setProfile(res.user)
-      updateToken(res.token)
+      await refreshUser()
       toast('Profile saved')
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save')
@@ -83,10 +82,9 @@ export default function ProfilePage() {
     try {
       const formData = new FormData()
       formData.append('file', file)
-      const token = getToken()
       const res = await fetch(`${API_URL}/profile/avatar`, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
         body: formData,
       })
       if (!res.ok) {
