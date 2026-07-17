@@ -1,15 +1,14 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import bcrypt from 'bcrypt'
 import { pipeline } from 'stream/promises'
 import fs from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
 import { db } from '../db/index.js'
-import { users } from '../db/schema.js'
+import { users, gameMembers } from '../db/schema.js'
 import { UpdateProfileInput, ChangePasswordInput } from '@plotrunner/shared'
 import { UPLOADS_DIR } from './upload.js'
-import { highestRole } from './auth.js'
 
 const ALLOWED_MIME_TYPES = new Set([
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -69,7 +68,14 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
       }
       if (!updated) return reply.status(404).send({ error: 'User not found' })
 
-      const role = await highestRole(userId)
+      const ROLE_ORDER = { owner: 3, gm: 2, player: 1 } as const
+      const memberships = await db
+        .select({ role: gameMembers.role })
+        .from(gameMembers)
+        .where(and(eq(gameMembers.userId, userId), eq(gameMembers.status, 'active')))
+      const role = memberships.reduce<'owner' | 'gm' | 'player'>((best, { role: r }) => {
+        return (ROLE_ORDER[r] ?? 0) > ROLE_ORDER[best] ? r : best
+      }, 'player')
 
       const token = fastify.jwt.sign({
         sub: updated.id,
@@ -86,9 +92,16 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         maxAge: 60 * 60 * 24 * 7,
       })
 
-      const { passwordHash: _, ...safeUser } = updated
       request.log.info({ userId }, "profile updated")
-      return reply.send({ user: safeUser })
+      return reply.send({
+        user: {
+          id: updated.id,
+          email: updated.email,
+          displayName: updated.displayName,
+          role,
+          isSysAdmin: updated.isSysAdmin,
+        },
+      })
     },
   )
 

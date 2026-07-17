@@ -7,7 +7,7 @@ import { LoginInput, RegisterInput } from '@plotrunner/shared'
 
 const ROLE_ORDER = { owner: 3, gm: 2, player: 1 } as const
 
-export async function highestRole(userId: string): Promise<'owner' | 'gm' | 'player'> {
+async function highestRole(userId: string): Promise<'owner' | 'gm' | 'player'> {
   const rows = await db
     .select({ role: gameMembers.role })
     .from(gameMembers)
@@ -106,22 +106,15 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
   })
 
   fastify.post('/auth/logout', async (_request, reply) => {
-    reply.clearCookie('token', {
-      path: '/',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-    })
+    reply.clearCookie('token', { path: '/' })
     return { ok: true }
   })
 
   fastify.get('/auth/me', { onRequest: [fastify.authenticate] }, async (request, reply) => {
     const { sub: userId } = request.user
-    const [[user], role] = await Promise.all([
-      db.select().from(users).where(eq(users.id, userId)).limit(1),
-      highestRole(userId),
-    ])
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1)
     if (!user) return reply.code(401).send({ error: 'Unauthorized' })
+    const role = await highestRole(userId)
     return {
       id: user.id,
       email: user.email,
