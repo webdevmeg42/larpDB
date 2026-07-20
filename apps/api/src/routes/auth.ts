@@ -29,7 +29,7 @@ async function issueAuthCookie(
     displayName: user.displayName,
     isSysAdmin: user.isSysAdmin,
     role,
-  })
+  }, { expiresIn: '7d' })
   reply.setCookie('token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

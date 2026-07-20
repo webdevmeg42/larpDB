@@ -77,7 +77,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         displayName: updated.displayName,
         isSysAdmin: updated.isSysAdmin,
         role,
-      })
+      }, { expiresIn: '7d' })
       reply.setCookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
