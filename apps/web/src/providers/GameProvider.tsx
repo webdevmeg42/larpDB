@@ -24,7 +24,10 @@ export function GameProvider({
 }) {
   const [games] = useState<MyGame[]>(initialGames)
   const [currentGameId, setCurrentGameId] = useState<string | null>(
-    initialGameId ?? initialGames[0]?.id ?? null,
+    () => {
+      const valid = initialGames.find(g => g.id === initialGameId)
+      return valid?.id ?? initialGames[0]?.id ?? null
+    },
   )
 
   const setCurrentGame = useCallback((id: string) => {
