@@ -4,6 +4,7 @@ import { db } from '../db/index.js'
 import { game, gameMembers, adventureSubscriptions, users } from '../db/schema.js'
 import { UpdateMemberInput } from '@plotrunner/shared'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
+import { invalidateMembership } from '../lib/membershipCache.js'
 
 const validStatuses = ['active', 'pending', 'banned'] as const
 
@@ -99,6 +100,7 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId)))
         .returning()
 
+      invalidateMembership(userId, gameId)
       request.log.info({ userId, gameId, newRole: role }, "member role updated")
       return reply.send(updated)
     },
@@ -136,6 +138,7 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId)))
         .returning()
 
+      invalidateMembership(userId, gameId)
       return reply.send(updated)
     },
   )
