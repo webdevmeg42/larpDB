@@ -38,7 +38,7 @@ interface Props {
 
 export function AdminPostsClient({ initialGames, initialGameId, initialPosts }: Props) {
   const router = useRouter()
-  const [games] = useState<MyGame[]>(initialGames)
+  const games = initialGames
   const [selectedGameId, setSelectedGameId] = useState<string | null>(initialGameId)
   const [posts, setPosts] = useState<Post[]>(initialPosts)
   const [loadingPosts, setLoadingPosts] = useState(false)

@@ -53,12 +53,9 @@ export function CharacterDetailClient({ character: characterProp, xpData, schema
   const id = characterProp.id
 
   const [character, setCharacter] = useState<Character>(characterProp)
-  const [schema, setSchema] = useState<CharacterSchema | null>(
-    () => resolveSchemas(characterProp, schemas).schema
-  )
-  const [classSchema, setClassSchema] = useState<CharacterSchema | null>(
-    () => resolveSchemas(characterProp, schemas).classSchema
-  )
+  const initialSchemas = resolveSchemas(characterProp, schemas)
+  const [schema, setSchema] = useState<CharacterSchema | null>(initialSchemas.schema)
+  const [classSchema, setClassSchema] = useState<CharacterSchema | null>(initialSchemas.classSchema)
   const [xpBalance, setXpBalance] = useState(xpData.balance)
   const [xpSpent, setXpSpent] = useState(
     () => xpData.transactions.filter(t => t.type === 'spend').reduce((s, t) => s + t.amount, 0)
