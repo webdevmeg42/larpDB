@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
+import { redirect, notFound } from 'next/navigation'
 import { RulebookDetailClient } from './_components/RulebookDetailClient'
 import type { SiteConfig, Game } from '@plotrunner/shared'
 
@@ -24,6 +24,7 @@ export default async function RulebookDetailPage({ params }: { params: Promise<{
   } catch (err) {
     const status = (err as { status?: number }).status
     if (status === 401 || status === 403) redirect('/login')
+    if (status === 404) notFound()
     throw err
   }
 }

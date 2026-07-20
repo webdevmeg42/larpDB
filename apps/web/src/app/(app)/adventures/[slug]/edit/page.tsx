@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
+import { redirect, notFound } from 'next/navigation'
 import { BuilderPageClient } from './_components/BuilderPageClient'
 import type { SiteConfig, Game } from '@plotrunner/shared'
 
@@ -26,6 +26,7 @@ export default async function BuilderPage({ params }: { params: Promise<{ slug: 
   } catch (err) {
     const status = (err as { status?: number }).status
     if (status === 401 || status === 403) redirect('/login')
+    if (status === 404) notFound()
     throw err
   }
 }

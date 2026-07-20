@@ -68,7 +68,7 @@ export function LogsPageClient({ initialUsers, initialLogs, initialTotal }: Prop
   const [logs, setLogs] = useState<LogEntry[]>(initialLogs)
   const [total, setTotal] = useState(initialTotal)
   const [offset, setOffset] = useState(0)
-  const [allUsers] = useState<AdminUser[]>(initialUsers)
+  const allUsers = initialUsers
   const [selectedUserId, setSelectedUserId] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')

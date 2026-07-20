@@ -51,7 +51,7 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
   const router = useRouter()
   const { user } = useAuth()
   const [config, setConfig] = useState<SiteConfig>(initialConfig)
-  const [game] = useState<Game>(initialGame)
+  const game = initialGame
 
   const [form, setForm] = useState<FormState>({})
 

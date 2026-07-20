@@ -23,7 +23,7 @@ interface Props {
 export function RulebookDetailClient({ slug, initialConfig, initialGame }: Props) {
   const { user } = useAuth()
   const [config, setConfig] = useState<SiteConfig>(initialConfig)
-  const [game] = useState<Game>(initialGame)
+  const game = initialGame
   const [activeId, setActiveId] = useState<string | null>(null)
 
   useEffect(() => {
