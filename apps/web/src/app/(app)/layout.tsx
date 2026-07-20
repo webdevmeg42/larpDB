@@ -1,24 +1,31 @@
-'use client'
-
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '@/hooks/useAuth'
+import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
+import { apiServer } from '@/lib/api-server'
 import { AppShell } from '@/components/layout/AppShell'
 import { ToastProvider } from '@/components/ui/toast'
+import type { AuthUser } from '@/lib/auth'
+import type { MyGame } from '@plotrunner/shared'
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
-  const router = useRouter()
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  try {
+    const cookieStore = await cookies()
+    const initialGameId = cookieStore.get('gameId')?.value ?? null
 
-  useEffect(() => {
-    if (!loading && !user) router.replace('/login')
-  }, [user, loading, router])
+    const [user, games] = await Promise.all([
+      apiServer.get<AuthUser>('/auth/me'),
+      apiServer.get<MyGame[]>('/my-games'),
+    ])
 
-  if (loading || !user) return null
-
-  return (
-    <ToastProvider>
-      <AppShell>{children}</AppShell>
-    </ToastProvider>
-  )
+    return (
+      <ToastProvider>
+        <AppShell initialUser={user} initialGames={games} initialGameId={initialGameId}>
+          {children}
+        </AppShell>
+      </ToastProvider>
+    )
+  } catch (err) {
+    const status = (err as { status?: number }).status
+    if (!status || status === 401 || status === 403) redirect('/login')
+    throw err
+  }
 }

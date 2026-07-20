@@ -1,9 +1,10 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { AuthUser } from '@/lib/auth'
 import { clearGameId } from '@/lib/auth'
+import { clearCurrentGameAction } from '@/app/actions/game'
 import { api } from '@/lib/api'
 import type { LoginInput, RegisterInput } from '@plotrunner/shared'
 
@@ -18,17 +19,15 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [loading, setLoading] = useState(true)
+export function AuthProvider({
+  initialUser,
+  children,
+}: {
+  initialUser: AuthUser | null
+  children: React.ReactNode
+}) {
+  const [user, setUser] = useState<AuthUser | null>(initialUser)
   const router = useRouter()
-
-  useEffect(() => {
-    api.get<AuthUser>('/auth/me')
-      .then(setUser)
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false))
-  }, [])
 
   const login = useCallback(async (input: LoginInput) => {
     const { user } = await api.post<{ user: AuthUser }>('/auth/login', input)
@@ -46,15 +45,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     api.post('/auth/logout', {}).catch(() => {})
     setUser(null)
     clearGameId()
-  }, [])
+    void clearCurrentGameAction()
+    router.push('/login')
+  }, [router])
 
   const refreshUser = useCallback(async () => {
-    const user = await api.get<AuthUser>('/auth/me')
-    setUser(user)
+    const updatedUser = await api.get<AuthUser>('/auth/me')
+    setUser(updatedUser)
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading: false, login, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )
