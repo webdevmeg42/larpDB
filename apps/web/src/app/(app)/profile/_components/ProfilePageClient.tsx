@@ -130,7 +130,7 @@ export function ProfilePageClient() {
     ? (profile.avatarUrl.startsWith('/uploads/') ? `${API_URL}${profile.avatarUrl}` : profile.avatarUrl)
     : null
 
-  const inputClass = 'w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring'
+  const inputClass = 'w-full rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
   const labelClass = 'block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1'
 
   return (

@@ -109,7 +109,7 @@ export function EventsPageClient({ initialData }: { initialData: { games: GameWi
             onChange={e => setSearch(e.target.value)}
             placeholder="Search Adventures or events…"
             aria-label="Search Adventures or events"
-            className="w-full px-4 py-2 rounded-md border border-border bg-card text-sm pr-10 focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full px-4 py-2 rounded-md border border-border bg-card text-sm pr-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
           {search && (
             <button
@@ -125,7 +125,7 @@ export function EventsPageClient({ initialData }: { initialData: { games: GameWi
           data-testid="events-time-filter"
           value={timeFilter}
           onChange={e => setTimeFilter(e.target.value as TimeFilter)}
-          className="rounded-md border border-border bg-card text-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-ring shrink-0"
+          className="rounded-md border border-border bg-card text-sm px-3 py-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0"
         >
           <option value="upcoming">Upcoming</option>
           <option value="past">Past</option>

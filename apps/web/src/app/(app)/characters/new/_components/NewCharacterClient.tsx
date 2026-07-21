@@ -162,7 +162,7 @@ export function NewCharacterClient({ initialGames, initialSchemas, initialGameId
               id="adventure"
               value={selectedGameId}
               onChange={e => setSelectedGameId(e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {activeGames.length > 1 && <option value="">Choose an Adventure…</option>}
               {activeGames.map(g => (

@@ -64,7 +64,7 @@ export default function BrowsePage() {
               placeholder="Name or description…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-md border bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
 
