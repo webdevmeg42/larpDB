@@ -7,11 +7,8 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
 import type { AdventureEvent, EventRegistration, Character } from '@plotrunner/shared'
+import { formatDateTime } from '@plotrunner/shared'
 import { ArrowLeft } from 'lucide-react'
-
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' })
-}
 
 interface Props {
   event: AdventureEvent

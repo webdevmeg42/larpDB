@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { CalendarDays, Plus, X } from 'lucide-react'
 import { EventCalendar } from './EventCalendar'
+import { formatDate } from '@plotrunner/shared'
 
 type EventWithReg = {
   id: string
@@ -29,10 +30,6 @@ type GameWithEvents = {
 }
 
 type TimeFilter = 'upcoming' | 'past' | 'all'
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' })
-}
 
 export function EventsPageClient({ initialData }: { initialData: { games: GameWithEvents[] } }) {
   const router = useRouter()

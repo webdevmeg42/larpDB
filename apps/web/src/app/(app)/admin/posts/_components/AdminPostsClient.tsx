@@ -9,25 +9,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus } from 'lucide-react'
 import type { MyGame } from '@plotrunner/shared'
+import { formatRelativeDate } from '@plotrunner/shared'
 
 interface Post {
   id: string
   title: string
   createdAt: string
-}
-
-function formatRelativeDate(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  if (days < 0) return 'just now'
-  if (days === 0) return 'today'
-  if (days === 1) return 'yesterday'
-  if (days < 30) return `${days} days ago`
-  const months = Math.floor(days / 30)
-  if (months === 1) return '1 month ago'
-  const years = Math.floor(months / 12)
-  if (years === 0) return `${months} months ago`
-  return `${years} year${years === 1 ? '' : 's'} ago`
 }
 
 interface Props {

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { formatDateRange } from '@plotrunner/shared'
 
 interface CalendarEvent {
   id: string
@@ -91,19 +92,6 @@ function getBarPosition(
   if (isFirst) return 'start'
   if (isLast) return 'end'
   return 'mid'
-}
-
-function formatDateRange(startAt: string, endAt: string | null): string {
-  const start = new Date(startAt)
-  const end = endAt ? new Date(endAt) : null
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
-  if (!end || end.toDateString() === start.toDateString()) {
-    return start.toLocaleDateString(undefined, { ...opts, year: 'numeric' })
-  }
-  if (start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth()) {
-    return `${start.toLocaleDateString(undefined, opts)}–${end.getDate()}, ${start.getFullYear()}`
-  }
-  return `${start.toLocaleDateString(undefined, opts)} – ${end.toLocaleDateString(undefined, opts)}, ${start.getFullYear()}`
 }
 
 export function EventCalendar({

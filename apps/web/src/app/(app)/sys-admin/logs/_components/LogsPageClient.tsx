@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { formatRelativeTime } from '@plotrunner/shared'
 
 type LogEntry = {
   id: string
@@ -52,14 +53,6 @@ function statusColor(code: number) {
   if (code >= 500) return 'text-red-400'
   if (code >= 400) return 'text-amber-400'
   return 'text-green-400'
-}
-
-function relativeTime(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime()
-  if (diff < 60_000) return `${Math.floor(diff / 1000)}s ago`
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`
-  return `${Math.floor(diff / 86_400_000)}d ago`
 }
 
 export function LogsPageClient({ initialUsers, initialLogs, initialTotal }: Props) {
@@ -237,7 +230,7 @@ export function LogsPageClient({ initialUsers, initialLogs, initialTotal }: Prop
                     className="px-6 py-2.5 text-xs text-muted-foreground whitespace-nowrap"
                     title={new Date(log.createdAt).toLocaleString()}
                   >
-                    {relativeTime(log.createdAt)}
+                    {formatRelativeTime(log.createdAt)}
                   </td>
                   <td className="px-3 py-2.5">
                     {log.userDisplayName ? (
