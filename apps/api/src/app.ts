@@ -15,6 +15,7 @@ import { gameMemberRoutes } from './routes/gameMember.js'
 import { schemaTemplateRoutes } from './routes/schemaTemplate.js'
 import { characterSchemaRoutes } from './routes/characterSchema.js'
 import { characterRoutes } from './routes/character.js'
+import { characterXpRoutes } from './routes/characterXp.js'
 import { eventRoutes } from './routes/event.js'
 import { npcRoutes } from './routes/npc.js'
 import { plotRoutes } from './routes/plot.js'
@@ -63,6 +64,7 @@ export function buildApp() {
   app.register(schemaTemplateRoutes)
   app.register(characterSchemaRoutes)
   app.register(characterRoutes)
+  app.register(characterXpRoutes)
   app.register(eventRoutes)
   app.register(npcRoutes)
   app.register(plotRoutes)
