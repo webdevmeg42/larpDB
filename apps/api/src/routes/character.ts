@@ -4,6 +4,7 @@ import { db } from '../db/index.js'
 import { characters, characterSchemas, siteConfig, xpTransactions, eventRegistrations, purchases, game, gameMembers, users } from '../db/schema.js'
 import { CreateCharacterInput, UpdateCharacterInput, AwardXPInput, SpendXPInput, GmDataInput, computeCumulativeXp } from '@plotrunner/shared'
 import { validateCharacterData } from '../lib/validateCharacterData.js'
+import { groupByGame } from '../lib/groupByGame.js'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 import { applyLevelProgression } from '../lib/applyLevelProgression.js'
 import { resolveLevelFromXp } from '@plotrunner/shared'
@@ -736,28 +737,14 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         )
         .orderBy(asc(game.name), asc(characters.name))
 
-      const gameMap = new Map<string, {
-        id: string
-        name: string
-        characters: { id: string; name: string; playerName: string | null; totalXp: number; isActive: boolean }[]
-      }>()
-
-      for (const row of rows) {
-        if (!gameMap.has(row.gameId)) {
-          gameMap.set(row.gameId, { id: row.gameId, name: row.gameName, characters: [] })
-        }
-        if (row.charId) {
-          gameMap.get(row.gameId)!.characters.push({
-            id: row.charId,
-            name: row.charName!,
-            playerName: row.playerName,
-            totalXp: row.charTotalXp ?? 0,
-            isActive: row.charIsActive ?? false,
-          })
-        }
-      }
-
-      return reply.send({ games: Array.from(gameMap.values()) })
+      const games = groupByGame(rows, row => row.charId ? {
+        id: row.charId,
+        name: row.charName!,
+        playerName: row.playerName,
+        totalXp: row.charTotalXp ?? 0,
+        isActive: row.charIsActive ?? false,
+      } : null).map(g => ({ id: g.id, name: g.name, characters: g.items }))
+      return reply.send({ games })
     },
   )
 
