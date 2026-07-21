@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { SchemaField, CharacterSchemaType } from '@plotrunner/shared'
+import { PHYSICAL_FIELDS } from '@plotrunner/shared'
+import { fieldHasXpCost, calculateXpDelta } from '@/lib/xpCost'
 
 const EQUIPMENT_CATEGORIES = [
   'Weapons',
@@ -37,42 +39,6 @@ interface SchemaPreviewProps {
   schemaType?: CharacterSchemaType
 }
 
-function hasAnyXP(fields: SchemaField[]): boolean {
-  return fields.some(f =>
-    (f.type === 'number' && f.xpCostPerPoint !== undefined) ||
-    (f.type === 'toggle' && f.xpCost !== undefined) ||
-    ((f.type === 'select' || f.type === 'multiselect') && (f.options ?? []).some(o => o.xpCost !== undefined)) ||
-    (f.type === 'statblock' && (f.stats ?? []).some(s => s.xpCostPerPoint !== undefined)),
-  )
-}
-
-function computeXP(fields: SchemaField[], values: Record<string, unknown>): number {
-  let total = 0
-  for (const field of fields) {
-    const val = values[field.id]
-    if (field.type === 'number' && field.xpCostPerPoint !== undefined) {
-      total += (Number(val) || 0) * field.xpCostPerPoint
-    } else if (field.type === 'toggle' && field.xpCost !== undefined && val === true) {
-      total += field.xpCost
-    } else if (field.type === 'select' && typeof val === 'string') {
-      const opt = (field.options ?? []).find(o => o.value === val)
-      if (opt?.xpCost !== undefined) total += opt.xpCost
-    } else if (field.type === 'multiselect' && Array.isArray(val)) {
-      for (const v of val as string[]) {
-        const opt = (field.options ?? []).find(o => o.value === v)
-        if (opt?.xpCost !== undefined) total += opt.xpCost
-      }
-    } else if (field.type === 'statblock' && field.stats) {
-      const statVals = (val as Record<string, number>) ?? {}
-      for (const stat of field.stats) {
-        if (stat.xpCostPerPoint !== undefined) {
-          total += (statVals[stat.key] ?? 0) * stat.xpCostPerPoint
-        }
-      }
-    }
-  }
-  return total
-}
 
 function PreviewField({
   field,
@@ -290,14 +256,6 @@ function PreviewField({
 
     case 'appearance': {
       const data = (value as Record<string, string>) ?? {}
-      const physicalFields: Array<{ key: string; label: string }> = [
-        { key: 'age', label: 'Age' },
-        { key: 'height', label: 'Height' },
-        { key: 'weight', label: 'Weight' },
-        { key: 'eyes', label: 'Eyes' },
-        { key: 'skin', label: 'Skin' },
-        { key: 'hair', label: 'Hair' },
-      ]
       return (
         <div className="space-y-3">
           <Label className="text-sm">
@@ -666,8 +624,8 @@ function PreviewField({
 export function SchemaPreview({ fields, schemaName, schemaType }: SchemaPreviewProps) {
   const [values, setValues] = useState<Record<string, unknown>>({})
 
-  const showXP = hasAnyXP(fields)
-  const totalXP = showXP ? computeXP(fields, values) : 0
+  const showXP = fields.some(f => fieldHasXpCost(f))
+  const totalXP = showXP ? calculateXpDelta(fields, {}, values) : 0
 
   if (fields.length === 0) {
     return (

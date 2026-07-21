@@ -1,6 +1,7 @@
 'use client'
 
 import type { SchemaField } from '@plotrunner/shared'
+import { PHYSICAL_FIELDS } from '@plotrunner/shared'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -201,14 +202,6 @@ function FormField({
       const data = (typeof value === 'object' && value !== null && !Array.isArray(value))
         ? value as Record<string, string>
         : {}
-      const physicalFields = [
-        { key: 'age', label: 'Age' },
-        { key: 'height', label: 'Height' },
-        { key: 'weight', label: 'Weight' },
-        { key: 'eyes', label: 'Eyes' },
-        { key: 'skin', label: 'Skin' },
-        { key: 'hair', label: 'Hair' },
-      ]
       return (
         <div className="space-y-3">
           <Label>

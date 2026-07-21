@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { useSiteConfig } from '@/hooks/useSiteConfig'
-import type { SchemaField, SchemaFieldOption, StatBlockStat, StatLevelEntry, HitPointEntry, AttackEntry, SpellEntry, CharacterSchemaType } from '@plotrunner/shared'
+import type { SchemaField, SchemaFieldOption, StatBlockStat, StatLevelEntry, HitPointEntry, AttackEntry, SpellEntry, CharacterSchemaType, CodexLevelConfig } from '@plotrunner/shared'
+import { computeCodexLevel } from '@plotrunner/shared'
 import { Lock, Trash2, Plus } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 import { cn } from '@/lib/utils'
@@ -56,33 +57,6 @@ function LevelSelect({ value, max, onChange }: { value: number; max: number; onC
   )
 }
 
-type CodexCfg = { levelingSystem?: string; linearIncrement?: number; flatCost?: number }
-
-function computeCodexLevel(base: number, level: number, codex: CodexCfg): number {
-  if (level <= 1) return base
-  const sys = codex.levelingSystem
-  const linInc = codex.linearIncrement ?? 1
-  const flat = codex.flatCost ?? 1
-  switch (sys) {
-    case 'percentage':
-      return Math.round(base * Math.pow(1.5, level - 1))
-    case 'doubling':
-      return Math.round(base * Math.pow(2, level - 1))
-    case 'flat':
-      return Math.round(base + flat * (level - 1))
-    case 'linear':
-      return Math.round(base + linInc * (level - 1))
-    case 'triangular':
-      return Math.round(base + (level - 1) * level / 2)
-    case 'fibonacci': {
-      let a = 1, b = 1
-      for (let n = 3; n <= level + 1; n++) { const next = a + b; a = b; b = next }
-      return Math.round(base + b - 1)
-    }
-    default:
-      return base
-  }
-}
 
 function getLevelingSystemLabel(sys: string): string {
   switch (sys) {
@@ -106,7 +80,7 @@ export function FieldEditor({ field, onChange, schemaType, highlightUnlabeled }:
   const [useProgression, setUseProgression] = useState(false)
   useEffect(() => { setUseProgression(false) }, [field.id])
 
-  const codex = config?.codex as (CodexCfg & { maxLevel?: number }) | undefined
+  const codex = config?.codex as (CodexLevelConfig & { maxLevel?: number }) | undefined
 
   function update(patch: Partial<SchemaField>) {
     onChange({ ...field, ...patch } as SchemaField)
@@ -124,7 +98,7 @@ export function FieldEditor({ field, onChange, schemaType, highlightUnlabeled }:
 
   function applyProgression(type: 'hitpoints' | 'statblock' | 'attacks' | 'spells') {
     if (!codex?.levelingSystem) return
-    const cfg: CodexCfg = {
+    const cfg: CodexLevelConfig = {
       levelingSystem: codex.levelingSystem,
       ...(codex.linearIncrement !== undefined ? { linearIncrement: codex.linearIncrement } : {}),
       ...(codex.flatCost !== undefined ? { flatCost: codex.flatCost } : {}),

@@ -1,6 +1,7 @@
 'use client'
 
 import type { SchemaField, AttackEntry, SpellEntry } from '@plotrunner/shared'
+import { PHYSICAL_FIELDS } from '@plotrunner/shared'
 
 function SheetField({ field, value }: { field: SchemaField; value: unknown }) {
   switch (field.type) {
@@ -140,14 +141,6 @@ function SheetField({ field, value }: { field: SchemaField; value: unknown }) {
       const data = (typeof value === 'object' && value !== null && !Array.isArray(value))
         ? value as Record<string, string>
         : {}
-      const physicalFields = [
-        { key: 'age', label: 'Age' },
-        { key: 'height', label: 'Height' },
-        { key: 'weight', label: 'Weight' },
-        { key: 'eyes', label: 'Eyes' },
-        { key: 'skin', label: 'Skin' },
-        { key: 'hair', label: 'Hair' },
-      ]
       return (
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">

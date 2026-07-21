@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toast'
 import type { SiteConfig, GameCodex, LevelingSystemType, Faction, AdditionalWebsite } from '@plotrunner/shared'
+import { computeCumulativeXp } from '@plotrunner/shared'
 
 interface Props {
   config: SiteConfig | null
@@ -414,38 +415,6 @@ const LEVELING_SYSTEMS: {
   },
 ]
 
-function computeCumulativeXP(
-  system: LevelingSystemType | '',
-  level: number,
-  linearIncrement: number,
-  flatCost: number,
-): number | null {
-  if (!system || level < 1) return null
-  switch (system) {
-    case 'linear':
-      if (linearIncrement <= 0) return null
-      return linearIncrement * level * (level + 1) / 2
-    case 'flat':
-      if (flatCost <= 0) return null
-      return flatCost * level
-    case 'doubling':
-      return 5 * (Math.pow(2, level) - 1)
-    case 'triangular':
-      return level * (level + 1) * (level + 2) / 6
-    case 'fibonacci': {
-      if (level === 1) return 1
-      let total = 3, a = 1, b = 2
-      for (let n = 3; n <= level; n++) { const next = a + b; total += next; a = b; b = next }
-      return total
-    }
-    case 'percentage': {
-      let total = 0
-      for (let n = 1; n <= level; n++) total += Math.round(10 * Math.pow(1.5, n - 1))
-      return total
-    }
-    default: return null
-  }
-}
 
 const LevelingSystemSection = forwardRef<SectionRef, SectionProps>(
   function LevelingSystemSection({ codex }, ref) {
@@ -565,7 +534,11 @@ const LevelingSystemSection = forwardRef<SectionRef, SectionProps>(
                 const baseLevel = baseLevelStr ? parseInt(baseLevelStr, 10) : 0
                 const linInc = linearIncrementStr ? parseInt(linearIncrementStr, 10) : 0
                 const flatC = flatCostStr ? parseInt(flatCostStr, 10) : 0
-                const baseLevelXP = computeCumulativeXP(system, baseLevel, linInc, flatC)
+                const baseLevelXP = computeCumulativeXp(baseLevel, {
+                  ...(system ? { levelingSystem: system } : {}),
+                  ...(linInc ? { linearIncrement: linInc } : {}),
+                  ...(flatC ? { flatCost: flatC } : {}),
+                })
                 const needsParam = baseLevel > 0 && (
                   (system === 'linear' && !linInc) || (system === 'flat' && !flatC)
                 )
