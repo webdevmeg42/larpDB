@@ -5,6 +5,7 @@ import { db } from '../db/index.js'
 import { storeItems, purchases, siteConfig, eventRegistrations, characters, users, events } from '../db/schema.js'
 import { CreateStoreItemInput, UpdateStoreItemInput, CreatePurchaseInput } from '@plotrunner/shared'
 import { buildPatch } from '../lib/roles.js'
+import { parsePagination } from '../lib/pagination.js'
 
 export const storeRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
@@ -159,8 +160,10 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         offset?: string
       }
 
-      const resolvedLimit = Math.min(parseInt(limitParam ?? '100', 10) || 100, 500)
-      const resolvedOffset = Math.max(parseInt(offsetParam ?? '0', 10) || 0, 0)
+      const { limit: resolvedLimit, offset: resolvedOffset } = parsePagination(
+        { limit: limitParam, offset: offsetParam },
+        { limit: 100, maxLimit: 500 },
+      )
 
       const conditions: SQL[] = [eq(events.gameId, gameId)]
       if (eventId) conditions.push(eq(purchases.eventId, eventId))

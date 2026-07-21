@@ -4,14 +4,16 @@ import { db } from '../db/index.js'
 import { game, posts, comments, postLikes, users, gameMembers, adventureSubscriptions } from '../db/schema.js'
 import { CreatePostInput, UpdatePostInput, CreateCommentInput } from '@plotrunner/shared'
 import { gmOrOwner } from '../lib/roles.js'
+import { parsePagination } from '../lib/pagination.js'
 
 export const postRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /games/:slug/posts — public, paginated, published only
   fastify.get('/games/:slug/posts', async (request, reply) => {
     const { slug } = request.params as { slug: string }
-    const { limit = '20', offset = '0' } = request.query as { limit?: string; offset?: string }
-    const limitN = Math.min(parseInt(limit, 10) || 20, 50)
-    const offsetN = parseInt(offset, 10) || 0
+    const { limit: limitN, offset: offsetN } = parsePagination(
+      request.query as { limit?: string; offset?: string },
+      { limit: 20, maxLimit: 50 },
+    )
 
     const [targetGame] = await db
       .select({ id: game.id })
@@ -382,9 +384,10 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.authenticate] },
     async (request, reply) => {
       const userId = request.user.sub
-      const { limit = '20', offset = '0' } = request.query as { limit?: string; offset?: string }
-      const limitN = Math.min(parseInt(limit, 10) || 20, 50)
-      const offsetN = parseInt(offset, 10) || 0
+      const { limit: limitN, offset: offsetN } = parsePagination(
+        request.query as { limit?: string; offset?: string },
+        { limit: 20, maxLimit: 50 },
+      )
 
       const subscriptions = await db
         .select({ gameId: adventureSubscriptions.gameId })

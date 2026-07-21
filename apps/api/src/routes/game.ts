@@ -20,6 +20,7 @@ import {
 } from '../db/schema.js'
 import { CreateGameInput, UpdateSiteConfigInput, UpdateGameStatusInput } from '@plotrunner/shared'
 import { buildPatch } from '../lib/roles.js'
+import { parsePagination } from '../lib/pagination.js'
 
 function generateSlug(name: string): string {
   return name
@@ -81,9 +82,10 @@ const ERR_INVALID_SLUG = 'Adventure name must contain at least one letter or num
 
 export const gameRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/games', async (request, reply) => {
-    const { limit = '100', offset = '0' } = request.query as { limit?: string; offset?: string }
-    const limitN = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200)
-    const offsetN = Math.max(parseInt(offset, 10) || 0, 0)
+    const { limit: limitN, offset: offsetN } = parsePagination(
+      request.query as { limit?: string; offset?: string },
+      { limit: 100, maxLimit: 200 },
+    )
 
     const filter = and(eq(game.isPublic, true), eq(game.status, 'active'))
 

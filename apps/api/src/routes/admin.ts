@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { eq, and, gte, lte, desc, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { users, requestLogs, game, gameMembers } from '../db/schema.js'
+import { parsePagination } from '../lib/pagination.js'
 
 export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post(
@@ -66,16 +67,15 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     '/admin/logs',
     { preHandler: [fastify.requireSysAdmin] },
     async (request, reply) => {
-      const { userId, from, to, limit = '100', offset = '0' } = request.query as {
+      const { userId, from, to } = request.query as {
         userId?: string
         from?: string
         to?: string
-        limit?: string
-        offset?: string
       }
-
-      const limitN = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200)
-      const offsetN = Math.max(parseInt(offset, 10) || 0, 0)
+      const { limit: limitN, offset: offsetN } = parsePagination(
+        request.query as { limit?: string; offset?: string },
+        { limit: 100, maxLimit: 200 },
+      )
 
       const fromDate = from ? new Date(from) : undefined
       const toDate = to ? new Date(to) : undefined
