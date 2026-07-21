@@ -114,7 +114,7 @@ export function RulebookDetailClient({ slug, initialConfig, initialGame }: Props
                 key={ch.id}
                 type="button"
                 onClick={() => scrollToChapter(ch.id)}
-                aria-current={isActive ? 'page' : undefined}
+                aria-current={isActive ? 'location' : undefined}
                 style={{
                   display: 'block',
                   width: '100%',

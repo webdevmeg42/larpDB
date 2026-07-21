@@ -311,7 +311,7 @@ export function NewPostClient({ initialGames, initialGameId, initialDrafts }: Pr
           />
         </div>
 
-        <fieldset className="border-none p-0 m-0 space-y-3 rounded-lg border p-4">
+        <fieldset className="m-0 space-y-3 rounded-lg border p-4">
           <div className="flex items-center justify-between">
             <legend className="text-sm font-medium">
               Media <span className="text-muted-foreground font-normal">(optional)</span>
