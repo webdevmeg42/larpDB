@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { getGameId } from '@/lib/auth'
+import { getErrorMessage } from '@/lib/utils'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!
 const MAX_FILE_SIZE = 100 * 1024 * 1024
@@ -51,7 +52,7 @@ export function useImageUpload(onSuccess: (url: string) => void) {
       if (!url) throw new Error('Upload failed: no URL returned')
       onSuccess(`${API_URL}${url}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed, please try again')
+      setError(getErrorMessage(err, 'Upload failed, please try again'))
     } finally {
       setUploading(false)
     }

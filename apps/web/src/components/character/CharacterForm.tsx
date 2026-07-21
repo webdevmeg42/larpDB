@@ -11,7 +11,6 @@ export interface CharacterFormProps {
   fields: SchemaField[]
   values: Record<string, unknown>
   onChange: (values: Record<string, unknown>) => void
-  mode: 'create' | 'edit'
   errorFields?: Set<string>
 }
 
@@ -352,7 +351,7 @@ function FormField({
   }
 }
 
-export function CharacterForm({ fields, values, onChange, mode: _mode, errorFields }: CharacterFormProps) {
+export function CharacterForm({ fields, values, onChange, errorFields }: CharacterFormProps) {
   return (
     <div className="space-y-4">
       {fields.map(field => (

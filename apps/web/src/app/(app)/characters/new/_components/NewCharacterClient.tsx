@@ -278,7 +278,6 @@ export function NewCharacterClient({ initialGames, initialSchemas, initialGameId
                   setSubmitError(null)
                 }
               }}
-              mode="create"
               {...(nameError ? { errorFields: new Set([CHARACTER_NAME_FIELD_ID]) } : {})}
             />
           ) : (

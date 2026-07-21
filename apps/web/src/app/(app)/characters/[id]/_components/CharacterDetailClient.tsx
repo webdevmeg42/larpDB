@@ -438,7 +438,6 @@ export function CharacterDetailClient({ character: characterProp, xpData, schema
                   fields={editFields}
                   values={editValues}
                   onChange={setEditValues}
-                  mode="edit"
                 />
                 {xpBalance === 0 && fields.some(isXpGated) && (
                   <p className="mt-4 text-sm text-muted-foreground">

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
 import { useToast } from '@/components/ui/toast'
+import { getErrorMessage } from '@/lib/utils'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!
 
@@ -65,7 +66,7 @@ export function ProfilePageClient() {
       await refreshUser()
       toast('Profile saved')
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to save')
+      setSaveError(getErrorMessage(err, 'Failed to save'))
     } finally {
       setSaving(false)
     }
@@ -94,7 +95,7 @@ export function ProfilePageClient() {
       const updated = await res.json() as ProfileUser
       setProfile(updated)
     } catch (err) {
-      setAvatarError(err instanceof Error ? err.message : 'Upload failed')
+      setAvatarError(getErrorMessage(err, 'Upload failed'))
     } finally {
       setAvatarUploading(false)
     }
@@ -112,7 +113,7 @@ export function ProfilePageClient() {
       setConfirmPassword('')
       setPasswordSuccess(true)
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : 'Failed to update password')
+      setPasswordError(getErrorMessage(err, 'Failed to update password'))
     } finally {
       setPasswordSaving(false)
     }
