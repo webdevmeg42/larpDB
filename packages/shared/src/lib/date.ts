@@ -16,7 +16,11 @@ export function formatDateRange(startAt: string, endAt: string | null): string {
   if (start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth()) {
     return `${start.toLocaleDateString(undefined, opts)}–${end.getDate()}, ${start.getFullYear()}`
   }
-  return `${start.toLocaleDateString(undefined, opts)} – ${end.toLocaleDateString(undefined, opts)}, ${start.getFullYear()}`
+  if (start.getFullYear() === end.getFullYear()) {
+    return `${start.toLocaleDateString(undefined, opts)} – ${end.toLocaleDateString(undefined, opts)}, ${start.getFullYear()}`
+  }
+  // Different years: show year on both ends
+  return `${start.toLocaleDateString(undefined, { ...opts, year: 'numeric' })} – ${end.toLocaleDateString(undefined, { ...opts, year: 'numeric' })}`
 }
 
 export function formatRelativeDate(iso: string): string {
