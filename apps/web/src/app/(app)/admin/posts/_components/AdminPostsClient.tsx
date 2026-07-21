@@ -8,8 +8,7 @@ import { AdventurePanel } from '@/components/layout/AdventurePanel'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus } from 'lucide-react'
-import type { MyGame } from '@plotrunner/shared'
-import { formatRelativeDate } from '@plotrunner/shared'
+import { formatRelativeDate, type MyGame } from '@plotrunner/shared'
 
 interface Post {
   id: string

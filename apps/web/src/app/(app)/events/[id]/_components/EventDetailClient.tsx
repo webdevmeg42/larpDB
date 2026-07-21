@@ -6,8 +6,7 @@ import { api } from '@/lib/api'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
-import type { AdventureEvent, EventRegistration, Character } from '@plotrunner/shared'
-import { formatDateTime } from '@plotrunner/shared'
+import { formatDateTime, type AdventureEvent, type EventRegistration, type Character } from '@plotrunner/shared'
 import { ArrowLeft } from 'lucide-react'
 
 interface Props {
