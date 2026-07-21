@@ -28,10 +28,3 @@ export interface Comment {
   body: string
   createdAt: string
 }
-
-export interface AdventureSubscription {
-  id: string
-  gameId: string
-  userId: string
-  createdAt: string
-}
