@@ -3,6 +3,7 @@ import { eq, and, gte, lte, desc, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { users, requestLogs, game, gameMembers } from '../db/schema.js'
 import { parsePagination } from '../lib/pagination.js'
+import { stripPassword } from '../lib/user.js'
 
 export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post(
@@ -28,7 +29,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .returning()
 
       request.log.info({ id, requesterId: request.user.sub }, "user promoted to system admin")
-      const { passwordHash: _, ...safeUser } = updated!
+      const safeUser = stripPassword(updated!)
       return reply.send(safeUser)
     },
   )
@@ -58,7 +59,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .returning()
 
       request.log.info({ id, requesterId }, "user demoted from system admin")
-      const { passwordHash: _, ...safeUser } = updated!
+      const safeUser = stripPassword(updated!)
       return reply.send(safeUser)
     },
   )

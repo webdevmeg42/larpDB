@@ -10,13 +10,11 @@ import { users } from '../db/schema.js'
 import { UpdateProfileInput, ChangePasswordInput } from '@plotrunner/shared'
 import { UPLOADS_DIR } from './upload.js'
 import { highestRole } from './auth.js'
+import { stripPassword } from '../lib/user.js'
+import { IMAGE_MIME_TYPES, IMAGE_MIME_TO_EXT } from '../lib/mimeTypes.js'
 
-const ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-])
-const MIME_TO_EXT: Record<string, string> = {
-  'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
-}
+const ALLOWED_MIME_TYPES = new Set(IMAGE_MIME_TYPES)
+const MIME_TO_EXT = IMAGE_MIME_TO_EXT
 
 export const profileRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
@@ -25,8 +23,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const [user] = await db.select().from(users).where(eq(users.id, request.user.sub)).limit(1)
       if (!user) return reply.status(404).send({ error: 'User not found' })
-      const { passwordHash: _, ...safeUser } = user
-      return reply.send(safeUser)
+      return reply.send(stripPassword(user))
     },
   )
 
@@ -86,9 +83,8 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         maxAge: 60 * 60 * 24 * 7,
       })
 
-      const { passwordHash: _, ...safeUser } = updated
       request.log.info({ userId }, "profile updated")
-      return reply.send({ user: safeUser })
+      return reply.send({ user: stripPassword(updated) })
     },
   )
 
@@ -139,8 +135,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         await fs.promises.unlink(oldPath).catch(() => {})
       }
 
-      const { passwordHash: _, ...safeUser } = updated
-      return reply.send(safeUser)
+      return reply.send(stripPassword(updated))
     },
   )
 
