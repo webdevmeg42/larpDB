@@ -170,8 +170,9 @@ export function ProfilePageClient() {
         {/* Fields */}
         <div className="space-y-3">
           <div>
-            <label className={labelClass}>Display name</label>
+            <label htmlFor="profile-display-name" className={labelClass}>Display name</label>
             <input
+              id="profile-display-name"
               value={displayName}
               onChange={e => setDisplayName(e.target.value)}
               required
@@ -179,8 +180,9 @@ export function ProfilePageClient() {
             />
           </div>
           <div>
-            <label className={labelClass}>Email</label>
+            <label htmlFor="profile-email" className={labelClass}>Email</label>
             <input
+              id="profile-email"
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
@@ -189,10 +191,11 @@ export function ProfilePageClient() {
             />
           </div>
           <div>
-            <label className={labelClass}>
+            <label htmlFor="profile-phone" className={labelClass}>
               Phone number <span className="normal-case font-normal text-muted-foreground">(optional)</span>
             </label>
             <input
+              id="profile-phone"
               type="tel"
               value={phone}
               onChange={e => setPhone(e.target.value)}
@@ -220,8 +223,9 @@ export function ProfilePageClient() {
         <h2 className="text-lg font-semibold">Change password</h2>
         <div className="space-y-3">
           <div>
-            <label className={labelClass}>Current password</label>
+            <label htmlFor="profile-current-password" className={labelClass}>Current password</label>
             <input
+              id="profile-current-password"
               type="password"
               value={currentPassword}
               onChange={e => setCurrentPassword(e.target.value)}
@@ -231,8 +235,9 @@ export function ProfilePageClient() {
             />
           </div>
           <div>
-            <label className={labelClass}>New password</label>
+            <label htmlFor="profile-new-password" className={labelClass}>New password</label>
             <input
+              id="profile-new-password"
               type="password"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
@@ -243,8 +248,9 @@ export function ProfilePageClient() {
             />
           </div>
           <div>
-            <label className={labelClass}>Confirm new password</label>
+            <label htmlFor="profile-confirm-password" className={labelClass}>Confirm new password</label>
             <input
+              id="profile-confirm-password"
               type="password"
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}

@@ -320,7 +320,7 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
                     {bannerUpload.error && <p className="text-sm text-destructive">{bannerUpload.error}</p>}
                   </div>
                   <div className="pt-4 border-t space-y-2">
-                    <Label className="text-sm font-medium">Landing Page</Label>
+                    <p className="text-sm font-medium">Landing Page</p>
                     <div className="flex items-center gap-3">
                       <input
                         id="show-directory"

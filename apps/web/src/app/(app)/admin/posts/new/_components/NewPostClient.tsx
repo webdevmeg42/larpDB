@@ -311,11 +311,11 @@ export function NewPostClient({ initialGames, initialGameId, initialDrafts }: Pr
           />
         </div>
 
-        <div className="space-y-3 rounded-lg border p-4">
+        <fieldset className="border-none p-0 m-0 space-y-3 rounded-lg border p-4">
           <div className="flex items-center justify-between">
-            <Label className="text-sm font-medium">
+            <legend className="text-sm font-medium">
               Media <span className="text-muted-foreground font-normal">(optional)</span>
-            </Label>
+            </legend>
             <div className="flex gap-1 rounded-md border p-0.5">
               <button
                 type="button"
@@ -397,7 +397,7 @@ export function NewPostClient({ initialGames, initialGameId, initialDrafts }: Pr
               )}
             </div>
           )}
-        </div>
+        </fieldset>
 
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex gap-3">

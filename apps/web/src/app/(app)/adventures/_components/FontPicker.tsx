@@ -1,7 +1,6 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
 import { FONTS } from '@/lib/fonts'
 import { cn } from '@/lib/utils'
 
@@ -21,10 +20,10 @@ export function FontPicker({ fontHeading, fontBody, onChange, headingError, body
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+          <fieldset className="border-none p-0 m-0 space-y-2">
+            <legend className="text-xs text-muted-foreground uppercase tracking-wide">
               Heading Font <span className="text-destructive">*</span>
-            </Label>
+            </legend>
             <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
               {FONTS.map(font => {
                 const isSelected = fontHeading === font.name
@@ -45,11 +44,11 @@ export function FontPicker({ fontHeading, fontBody, onChange, headingError, body
               })}
             </div>
             {headingError && <p className="text-xs text-destructive">{headingError}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+          </fieldset>
+          <fieldset className="border-none p-0 m-0 space-y-2">
+            <legend className="text-xs text-muted-foreground uppercase tracking-wide">
               Body Font <span className="text-destructive">*</span>
-            </Label>
+            </legend>
             <div className="space-y-1 max-h-64 overflow-y-auto pr-1">
               {FONTS.map(font => {
                 const isSelected = fontBody === font.name
@@ -70,7 +69,7 @@ export function FontPicker({ fontHeading, fontBody, onChange, headingError, body
               })}
             </div>
             {bodyError && <p className="text-xs text-destructive">{bodyError}</p>}
-          </div>
+          </fieldset>
         </div>
       </CardContent>
     </Card>
