@@ -23,10 +23,16 @@ export function AppShell({ initialUser, initialGames, initialGameId, children }:
     <AuthProvider initialUser={initialUser}>
       <GameProvider initialGames={initialGames} initialGameId={initialGameId}>
         <div className="flex h-screen overflow-hidden">
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:rounded focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:ring-2 focus:ring-ring focus:shadow-md"
+          >
+            Skip to main content
+          </a>
           <Sidebar />
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             <MobileHeader onMenuClick={() => setDrawerOpen(true)} />
-            <main className="flex-1 overflow-y-auto">{children}</main>
+            <main id="main-content" className="flex-1 overflow-y-auto">{children}</main>
           </div>
           <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
         </div>
