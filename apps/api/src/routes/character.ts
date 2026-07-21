@@ -6,7 +6,7 @@ import { CreateCharacterInput, UpdateCharacterInput, AwardXPInput, SpendXPInput,
 import { validateCharacterData } from '../lib/validateCharacterData.js'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 import { applyLevelProgression } from '../lib/applyLevelProgression.js'
-import { resolveLevelFromXp } from '../lib/resolveLevelFromXp.js'
+import { resolveLevelFromXp } from '@plotrunner/shared'
 
 export const characterRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post(
