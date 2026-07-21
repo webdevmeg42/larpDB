@@ -9,6 +9,7 @@ import { CharacterForm } from '@/components/character/CharacterForm'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { fieldHasXpCost } from '@/lib/xpCost'
+import { getErrorMessage } from '@/lib/utils'
 import type { CharacterSchema, MyGame, Character, SchemaField } from '@plotrunner/shared'
 
 // The locked "Character Name" field ID defined in SchemaBuilder
@@ -88,7 +89,7 @@ export function NewCharacterClient({ initialGames, initialSchemas, initialGameId
       })
       router.push(`/characters/${character.id}`)
     } catch (err) {
-      setSubmitError((err as Error).message ?? 'Failed to create character. Please try again.')
+      setSubmitError(getErrorMessage(err, 'Failed to create character. Please try again.'))
       setSubmitting(false)
     }
   }
