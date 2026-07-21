@@ -25,7 +25,7 @@ export function computeCumulativeXp(level: number, codex: GameCodex): number | n
   }
 }
 
-interface CodexLevelConfig {
+export interface CodexLevelConfig {
   levelingSystem?: string
   linearIncrement?: number
   flatCost?: number
