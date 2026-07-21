@@ -79,6 +79,7 @@ async function requireOwner(gameId: string, userId: string) {
         eq(gameMembers.gameId, gameId),
         eq(gameMembers.userId, userId),
         eq(gameMembers.status, 'active'),
+        eq(gameMembers.role, 'owner'),
       ),
     )
     .limit(1)

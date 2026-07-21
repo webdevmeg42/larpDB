@@ -227,7 +227,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { gameId, role } = request.gameContext
       if (!gmOrOwner(role)) {
-        request.log.warn({ userId: request.gameContext.userId, role }, 'permission denied — cannot edit this event')
+        request.log.warn({ userId: request.gameContext.userId, role, gameId }, 'non-staff tried to edit this event')
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
