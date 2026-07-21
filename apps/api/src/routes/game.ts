@@ -18,19 +18,9 @@ import {
   npcs,
   plots,
 } from '../db/schema.js'
-import { CreateGameInput, UpdateSiteConfigInput, UpdateGameStatusInput } from '@plotrunner/shared'
+import { CreateGameInput, UpdateSiteConfigInput, UpdateGameStatusInput, generateSlug } from '@plotrunner/shared'
 import { buildPatch } from '../lib/roles.js'
 import { parsePagination } from '../lib/pagination.js'
-
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 60)
-}
 
 async function fetchPublicGameCodex(slug: string) {
   const [row] = await db
@@ -79,6 +69,21 @@ async function uniqueSlug(base: string): Promise<string> {
 }
 
 const ERR_INVALID_SLUG = 'Adventure name must contain at least one letter or number'
+
+async function requireOwner(gameId: string, userId: string) {
+  const [member] = await db
+    .select()
+    .from(gameMembers)
+    .where(
+      and(
+        eq(gameMembers.gameId, gameId),
+        eq(gameMembers.userId, userId),
+        eq(gameMembers.status, 'active'),
+      ),
+    )
+    .limit(1)
+  return member?.role === 'owner' ? member : null
+}
 
 export const gameRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/games', async (request, reply) => {
@@ -267,19 +272,8 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string }
       const userId = request.user.sub
 
-      const [member] = await db
-        .select()
-        .from(gameMembers)
-        .where(
-          and(
-            eq(gameMembers.gameId, id),
-            eq(gameMembers.userId, userId),
-            eq(gameMembers.status, 'active'),
-          ),
-        )
-        .limit(1)
-
-      if (!member || member.role !== 'owner') {
+      const member = await requireOwner(id, userId)
+      if (!member) {
         request.log.warn({ id, userId }, "non-owner tried to change adventure status")
         return reply.status(403).send({ error: 'Owner role required' })
       }
@@ -308,19 +302,8 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string }
       const userId = request.user.sub
 
-      const [member] = await db
-        .select()
-        .from(gameMembers)
-        .where(
-          and(
-            eq(gameMembers.gameId, id),
-            eq(gameMembers.userId, userId),
-            eq(gameMembers.status, 'active'),
-          ),
-        )
-        .limit(1)
-
-      if (!member || member.role !== 'owner') {
+      const member = await requireOwner(id, userId)
+      if (!member) {
         request.log.warn({ id, userId }, "non-owner tried to update adventure")
         return reply.status(403).send({ error: 'Owner role required' })
       }

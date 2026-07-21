@@ -4,6 +4,7 @@ import { db } from '../db/index.js'
 import { characters, characterSchemas, siteConfig, xpTransactions, eventRegistrations, purchases, game, gameMembers, users } from '../db/schema.js'
 import { CreateCharacterInput, UpdateCharacterInput, AwardXPInput, SpendXPInput, GmDataInput, computeCumulativeXp } from '@plotrunner/shared'
 import { validateCharacterData } from '../lib/validateCharacterData.js'
+import { loadCharacterSchemas } from '../lib/character.js'
 import { groupByGame } from '../lib/groupByGame.js'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
 import { applyLevelProgression } from '../lib/applyLevelProgression.js'
@@ -192,12 +193,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       let resolvedNewLevel: number | null = null
 
       if (finalData !== undefined) {
-        const [raceSchema, classSchemaRow] = await Promise.all([
-          db.select().from(characterSchemas).where(eq(characterSchemas.id, character.schemaId)).limit(1),
-          character.classSchemaId
-            ? db.select().from(characterSchemas).where(eq(characterSchemas.id, character.classSchemaId)).limit(1)
-            : Promise.resolve([] as (typeof characterSchemas.$inferSelect)[]),
-        ])
+        const [raceSchema, classSchemaRow] = await loadCharacterSchemas(character)
 
         if (raceSchema[0]) {
           const validationErrors = validateCharacterData(raceSchema[0].fields, finalData)
@@ -352,12 +348,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       try {
         const [[siteCfg], [raceSchema, classSchemaRow]] = await Promise.all([
           db.select({ codex: siteConfig.codex }).from(siteConfig).where(eq(siteConfig.gameId, gameId)).limit(1),
-          Promise.all([
-            db.select().from(characterSchemas).where(eq(characterSchemas.id, character.schemaId)).limit(1),
-            character.classSchemaId
-              ? db.select().from(characterSchemas).where(eq(characterSchemas.id, character.classSchemaId)).limit(1)
-              : Promise.resolve([] as (typeof characterSchemas.$inferSelect)[]),
-          ]),
+          loadCharacterSchemas(character),
         ])
 
         if (siteCfg?.codex) {
@@ -490,12 +481,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [[siteCfg], [raceSchema, classSchemaRow]] = await Promise.all([
         db.select({ codex: siteConfig.codex }).from(siteConfig).where(eq(siteConfig.gameId, gameId)).limit(1),
-        Promise.all([
-          db.select().from(characterSchemas).where(eq(characterSchemas.id, character.schemaId)).limit(1),
-          character.classSchemaId
-            ? db.select().from(characterSchemas).where(eq(characterSchemas.id, character.classSchemaId)).limit(1)
-            : Promise.resolve([] as (typeof characterSchemas.$inferSelect)[]),
-        ]),
+        loadCharacterSchemas(character),
       ])
       if (!siteCfg?.codex) return reply.status(400).send({ error: 'No leveling system configured' })
       const allFields = [...(raceSchema[0]?.fields ?? []), ...(classSchemaRow[0]?.fields ?? [])]
@@ -556,12 +542,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
           .select({ totalSpent: sql<number>`coalesce(sum(${xpTransactions.amount}), 0)::int` })
           .from(xpTransactions)
           .where(and(eq(xpTransactions.characterId, id), eq(xpTransactions.type, 'spend'))),
-        Promise.all([
-          db.select().from(characterSchemas).where(eq(characterSchemas.id, character.schemaId)).limit(1),
-          character.classSchemaId
-            ? db.select().from(characterSchemas).where(eq(characterSchemas.id, character.classSchemaId)).limit(1)
-            : Promise.resolve([] as (typeof characterSchemas.$inferSelect)[]),
-        ]),
+        loadCharacterSchemas(character),
       ])
 
       const totalSpent = spentRow?.totalSpent ?? 0

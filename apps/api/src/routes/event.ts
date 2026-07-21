@@ -226,7 +226,10 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { gameId, role } = request.gameContext
-      if (!gmOrOwner(role)) return reply.status(403).send({ error: 'GM or owner role required' })
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId: request.gameContext.userId, role }, 'permission denied — cannot edit this event')
+        return reply.status(403).send({ error: 'GM or owner role required' })
+      }
 
       const { id } = request.params as { id: string }
       const [existing] = await db.select().from(events).where(and(eq(events.id, id), eq(events.gameId, gameId))).limit(1)
