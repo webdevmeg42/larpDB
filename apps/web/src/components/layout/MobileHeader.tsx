@@ -62,6 +62,8 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
 
             {pickerOpen && (
               <div
+                role="listbox"
+                aria-label="Select game"
                 data-testid="adventure-picker-dropdown"
                 className="absolute right-0 top-full mt-1 z-50 bg-background border border-border rounded-md shadow-md min-w-[160px] py-1"
               >
@@ -69,6 +71,8 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
                   <button
                     key={g.id}
                     type="button"
+                    role="option"
+                    aria-selected={g.id === currentGame.id}
                     onClick={() => { setCurrentGame(g.id); setPickerOpen(false) }}
                     className={cn(
                       'w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-muted transition-colors',

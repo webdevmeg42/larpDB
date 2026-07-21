@@ -102,7 +102,7 @@ export function RulebookPageClient({ initialGames }: { initialGames: MyGame[] })
                       key={ch.id}
                       type="button"
                       onClick={() => scrollToChapter(ch.id)}
-                      aria-current={isActive ? 'true' : undefined}
+                      aria-current={isActive ? 'page' : undefined}
                       style={{
                         display: 'block',
                         width: '100%',

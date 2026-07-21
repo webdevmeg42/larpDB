@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { X, LogOut, ScrollText } from 'lucide-react'
@@ -15,6 +16,13 @@ interface MobileDrawerProps {
 export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
   const { user, logout } = useAuth()
   const pathname = usePathname()
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (open) {
+      closeButtonRef.current?.focus()
+    }
+  }, [open])
 
   if (!user) return null
 
@@ -33,6 +41,9 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
 
       {/* Drawer panel */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
         data-testid="mobile-drawer"
         data-state={open ? 'open' : 'closed'}
         aria-hidden={!open}
@@ -47,6 +58,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
         <div className="flex items-center justify-between h-14 px-4 border-b border-border flex-shrink-0">
           <span className="font-semibold">PlotRunner</span>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             aria-label="Close navigation menu"

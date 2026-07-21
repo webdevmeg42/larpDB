@@ -20,7 +20,7 @@ export function Sidebar() {
       <div className="flex h-14 items-center border-b px-4">
         <span className="font-semibold">PlotRunner</span>
       </div>
-      <nav className="flex-1 space-y-1 p-2">
+      <nav aria-label="Main navigation" className="flex-1 space-y-1 p-2">
         {visibleItems.map(item => {
           const Icon = item.icon
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
