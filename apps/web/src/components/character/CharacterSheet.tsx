@@ -147,7 +147,7 @@ function SheetField({ field, value }: { field: SchemaField; value: unknown }) {
             {field.label || 'Character Appearance'}
           </p>
           <div className="grid grid-cols-3 gap-2">
-            {physicalFields.map(({ key, label }) => (
+            {PHYSICAL_FIELDS.map(({ key, label }) => (
               <div key={key} className="space-y-1">
                 <p className="text-xs text-muted-foreground">{label}</p>
                 <p className="text-sm font-medium">{data[key] || '—'}</p>

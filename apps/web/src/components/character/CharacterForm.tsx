@@ -209,7 +209,7 @@ function FormField({
             {field.required && <span className="text-destructive ml-1">*</span>}
           </Label>
           <div className="grid grid-cols-3 gap-3">
-            {physicalFields.map(({ key, label }) => (
+            {PHYSICAL_FIELDS.map(({ key, label }) => (
               <div key={key} className="space-y-1">
                 <Label className="text-xs">{label}</Label>
                 <Input
