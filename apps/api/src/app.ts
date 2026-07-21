@@ -11,6 +11,7 @@ import jwtPlugin from './plugins/jwt.js'
 import gameContextPlugin from './plugins/gameContext.js'
 import { authRoutes } from './routes/auth.js'
 import { gameRoutes } from './routes/game.js'
+import { gamePublicRoutes } from './routes/gamePublic.js'
 import { gameMemberRoutes } from './routes/gameMember.js'
 import { schemaTemplateRoutes } from './routes/schemaTemplate.js'
 import { characterSchemaRoutes } from './routes/characterSchema.js'
@@ -60,6 +61,7 @@ export function buildApp() {
   app.register(gameContextPlugin)
   app.register(authRoutes)
   app.register(gameRoutes)
+  app.register(gamePublicRoutes)
   app.register(gameMemberRoutes)
   app.register(schemaTemplateRoutes)
   app.register(characterSchemaRoutes)
