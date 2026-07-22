@@ -10,11 +10,12 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
     '/npcs',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.gameContext.role)) {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-staff tried to list NPCs")
+      const { userId, gameId, role } = request.gameContext
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to list npcs")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
-      const rows = await db.select().from(npcs).where(eq(npcs.gameId, request.gameContext.gameId)).orderBy(npcs.createdAt)
+      const rows = await db.select().from(npcs).where(eq(npcs.gameId, gameId)).orderBy(npcs.createdAt)
       return reply.send(rows)
     },
   )
@@ -23,14 +24,15 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
     '/npcs/:id',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.gameContext.role)) {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-staff tried to view NPC")
+      const { userId, gameId, role } = request.gameContext
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to view npc")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
       const { id } = request.params as { id: string }
-      const [npc] = await db.select().from(npcs).where(and(eq(npcs.id, id), eq(npcs.gameId, request.gameContext.gameId))).limit(1)
+      const [npc] = await db.select().from(npcs).where(and(eq(npcs.id, id), eq(npcs.gameId, gameId))).limit(1)
       if (!npc) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "npc not found")
+        request.log.warn({ id, gameId }, "npc not found")
         return reply.status(404).send({ error: 'NPC not found' })
       }
       return reply.send(npc)
@@ -41,21 +43,22 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
     '/npcs',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.gameContext.role)) {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-staff tried to create NPC")
+      const { userId, gameId, role } = request.gameContext
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to create npc")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
       const result = CreateNpcInput.safeParse(request.body)
       if (!result.success) return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       const [npc] = await db.insert(npcs).values({
-        gameId: request.gameContext.gameId,
+        gameId,
         name: result.data.name,
         description: result.data.description ?? null,
         portraitUrl: result.data.portraitUrl ?? null,
         notes: result.data.notes ?? null,
-        createdBy: request.gameContext.userId,
+        createdBy: userId,
       }).returning()
-      request.log.info({ id: npc!.id, name: npc!.name, gameId: request.gameContext.gameId }, "npc created")
+      request.log.info({ id: npc!.id, name: npc!.name, gameId }, "npc created")
       return reply.status(201).send(npc)
     },
   )
@@ -64,8 +67,9 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
     '/npcs/:id',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.gameContext.role)) {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-staff tried to update NPC")
+      const { userId, gameId, role } = request.gameContext
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to update npc")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
       const { id } = request.params as { id: string }
@@ -73,10 +77,10 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
       if (!result.success) return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       const [updated] = await db.update(npcs)
         .set(buildPatch(result.data) as Parameters<ReturnType<typeof db.update<typeof npcs>>['set']>[0])
-        .where(and(eq(npcs.id, id), eq(npcs.gameId, request.gameContext.gameId)))
+        .where(and(eq(npcs.id, id), eq(npcs.gameId, gameId)))
         .returning()
       if (!updated) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "npc not found for update")
+        request.log.warn({ id, gameId }, "npc not found")
         return reply.status(404).send({ error: 'NPC not found' })
       }
       return reply.send(updated)
@@ -87,19 +91,20 @@ export const npcRoutes: FastifyPluginAsync = async (fastify) => {
     '/npcs/:id',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.gameContext.role)) {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-staff tried to delete NPC")
+      const { userId, gameId, role } = request.gameContext
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to delete npc")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
       const { id } = request.params as { id: string }
       const deleted = await db.delete(npcs)
-        .where(and(eq(npcs.id, id), eq(npcs.gameId, request.gameContext.gameId)))
+        .where(and(eq(npcs.id, id), eq(npcs.gameId, gameId)))
         .returning({ id: npcs.id })
       if (!deleted.length) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "npc not found for delete")
+        request.log.warn({ id, gameId }, "npc not found")
         return reply.status(404).send({ error: 'NPC not found' })
       }
-      request.log.info({ id, gameId: request.gameContext.gameId }, "npc deleted")
+      request.log.info({ id, gameId }, "npc deleted")
       return reply.status(204).send()
     },
   )

@@ -186,7 +186,7 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [post] = await db.select().from(posts).where(and(eq(posts.id, postId), eq(posts.gameId, gameId))).limit(1)
       if (!post) {
-        request.log.warn({ postId, gameId }, "post not found for delete")
+        request.log.warn({ postId, gameId }, "post not found")
         return reply.status(404).send({ error: 'Post not found' })
       }
 
