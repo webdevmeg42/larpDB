@@ -4,7 +4,7 @@ import type { ComponentType } from 'react'
 import { Input } from '@/components/ui/input'
 import { Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { SchemaField, CharacterSchemaType } from '@plotrunner/shared'
+import type { SchemaField, CharacterSchemaType, SchemaFieldType } from '@plotrunner/shared'
 import { Row, CheckRow } from './field-editors/_shared'
 import { NumberFieldEditor } from './field-editors/NumberFieldEditor'
 import { ToggleFieldEditor } from './field-editors/ToggleFieldEditor'
@@ -27,14 +27,7 @@ interface FieldEditorProps {
   highlightUnlabeled?: boolean
 }
 
-type SubEditorProps = {
-  field: SchemaField
-  onChange: (field: SchemaField) => void
-  schemaType?: CharacterSchemaType
-  highlightUnlabeled?: boolean
-}
-
-const TYPE_EDITORS: Partial<Record<string, ComponentType<SubEditorProps>>> = {
+const TYPE_EDITORS: Partial<Record<SchemaFieldType, ComponentType<FieldEditorProps>>> = {
   number: NumberFieldEditor,
   toggle: ToggleFieldEditor,
   select: SelectFieldEditor,
