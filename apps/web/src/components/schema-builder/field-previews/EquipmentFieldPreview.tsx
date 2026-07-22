@@ -35,6 +35,37 @@ interface PreviewProps {
   onChange: (val: unknown) => void
 }
 
+interface SlotRowProps {
+  kind: 'equipment' | 'treasure'
+  idx: number
+  data: EquipmentValue
+  updateSlot: (kind: 'equipment' | 'treasure', idx: number, patch: Partial<EquipmentSlot>) => void
+}
+
+function SlotRow({ kind, idx, data, updateSlot }: SlotRowProps) {
+  const slot = data[kind]?.[idx] ?? { category: '', name: '' }
+  return (
+    <div className="flex gap-2">
+      <select
+        value={slot.category}
+        onChange={e => updateSlot(kind, idx, { category: e.target.value })}
+        className="rounded-md border border-input bg-background px-2 py-1.5 text-sm shrink-0 w-44"
+      >
+        <option value="">Category…</option>
+        {EQUIPMENT_CATEGORIES.map(cat => (
+          <option key={cat} value={cat}>{cat}</option>
+        ))}
+      </select>
+      <Input
+        value={slot.name}
+        onChange={e => updateSlot(kind, idx, { name: e.target.value })}
+        placeholder="Item name or description"
+        className="text-sm"
+      />
+    </div>
+  )
+}
+
 export function EquipmentFieldPreview({ field, value, onChange }: PreviewProps) {
   const data = (value as EquipmentValue | undefined) ?? { equipment: [], treasure: [] }
   const equipSlots = field.equipmentSlots ?? 0
@@ -44,30 +75,6 @@ export function EquipmentFieldPreview({ field, value, onChange }: PreviewProps) 
     const arr = [...(data[kind] ?? [])]
     arr[idx] = { category: '', name: '', ...(arr[idx] ?? {}), ...patch }
     onChange({ ...data, [kind]: arr })
-  }
-
-  function SlotRow({ kind, idx }: { kind: 'equipment' | 'treasure'; idx: number }) {
-    const slot = data[kind]?.[idx] ?? { category: '', name: '' }
-    return (
-      <div className="flex gap-2">
-        <select
-          value={slot.category}
-          onChange={e => updateSlot(kind, idx, { category: e.target.value })}
-          className="rounded-md border border-input bg-background px-2 py-1.5 text-sm shrink-0 w-44"
-        >
-          <option value="">Category…</option>
-          {EQUIPMENT_CATEGORIES.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
-        <Input
-          value={slot.name}
-          onChange={e => updateSlot(kind, idx, { name: e.target.value })}
-          placeholder="Item name or description"
-          className="text-sm"
-        />
-      </div>
-    )
   }
 
   if (equipSlots === 0 && treasureSlots === 0) {
@@ -89,7 +96,7 @@ export function EquipmentFieldPreview({ field, value, onChange }: PreviewProps) 
           </Label>
           <div className="space-y-2">
             {Array.from({ length: equipSlots }, (_, i) => (
-              <SlotRow key={i} kind="equipment" idx={i} />
+              <SlotRow key={i} kind="equipment" idx={i} data={data} updateSlot={updateSlot} />
             ))}
           </div>
         </div>
@@ -102,7 +109,7 @@ export function EquipmentFieldPreview({ field, value, onChange }: PreviewProps) 
           </Label>
           <div className="space-y-2">
             {Array.from({ length: treasureSlots }, (_, i) => (
-              <SlotRow key={i} kind="treasure" idx={i} />
+              <SlotRow key={i} kind="treasure" idx={i} data={data} updateSlot={updateSlot} />
             ))}
           </div>
         </div>

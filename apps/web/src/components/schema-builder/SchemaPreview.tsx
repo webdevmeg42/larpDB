@@ -29,7 +29,7 @@ interface PreviewProps {
   onChange: (val: unknown) => void
 }
 
-const PREVIEW_MAP: Partial<Record<SchemaFieldType, ComponentType<PreviewProps>>> = {
+const PREVIEW_MAP: Record<SchemaFieldType, ComponentType<PreviewProps>> = {
   section: SectionFieldPreview,
   text: TextFieldPreview,
   longtext: LongtextFieldPreview,
