@@ -310,7 +310,7 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { gameId, role } = request.gameContext
       if (!gmOrOwner(role)) {
-        request.log.warn({ userId: request.gameContext.userId, role, gameId }, "non-staff tried to perform GM action on character")
+        request.log.warn({ userId: request.gameContext.userId, role, gameId }, "non-staff tried to update character")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 

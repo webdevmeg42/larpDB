@@ -14,7 +14,7 @@ export const characterXpRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { gameId, role, userId } = request.gameContext
       if (!gmOrOwner(role)) {
-        request.log.warn({ userId, role, gameId }, "non-staff tried to perform GM action on character")
+        request.log.warn({ userId, role, gameId }, "non-staff tried to award xp")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
@@ -167,7 +167,7 @@ export const characterXpRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { gameId, role, userId } = request.gameContext
       if (!gmOrOwner(role)) {
-        request.log.warn({ userId, role, gameId }, "non-staff tried to perform GM action on character")
+        request.log.warn({ userId, role, gameId }, "non-staff tried to sync character to level")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
@@ -222,9 +222,9 @@ export const characterXpRoutes: FastifyPluginAsync = async (fastify) => {
     '/characters/:id/xp/reset',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { gameId, role } = request.gameContext
+      const { gameId, role, userId } = request.gameContext
       if (!gmOrOwner(role)) {
-        request.log.warn({ userId: request.gameContext.userId, role, gameId }, "non-staff tried to perform GM action on character")
+        request.log.warn({ userId, role, gameId }, "non-staff tried to reset character xp")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
