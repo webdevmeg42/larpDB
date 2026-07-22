@@ -116,7 +116,7 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .returning()
 
       invalidateMembership(userId, gameId)
-      request.log.info({ targetUserId: userId, gameId, newRole: role }, "member role updated")
+      request.log.info({ userId: request.gameContext.userId, targetUserId: userId, gameId, newRole: role }, "member role updated")
       return reply.send(updated)
     },
   )
@@ -154,7 +154,7 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .returning()
 
       invalidateMembership(userId, gameId)
-      request.log.info({ targetUserId: userId, gameId }, "member updated")
+      request.log.info({ userId: request.gameContext.userId, targetUserId: userId, gameId }, "member updated")
       return reply.send(updated)
     },
   )

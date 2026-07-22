@@ -37,7 +37,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { userId, gameId, role } = request.gameContext
       if (role !== 'owner') {
-        request.log.warn({ userId, role }, "non-owner tried to create character schema")
+        request.log.warn({ userId, role, gameId }, "non-owner tried to create character schema")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -67,7 +67,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { userId, gameId, role } = request.gameContext
       if (role !== 'owner') {
-        request.log.warn({ userId, role }, "non-owner tried to update character schema")
+        request.log.warn({ userId, role, gameId }, "non-owner tried to update character schema")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -104,7 +104,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { userId, gameId, role } = request.gameContext
       if (role !== 'owner') {
-        request.log.warn({ userId, role }, "non-owner tried to activate character schema")
+        request.log.warn({ userId, role, gameId }, "non-owner tried to activate character schema")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -146,7 +146,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { userId, gameId, role } = request.gameContext
       if (role !== 'owner') {
-        request.log.warn({ userId, role }, "non-owner tried to deactivate character schema")
+        request.log.warn({ userId, role, gameId }, "non-owner tried to deactivate character schema")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -172,7 +172,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { userId, gameId, role } = request.gameContext
       if (role !== 'owner') {
-        request.log.warn({ userId, role }, "non-owner tried to delete character schema")
+        request.log.warn({ userId, role, gameId }, "non-owner tried to delete character schema")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 

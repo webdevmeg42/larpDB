@@ -75,8 +75,6 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
           return
         }
 
-        found = true
-
         // Remove player membership; leave GM/owner rows intact
         await tx
           .delete(gameMembers)
@@ -85,6 +83,8 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
             eq(gameMembers.userId, userId),
             eq(gameMembers.role, 'player'),
           ))
+
+        found = true
       }).catch(() => {})
 
       if (!found) {
