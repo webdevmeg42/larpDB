@@ -150,17 +150,18 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [user] = await db.select().from(users).where(eq(users.id, request.user.sub)).limit(1)
       if (!user) return reply.status(404).send({ error: 'User not found' })
+      const userId = user.id
 
       const valid = await bcrypt.compare(result.data.currentPassword, user.passwordHash)
       if (!valid) {
-        request.log.warn({ userId: user.id }, "password change failed — current password incorrect")
+        request.log.warn({ userId }, "password change failed — current password incorrect")
         return reply.status(401).send({ error: 'Current password is incorrect' })
       }
 
       const passwordHash = await bcrypt.hash(result.data.newPassword, 12)
-      await db.update(users).set({ passwordHash }).where(eq(users.id, user.id))
+      await db.update(users).set({ passwordHash }).where(eq(users.id, userId))
 
-      request.log.info({ userId: user.id }, "password changed")
+      request.log.info({ userId }, "password changed")
       return reply.status(204).send()
     },
   )

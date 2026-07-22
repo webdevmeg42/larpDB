@@ -62,6 +62,7 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { gameId } = request.params as { gameId: string }
       const userId = request.user.sub
+      let found = false
 
       await db.transaction(async (tx) => {
         const [deleted] = await tx
@@ -74,6 +75,8 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
           return
         }
 
+        found = true
+
         // Remove player membership; leave GM/owner rows intact
         await tx
           .delete(gameMembers)
@@ -84,7 +87,11 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
           ))
       }).catch(() => {})
 
-      request.log.info({ gameId, userId }, "user unsubscribed from adventure")
+      if (!found) {
+        request.log.warn({ gameId, userId }, "subscription not found")
+      } else {
+        request.log.info({ gameId, userId }, "user unsubscribed from adventure")
+      }
       return reply.status(204).send()
     },
   )
