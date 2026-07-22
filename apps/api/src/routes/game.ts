@@ -173,7 +173,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const baseSlug = generateSlug(result.data.name)
 
       if (!baseSlug) {
-        request.log.warn({ name: result.data.name }, "adventure name produces an empty slug, rejecting")
+        request.log.warn({ name: result.data.name }, "adventure rejected — name produces an empty slug")
         return reply.status(400).send({ error: ERR_INVALID_SLUG })
       }
 
@@ -305,14 +305,17 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       } catch (err: unknown) {
         const pgErr = err as { code?: string; constraint?: string }
         if (pgErr.code === '23505' && pgErr.constraint === 'game_name_lower_idx') {
-          request.log.warn({ id, name: result.data.name }, "patch rejected — adventure name already taken")
+          request.log.warn({ id, name: result.data.name }, "adventure update rejected — name already taken")
           return reply.status(400).send({ error: 'Adventure name already taken' })
         }
         throw err
       }
 
-      if (!updated) return reply.status(404).send({ error: 'Game not found' })
-      request.log.info({ id, ...patch }, "adventure updated")
+      if (!updated) {
+        request.log.warn({ id, userId }, "adventure not found")
+        return reply.status(404).send({ error: 'Game not found' })
+      }
+      request.log.info({ id, userId }, "adventure updated")
       return reply.send(updated)
     },
   )
@@ -365,7 +368,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         await tx.delete(game).where(eq(game.id, id))
       })
 
-      request.log.info({ id }, "adventure and all its data deleted")
+      request.log.info({ id, userId }, "adventure deleted")
       return reply.status(204).send()
     },
   )

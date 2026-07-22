@@ -182,7 +182,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(404).send({ error: 'Event not found' })
       }
       if (!gmOrOwner(role) && event.status !== 'published') {
-        request.log.warn({ id, status: event.status }, "player tried to view an unpublished event")
+        request.log.warn({ id, gameId, status: event.status }, "non-staff tried to view unpublished event")
         return reply.status(404).send({ error: 'Event not found' })
       }
       return reply.send(event)
@@ -227,7 +227,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { gameId, role } = request.gameContext
       if (!gmOrOwner(role)) {
-        request.log.warn({ userId: request.gameContext.userId, role, gameId }, 'non-staff tried to edit this event')
+        request.log.warn({ userId: request.gameContext.userId, role, gameId }, "non-staff tried to edit event")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
