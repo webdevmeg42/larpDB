@@ -14,11 +14,11 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [target] = await db.select().from(users).where(eq(users.id, id)).limit(1)
       if (!target) {
-        request.log.warn({ id, requesterId: request.user.sub }, "user not found for promotion")
+        request.log.warn({ userId: request.user.sub, targetUserId: id }, "user not found for promotion")
         return reply.status(404).send({ error: 'User not found' })
       }
       if (target.isSysAdmin) {
-        request.log.warn({ id, requesterId: request.user.sub }, "user is already a system admin")
+        request.log.warn({ userId: request.user.sub, targetUserId: id }, "user is already a system admin")
         return reply.status(409).send({ error: 'User is already a sys_admin' })
       }
 
@@ -28,7 +28,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(users.id, id))
         .returning()
 
-      request.log.info({ id, requesterId: request.user.sub }, "user promoted to system admin")
+      request.log.info({ userId: request.user.sub, targetUserId: id }, "user promoted to system admin")
       const safeUser = stripPassword(updated!)
       return reply.send(safeUser)
     },
@@ -42,13 +42,13 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       const requesterId = request.user.sub
 
       if (id === requesterId) {
-        request.log.warn({ id }, "system admin tried to self-demote")
+        request.log.warn({ userId: id }, "system admin tried to self-demote")
         return reply.status(400).send({ error: 'Cannot self-demote' })
       }
 
       const [target] = await db.select().from(users).where(eq(users.id, id)).limit(1)
       if (!target) {
-        request.log.warn({ id, requesterId }, "user not found for demotion")
+        request.log.warn({ userId: requesterId, targetUserId: id }, "user not found for demotion")
         return reply.status(404).send({ error: 'User not found' })
       }
 
@@ -58,7 +58,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(users.id, id))
         .returning()
 
-      request.log.info({ id, requesterId }, "user demoted from system admin")
+      request.log.info({ userId: requesterId, targetUserId: id }, "user demoted from system admin")
       const safeUser = stripPassword(updated!)
       return reply.send(safeUser)
     },
