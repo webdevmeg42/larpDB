@@ -15,8 +15,15 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { gameId } = request.params as { gameId: string }
-      if (request.gameContext.gameId !== gameId) return reply.status(403).send({ error: 'Forbidden' })
-      if (!gmOrOwner(request.gameContext.role)) return reply.status(403).send({ error: 'GM or owner role required' })
+      const { userId, role } = request.gameContext
+      if (request.gameContext.gameId !== gameId) {
+        request.log.warn({ userId, contextGameId: request.gameContext.gameId, requestedGameId: gameId }, "game context mismatch")
+        return reply.status(403).send({ error: 'Forbidden' })
+      }
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to list members")
+        return reply.status(403).send({ error: 'GM or owner role required' })
+      }
 
       const { status } = request.query as { status?: string }
       const statusFilter = validStatuses.includes(status as never) ? (status as typeof validStatuses[number]) : undefined
@@ -45,8 +52,15 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { gameId } = request.params as { gameId: string }
-      if (request.gameContext.gameId !== gameId) return reply.status(403).send({ error: 'Forbidden' })
-      if (!gmOrOwner(request.gameContext.role)) return reply.status(403).send({ error: 'GM or owner role required' })
+      const { userId, role } = request.gameContext
+      if (request.gameContext.gameId !== gameId) {
+        request.log.warn({ userId, contextGameId: request.gameContext.gameId, requestedGameId: gameId }, "game context mismatch")
+        return reply.status(403).send({ error: 'Forbidden' })
+      }
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to list subscriptions")
+        return reply.status(403).send({ error: 'GM or owner role required' })
+      }
 
       const rows = await db
         .select({
@@ -71,7 +85,7 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId, userId } = request.params as { gameId: string; userId: string }
       if (request.gameContext.gameId !== gameId) return reply.status(403).send({ error: 'Forbidden' })
       if (request.gameContext.role !== 'owner') {
-        request.log.warn({ requestingUserId: request.gameContext.userId, targetUserId: userId, gameId }, "non-owner tried to change member role")
+        request.log.warn({ userId: request.gameContext.userId, targetUserId: userId, gameId }, "non-owner tried to change member role")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -102,7 +116,7 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .returning()
 
       invalidateMembership(userId, gameId)
-      request.log.info({ userId, gameId, newRole: role }, "member role updated")
+      request.log.info({ targetUserId: userId, gameId, newRole: role }, "member role updated")
       return reply.send(updated)
     },
   )
@@ -114,7 +128,7 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId, userId } = request.params as { gameId: string; userId: string }
       if (request.gameContext.gameId !== gameId) return reply.status(403).send({ error: 'Forbidden' })
       if (!gmOrOwner(request.gameContext.role)) {
-        request.log.warn({ requestingUserId: request.gameContext.userId, targetUserId: userId, gameId }, "non-staff tried to update member")
+        request.log.warn({ userId: request.gameContext.userId, targetUserId: userId, gameId }, "non-staff tried to update member")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
@@ -140,6 +154,7 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .returning()
 
       invalidateMembership(userId, gameId)
+      request.log.info({ targetUserId: userId, gameId }, "member updated")
       return reply.send(updated)
     },
   )
