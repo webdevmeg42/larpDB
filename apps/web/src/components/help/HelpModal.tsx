@@ -3,31 +3,30 @@
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { findEntryForPath } from '@/lib/help-content'
-import { Dialog, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 
 interface HelpModalProps {
-  open: boolean
   onClose: () => void
 }
 
-export function HelpModal({ open, onClose }: HelpModalProps) {
+export function HelpModal({ onClose }: HelpModalProps) {
   const pathname = usePathname()
   const { user } = useAuth()
-  const role = user?.role ?? 'player'
+  const role = user?.role || 'player'
   const entry = findEntryForPath(pathname, role)
 
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog open={true} onClose={onClose}>
       <DialogTitle>{entry ? entry.title : 'Help'}</DialogTitle>
-      {entry ? (
-        entry.sections.map(section => (
-          <div key={section.heading} className="mt-4">
+      {entry && entry.sections.length > 0 ? (
+        entry.sections.map((section, idx) => (
+          <div key={`${section.heading}-${idx}`} className="mt-4">
             <h3 className="text-sm font-semibold mb-1">{section.heading}</h3>
             <p className="text-sm text-muted-foreground">{section.body}</p>
           </div>
         ))
       ) : (
-        <p className="mt-4 text-sm text-muted-foreground">No help available for this page.</p>
+        <DialogDescription className="mt-4">No help available for this page.</DialogDescription>
       )}
     </Dialog>
   )

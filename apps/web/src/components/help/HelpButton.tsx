@@ -29,7 +29,7 @@ export function HelpButton({ compact = false }: HelpButtonProps) {
         <HelpCircle className="h-4 w-4" />
         {!compact && <span>Help</span>}
       </button>
-      <HelpModal open={open} onClose={() => setOpen(false)} />
+      {open && <HelpModal onClose={() => setOpen(false)} />}
     </>
   )
 }
