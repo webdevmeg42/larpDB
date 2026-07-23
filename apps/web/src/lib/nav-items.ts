@@ -8,6 +8,7 @@ import {
   BookOpen,
   PenSquare,
   ShieldCheck,
+  HelpCircle,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -29,6 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Adventure Builder', href: '/adventures',       icon: Settings,        roles: ['owner'], testId: 'nav-adv-builder' },
   { label: 'Users',             href: '/admin/users',      icon: Users,           roles: ['owner'] },
   { label: 'Posts',             href: '/admin/posts',      icon: PenSquare,       roles: ['owner', 'gm'] },
+  { label: 'Help',              href: '/help',             icon: HelpCircle,      roles: ['owner', 'gm', 'player'], testId: 'nav-help' },
 ]
 
 export function getPageTitle(pathname: string): string | null {

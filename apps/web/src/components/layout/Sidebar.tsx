@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 import { LogOut, ScrollText } from 'lucide-react'
 import { NAV_ITEMS } from '@/lib/nav-items'
+import { HelpButton } from '@/components/help/HelpButton'
 
 export function Sidebar() {
   const { user, logout } = useAuth()
@@ -67,6 +68,7 @@ export function Sidebar() {
           <p className="text-sm font-medium">{user.displayName}</p>
           <p className="text-xs text-muted-foreground capitalize">{user.isSysAdmin ? 'System Admin' : user.role}</p>
         </div>
+        <HelpButton />
         <button
           onClick={logout}
           data-testid="nav-sign-out"

@@ -6,6 +6,7 @@ import { Menu, ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useGames } from '@/providers/GameProvider'
 import { getPageTitle } from '@/lib/nav-items'
+import { HelpButton } from '@/components/help/HelpButton'
 
 interface MobileHeaderProps {
   onMenuClick: () => void
@@ -45,6 +46,8 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
         </button>
 
         <span className="font-semibold text-sm flex-1">PlotRunner</span>
+
+        <HelpButton compact />
 
         {currentGame && games.length > 0 && (
           <div ref={chipRef} className="relative">
