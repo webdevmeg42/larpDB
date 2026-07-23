@@ -77,11 +77,21 @@ describe('findEntryForPath', () => {
   it('returns null for an unknown path', () => {
     expect(findEntryForPath('/not-a-page', 'owner', entries)).toBeNull()
   })
+  it('prefers the longer prefix when two entries overlap', () => {
+    const nested: HelpEntry[] = [
+      { slug: 'admin',     title: '',  minRole: 'owner', paths: ['/admin'],           sections: [] },
+      { slug: 'community', title: '',  minRole: 'owner', paths: ['/admin/community'], sections: [] },
+    ]
+    expect(findEntryForPath('/admin/community/posts', 'owner', nested)?.slug).toBe('community')
+  })
+  it('defaults to HELP_ENTRIES when no entries arg is provided', () => {
+    expect(findEntryForPath('/dashboard', 'player')?.slug).toBe('dashboard')
+  })
 })
 
 describe('HELP_ENTRIES', () => {
-  it('has at least 8 entries', () => {
-    expect(HELP_ENTRIES.length).toBeGreaterThanOrEqual(8)
+  it('has exactly 8 entries', () => {
+    expect(HELP_ENTRIES.length).toBe(8)
   })
   it('every entry has at least one section', () => {
     for (const entry of HELP_ENTRIES) {

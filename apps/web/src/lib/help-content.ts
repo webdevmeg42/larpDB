@@ -13,7 +13,7 @@ export interface HelpEntry {
   sections: HelpSection[]
 }
 
-const ROLE_LEVEL: Record<string, number> = { player: 0, gm: 1, owner: 2 }
+const ROLE_LEVEL: Record<MinRole, number> = { player: 0, gm: 1, owner: 2 }
 
 export function canSeeEntry(userRole: string, entry: HelpEntry): boolean {
   return (ROLE_LEVEL[userRole] ?? -1) >= ROLE_LEVEL[entry.minRole]
