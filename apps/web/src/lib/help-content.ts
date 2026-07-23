@@ -16,7 +16,7 @@ export interface HelpEntry {
 const ROLE_LEVEL: Record<MinRole, number> = { player: 0, gm: 1, owner: 2 }
 
 export function canSeeEntry(userRole: string, entry: HelpEntry): boolean {
-  return (ROLE_LEVEL[userRole] ?? -1) >= ROLE_LEVEL[entry.minRole]
+  return ((ROLE_LEVEL as Record<string, number | undefined>)[userRole] ?? -1) >= ROLE_LEVEL[entry.minRole]
 }
 
 export function findEntryForPath(
