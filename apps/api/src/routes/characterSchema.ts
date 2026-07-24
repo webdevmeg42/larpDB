@@ -43,7 +43,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
 
       const result = CreateCharacterSchemaInput.safeParse(request.body)
       if (!result.success) {
-        return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
+        return reply.status(422).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
       const [schema] = await db.insert(characterSchemas).values({
@@ -80,7 +80,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
 
       const result = UpdateCharacterSchemaInput.safeParse(request.body)
       if (!result.success) {
-        return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
+        return reply.status(422).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
       const [newVersion] = await db.insert(characterSchemas).values({

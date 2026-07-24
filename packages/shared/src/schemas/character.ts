@@ -71,16 +71,32 @@ export const SchemaFieldSchema = z.object({
   spellEntries: z.array(SpellEntrySchema).optional(),
 })
 
+function hasDuplicateLabels(fields: { label: string }[]): boolean {
+  const seen = new Set<string>()
+  for (const f of fields) {
+    const key = f.label.trim().toLowerCase()
+    if (seen.has(key)) return true
+    seen.add(key)
+  }
+  return false
+}
+
 export const CreateCharacterSchemaInput = z.object({
   name: z.string().min(1).max(200),
-  fields: z.array(SchemaFieldSchema),
+  fields: z.array(SchemaFieldSchema).refine(
+    fields => !hasDuplicateLabels(fields),
+    { message: 'Field labels must be unique (case-insensitive)' },
+  ),
   templateSource: z.string().uuid().nullish(),
   type: z.enum(['race', 'class']).default('race'),
 })
 
 export const UpdateCharacterSchemaInput = z.object({
   name: z.string().min(1).max(200).optional(),
-  fields: z.array(SchemaFieldSchema).min(1).optional(),
+  fields: z.array(SchemaFieldSchema).min(1).refine(
+    fields => !hasDuplicateLabels(fields),
+    { message: 'Field labels must be unique (case-insensitive)' },
+  ).optional(),
 })
 
 export const CreateCharacterInput = z.object({
