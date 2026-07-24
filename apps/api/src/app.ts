@@ -9,6 +9,7 @@ import fs from 'fs'
 import { env } from './env.js'
 import jwtPlugin from './plugins/jwt.js'
 import gameContextPlugin from './plugins/gameContext.js'
+import { healthRoutes } from './routes/health.js'
 import { authRoutes } from './routes/auth.js'
 import { gameRoutes } from './routes/game.js'
 import { gamePublicRoutes } from './routes/gamePublic.js'
@@ -59,6 +60,7 @@ export function buildApp() {
   })
   app.register(jwtPlugin)
   app.register(gameContextPlugin)
+  app.register(healthRoutes)
   app.register(authRoutes)
   app.register(gameRoutes)
   app.register(gamePublicRoutes)
