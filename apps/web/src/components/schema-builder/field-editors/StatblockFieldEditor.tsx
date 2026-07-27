@@ -204,7 +204,7 @@ export function StatblockFieldEditor({ field, onChange }: Props) {
         })}
         {!useProgression && (
           <Button variant="ghost" size="sm" onClick={addStat} className="w-full h-7 text-xs">
-            <Plus className="h-3 w-3 mr-1" /> Add stat
+            <Plus className="h-3 w-3 mr-1" aria-hidden="true" /> Add stat
           </Button>
         )}
         {renderProgressionToggle(stats.some(s => (s.levelEntries ?? []).length > 0))}
