@@ -153,6 +153,7 @@ export function AdminPostsClient({ initialGames, initialGameId, initialPosts }: 
                             data-testid="delete-post-btn"
                             size="sm"
                             variant="ghost"
+                            aria-label="Delete post"
                             className="shrink-0 text-muted-foreground hover:text-destructive"
                             onClick={() => setDeleteTarget(post.id)}
                           >

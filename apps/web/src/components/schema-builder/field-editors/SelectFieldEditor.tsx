@@ -54,7 +54,7 @@ export function SelectFieldEditor({ field, onChange }: Props) {
               className="h-8 text-xs w-16"
               title="XP cost for this option"
             />
-            <button onClick={() => removeOption(i)} className="text-muted-foreground hover:text-destructive">
+            <button onClick={() => removeOption(i)} aria-label="Remove option" className="text-muted-foreground hover:text-destructive">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>

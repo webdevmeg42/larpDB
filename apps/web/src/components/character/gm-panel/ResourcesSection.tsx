@@ -51,7 +51,7 @@ export function ResourcesSection({ gm, onSave }: { gm: GmData; onSave: (u: Parti
               onChange={e => setConsumables(prev => prev.map((x, j) => j === i ? { ...x, count: parseInt(e.target.value, 10) || 0 } : x))}
               className="w-20"
             />
-            <button type="button" onClick={() => setConsumables(p => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive text-xs">✕</button>
+            <button type="button" aria-label="Remove" onClick={() => setConsumables(p => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive text-xs">✕</button>
           </div>
         ))}
         <Button type="button" variant="outline" size="sm" onClick={() => setConsumables(p => [...p, { name: '', count: 1 }])}>
@@ -70,7 +70,7 @@ export function ResourcesSection({ gm, onSave }: { gm: GmData; onSave: (u: Parti
                 placeholder="Item name"
                 className="flex-1"
               />
-              <button type="button" onClick={() => setInventory(p => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive text-xs">✕</button>
+              <button type="button" aria-label="Remove" onClick={() => setInventory(p => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive text-xs">✕</button>
             </div>
             <Input
               value={item.description ?? ''}
@@ -101,7 +101,7 @@ export function ResourcesSection({ gm, onSave }: { gm: GmData; onSave: (u: Parti
               onChange={e => setCrafting(prev => prev.map((x, j) => j === i ? { ...x, count: parseInt(e.target.value, 10) || 0 } : x))}
               className="w-20"
             />
-            <button type="button" onClick={() => setCrafting(p => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive text-xs">✕</button>
+            <button type="button" aria-label="Remove" onClick={() => setCrafting(p => p.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive text-xs">✕</button>
           </div>
         ))}
         <Button type="button" variant="outline" size="sm" onClick={() => setCrafting(p => [...p, { name: '', count: 1 }])}>

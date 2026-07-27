@@ -248,10 +248,10 @@ function ItemsSection({ events, items, currencyName, onRefresh }: ItemsSectionPr
                         </td>
                         <td className="p-3">
                           <div className="flex gap-2 justify-end">
-                            <Button size="sm" variant="outline" onClick={() => setEditingId(item.id)}>
+                            <Button size="sm" variant="outline" aria-label="Edit item" onClick={() => setEditingId(item.id)}>
                               <Pencil className="h-3 w-3" />
                             </Button>
-                            <Button size="sm" variant="destructive" onClick={() => void handleDelete(item.id)}>
+                            <Button size="sm" variant="destructive" aria-label="Delete item" onClick={() => void handleDelete(item.id)}>
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>

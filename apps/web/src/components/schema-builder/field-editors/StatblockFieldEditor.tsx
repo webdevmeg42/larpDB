@@ -145,7 +145,7 @@ export function StatblockFieldEditor({ field, onChange }: Props) {
                   placeholder="Stat name (e.g. STR)"
                   className="h-8 text-xs flex-1"
                 />
-                <button onClick={() => removeStat(i)} className="text-muted-foreground hover:text-destructive">
+                <button onClick={() => removeStat(i)} aria-label="Remove stat" className="text-muted-foreground hover:text-destructive">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -188,7 +188,7 @@ export function StatblockFieldEditor({ field, onChange }: Props) {
                           onChange={ev => updateStatLevel(i, ei, { value: Number(ev.target.value) || 0 })}
                           className="h-7 text-xs w-16"
                         />
-                        <button onClick={() => removeStatLevel(i, ei)} className="text-muted-foreground hover:text-destructive shrink-0">
+                        <button onClick={() => removeStatLevel(i, ei)} aria-label="Remove level" className="text-muted-foreground hover:text-destructive shrink-0">
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
