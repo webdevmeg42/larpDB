@@ -18,7 +18,7 @@ export default async function RulebookDetailPage({ params }: { params: Promise<{
   try {
     const [config, game] = await Promise.all([
       fetchJson<SiteConfig>(`${API_URL}/config`, { Cookie: `token=${token}`, 'X-Game-Id': slug }),
-      fetchJson<Game>(`${API_URL}/games/${slug}`, { Cookie: `token=${token}` }),
+      fetchJson<Game>(`${API_URL}/game`, { Cookie: `token=${token}`, 'X-Game-Id': slug }),
     ])
     return <RulebookDetailClient slug={slug} initialConfig={config} initialGame={game} />
   } catch (err) {

@@ -20,7 +20,7 @@ export default async function BuilderPage({ params }: { params: Promise<{ slug: 
   try {
     const [config, game] = await Promise.all([
       fetchJson<SiteConfig>(`${API_URL}/config`, { Cookie: `token=${token}`, 'X-Game-Id': slug }),
-      fetchJson<Game>(`${API_URL}/games/${slug}`, { Cookie: `token=${token}` }),
+      fetchJson<Game>(`${API_URL}/game`, { Cookie: `token=${token}`, 'X-Game-Id': slug }),
     ])
     return <BuilderPageClient initialConfig={config} initialGame={game} gameId={slug} />
   } catch (err) {
