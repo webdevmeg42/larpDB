@@ -53,6 +53,7 @@ export default function SetupChecklist({ config, game, onTabChange }: Props) {
           aria-valuemin={0}
           aria-valuemax={items.length}
           aria-label="Setup progress"
+          aria-valuetext={`${doneCount} of ${items.length} steps complete`}
           className="w-16 h-1.5 bg-muted rounded-full overflow-hidden"
         >
           <div

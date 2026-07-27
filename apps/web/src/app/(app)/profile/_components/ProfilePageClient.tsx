@@ -262,7 +262,7 @@ export function ProfilePageClient() {
           </div>
         </div>
 
-        <div role="alert" aria-atomic="true" className="min-h-[1.25rem]">
+        <div role="alert" className="min-h-[1.25rem]">
           {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
         </div>
         <div aria-live="polite" aria-atomic="true" className="min-h-[1.25rem]">
