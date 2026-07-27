@@ -12,5 +12,8 @@
     "cypress": "^13.0.0",
     "dotenv": "^16.0.0",
     "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "cypress-axe": "^1.7.0"
   }
 }

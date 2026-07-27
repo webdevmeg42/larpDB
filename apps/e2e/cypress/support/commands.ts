@@ -1,3 +1,4 @@
+/// <reference types="cypress-axe" />
 import { testDateTime } from './helpers'
 
 Cypress.Commands.add('loginOwner', () => {

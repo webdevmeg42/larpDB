@@ -1,3 +1,4 @@
+import 'cypress-axe'
 import './commands'
 
 // Next.js App Router throws NEXT_NOT_FOUND as a client-side signal when a server
