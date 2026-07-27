@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
@@ -40,10 +41,28 @@ async function purgeOldLogs() {
   await db.delete(requestLogs).where(lt(requestLogs.createdAt, cutoff))
 }
 
+if (env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: env.SENTRY_DSN,
+    environment: env.NODE_ENV,
+    tracesSampleRate: env.NODE_ENV === 'production' ? 0.2 : 1.0,
+    integrations: [Sentry.fastifyIntegration()],
+    beforeSend(event) {
+      const statusCode = event.contexts?.response?.status_code as number | undefined
+      if (statusCode !== undefined && statusCode < 500) return null
+      return event
+    },
+  })
+}
+
 export function buildApp() {
   const app = Fastify({
     logger: env.NODE_ENV !== 'test',
   })
+
+  if (env.SENTRY_DSN) {
+    Sentry.setupFastifyErrorHandler(app)
+  }
 
   // Security: cookie must be registered before jwtPlugin so JWT can read cookies
   app.register(cookie)

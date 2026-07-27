@@ -22,6 +22,7 @@
     "@fastify/rate-limit": "^9.1.0",
     "@fastify/static": "^7.0.4",
     "@plotrunner/shared": "workspace:*",
+    "@sentry/node": "^10.67.0",
     "bcrypt": "^5.1.1",
     "drizzle-orm": "^0.30.10",
     "fastify": "^4.27.0",
