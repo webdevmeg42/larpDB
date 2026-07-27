@@ -75,14 +75,14 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
         onKeyDown={open ? handleKeyDown : undefined}
         {...(!open ? ({ inert: '' } as Record<string, string>) : {})}
         className={cn(
-          'absolute left-0 top-0 h-full w-64 bg-background border-r border-border flex flex-col',
+          'absolute left-0 top-0 h-full w-64 bg-[#080f07] border-r border-border flex flex-col',
           'transition-transform duration-200 ease-in-out',
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >
         {/* Header */}
         <div className="flex items-center justify-between h-14 px-4 border-b border-border flex-shrink-0">
-          <span className="font-semibold">PlotRunner</span>
+          <span className="font-heading text-gold">PlotRunner</span>
           <button
             ref={closeButtonRef}
             type="button"
@@ -103,13 +103,13 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                data-testid={item.testId ?? `nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                data-testid={`mobile-${item.testId ?? `nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}`}
                 onClick={onClose}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors',
                   isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                    ? 'rounded-r-md border-l-2 border-gold bg-primary/20 text-foreground'
+                    : 'rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -128,10 +128,10 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
                 data-testid="nav-audit-logs"
                 onClick={onClose}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  'flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors',
                   pathname === '/sys-admin/logs' || pathname.startsWith('/sys-admin/')
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                    ? 'rounded-r-md border-l-2 border-gold bg-primary/20 text-foreground'
+                    : 'rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                 )}
               >
                 <ScrollText className="h-4 w-4" />
