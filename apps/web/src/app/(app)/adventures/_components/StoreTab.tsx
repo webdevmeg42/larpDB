@@ -167,7 +167,7 @@ function ItemsSection({ events, items, currencyName, onRefresh }: ItemsSectionPr
     <div className="space-y-4">
       <div className="flex justify-end">
         <Button onClick={() => setShowAddForm(v => !v)} variant={showAddForm ? 'outline' : 'default'}>
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
           {showAddForm ? 'Cancel' : 'Add item'}
         </Button>
       </div>

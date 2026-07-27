@@ -194,7 +194,7 @@ export function StatblockFieldEditor({ field, onChange }: Props) {
                       </div>
                     ))}
                     <Button variant="ghost" size="sm" onClick={() => addStatLevel(i)} className="w-full h-6 text-xs">
-                      <Plus className="h-3 w-3 mr-1" /> Add level
+                      <Plus className="h-3 w-3 mr-1" aria-hidden="true" /> Add level
                     </Button>
                   </>
                 )}

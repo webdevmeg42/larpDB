@@ -140,7 +140,7 @@ export default function BuildsTab({ type, hasLevelingSystem }: BuildsTabProps) {
           aria-disabled={!hasLevelingSystem}
           onClick={e => { if (!hasLevelingSystem) e.preventDefault() }}
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
           New {label}
         </Link>
       </div>
