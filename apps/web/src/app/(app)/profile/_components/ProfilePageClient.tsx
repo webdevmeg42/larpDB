@@ -262,8 +262,12 @@ export function ProfilePageClient() {
           </div>
         </div>
 
-        {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
-        {passwordSuccess && <p className="text-sm text-green-500">Password updated.</p>}
+        <div role="alert" aria-atomic="true" className="min-h-[1.25rem]">
+          {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
+        </div>
+        <div aria-live="polite" aria-atomic="true" className="min-h-[1.25rem]">
+          {passwordSuccess && <p className="text-sm text-success">Password updated.</p>}
+        </div>
 
         <button
           type="submit"

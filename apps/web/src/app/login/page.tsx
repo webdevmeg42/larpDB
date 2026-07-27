@@ -52,9 +52,9 @@ export default function LoginPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
+            <div role="alert" aria-atomic="true" className="min-h-[1.25rem]">
+              {error && <p className="text-sm text-destructive">{error}</p>}
+            </div>
             {isSignUp && (
               <div className="space-y-1">
                 <Label htmlFor="displayName">Username</Label>
