@@ -192,7 +192,7 @@ export function NewCharacterClient({ initialGames, initialSchemas, initialGameId
               No races are available for this Adventure yet. Ask your GM to set them up.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div data-testid="race-select-grid" className="grid grid-cols-2 gap-3">
               {raceSchemas.map(schema => (
                 <button
                   key={schema.id}
@@ -229,7 +229,7 @@ export function NewCharacterClient({ initialGames, initialSchemas, initialGameId
               No classes are available for this Adventure yet. Ask your GM to set them up.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div data-testid="class-select-grid" className="grid grid-cols-2 gap-3">
               {classSchemas.map(schema => (
                 <button
                   key={schema.id}

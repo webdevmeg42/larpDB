@@ -14,14 +14,14 @@ export default async function PostsPage() {
 
   const initialGame = eligible.find(g => g.id === gameIdFromCookie) ?? eligible[0] ?? null
   const initialPosts = initialGame
-    ? await apiServer.get<{ posts: Post[]; total: number }>(`/games/${initialGame.slug}/posts`).catch(() => ({ posts: [] as Post[], total: 0 }))
-    : { posts: [], total: 0 }
+    ? await apiServer.get<{ items: Post[]; total: number }>(`/games/${initialGame.slug}/posts`).catch(() => ({ items: [] as Post[], total: 0 }))
+    : { items: [], total: 0 }
 
   return (
     <AdminPostsClient
       initialGames={eligible}
       initialGameId={initialGame?.id ?? null}
-      initialPosts={initialPosts.posts}
+      initialPosts={initialPosts.items}
     />
   )
 }

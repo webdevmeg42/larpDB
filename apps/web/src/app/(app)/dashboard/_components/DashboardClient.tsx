@@ -37,9 +37,10 @@ interface Props {
   initialFeed: FeedPost[]
   initialTotal: number
   limit: number
+  hasSubscriptions: boolean
 }
 
-export function DashboardClient({ initialFeed, initialTotal, limit: LIMIT }: Props) {
+export function DashboardClient({ initialFeed, initialTotal, limit: LIMIT, hasSubscriptions }: Props) {
   const { user } = useAuth()
   const [feed, setFeed] = useState<FeedPost[]>(initialFeed)
   const [total, setTotal] = useState(initialTotal)
@@ -68,7 +69,9 @@ export function DashboardClient({ initialFeed, initialTotal, limit: LIMIT }: Pro
 
       {feed.length === 0 ? (
         <p className="text-muted-foreground py-12 text-center">
-          You&apos;re not following any Adventures yet.
+          {hasSubscriptions
+            ? 'No posts from your followed Adventures yet.'
+            : "You're not following any Adventures yet."}
         </p>
       ) : (
         <div className="space-y-4">

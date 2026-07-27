@@ -100,7 +100,7 @@ export function CharactersPageClient({ initialData }: { initialData: { games: Ga
       {/* Master / detail panels */}
       <div className="flex gap-4 min-h-[400px]">
         {/* Left panel — Adventure list */}
-        <Card className="w-64 shrink-0 overflow-hidden">
+        <Card data-testid="adventure-list-panel" className="w-64 shrink-0 overflow-hidden">
           <CardContent className="p-0">
             <div className="px-3 py-2 bg-muted text-xs font-semibold text-muted-foreground border-b border-border uppercase tracking-wide">
               Your Adventures

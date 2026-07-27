@@ -7,7 +7,7 @@ import { setGameId } from '@/lib/auth'
 import { AdventurePanel } from '@/components/layout/AdventurePanel'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { formatRelativeDate, type MyGame } from '@plotrunner/shared'
 
 interface Post {
@@ -28,6 +28,8 @@ export function AdminPostsClient({ initialGames, initialGameId, initialPosts }: 
   const [selectedGameId, setSelectedGameId] = useState<string | null>(initialGameId)
   const [posts, setPosts] = useState<Post[]>(initialPosts)
   const [loadingPosts, setLoadingPosts] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const isFirstRender = useRef(true)
 
   useEffect(() => {
@@ -39,8 +41,8 @@ export function AdminPostsClient({ initialGames, initialGameId, initialPosts }: 
     if (!game) return
     let cancelled = false
     setLoadingPosts(true)
-    api.get<{ posts: Post[]; total: number }>(`/games/${game.slug}/posts`)
-      .then(data => { if (!cancelled) setPosts(data.posts) })
+    api.get<{ items: Post[]; total: number }>(`/games/${game.slug}/posts`)
+      .then(data => { if (!cancelled) setPosts(data.items) })
       .catch(() => { if (!cancelled) setPosts([]) })
       .finally(() => { if (!cancelled) setLoadingPosts(false) })
     return () => { cancelled = true }
@@ -49,6 +51,18 @@ export function AdminPostsClient({ initialGames, initialGameId, initialPosts }: 
   function handleSelect(id: string) {
     setSelectedGameId(id)
     setGameId(id)
+    setDeleteTarget(null)
+  }
+
+  async function handleDelete(postId: string) {
+    setDeleting(true)
+    try {
+      await api.delete(`/posts/${postId}`)
+      setPosts(prev => prev.filter(p => p.id !== postId))
+      setDeleteTarget(null)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   if (games.length === 0) {
@@ -109,9 +123,42 @@ export function AdminPostsClient({ initialGames, initialGameId, initialPosts }: 
                 ) : (
                   <ul className="divide-y divide-border">
                     {posts.map(post => (
-                      <li key={post.id} className="px-4 py-3 hover:bg-muted/30">
-                        <p className="text-sm font-medium">{post.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeDate(post.createdAt)}</p>
+                      <li key={post.id} className="px-4 py-3 hover:bg-muted/30 flex items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{post.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeDate(post.createdAt)}</p>
+                        </div>
+                        {deleteTarget === post.id ? (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              data-testid="confirm-delete-post-btn"
+                              size="sm"
+                              variant="destructive"
+                              disabled={deleting}
+                              onClick={() => handleDelete(post.id)}
+                            >
+                              Delete
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={deleting}
+                              onClick={() => setDeleteTarget(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            data-testid="delete-post-btn"
+                            size="sm"
+                            variant="ghost"
+                            className="shrink-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => setDeleteTarget(post.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </li>
                     ))}
                   </ul>
