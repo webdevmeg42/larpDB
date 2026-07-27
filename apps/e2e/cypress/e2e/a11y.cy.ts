@@ -1,10 +1,13 @@
+// Suppress false positive: closed MobileDrawer has cream-on-cream text when offscreen.
+const A11Y_CONTEXT: Parameters<typeof cy.checkA11y>[0] = {
+  exclude: [['[data-testid="mobile-drawer"][data-state="closed"]']],
+}
+
 const A11Y_OPTIONS: Parameters<typeof cy.checkA11y>[1] = {
   runOnly: {
     type: 'tag',
     values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'],
   },
-  // Suppress false positive: closed MobileDrawer has cream-on-cream text when offscreen.
-  exclude: [['[data-testid="mobile-drawer"][data-state="closed"]']],
 }
 
 describe('WCAG 2.1 AA — authenticated routes', () => {
@@ -29,7 +32,7 @@ describe('WCAG 2.1 AA — authenticated routes', () => {
     it(`${name} (${path}) has no WCAG AA violations`, () => {
       cy.visit(path)
       cy.injectAxe()
-      cy.checkA11y(undefined, A11Y_OPTIONS)
+      cy.checkA11y(A11Y_CONTEXT, A11Y_OPTIONS)
     })
   })
 })
@@ -38,7 +41,7 @@ describe('WCAG 2.1 AA — public routes', () => {
   it('Login page has no WCAG AA violations', () => {
     cy.visit('/login')
     cy.injectAxe()
-    cy.checkA11y(undefined, A11Y_OPTIONS)
+    cy.checkA11y(A11Y_CONTEXT, A11Y_OPTIONS)
   })
 
   it('Public adventure page has no WCAG AA violations', () => {
@@ -48,7 +51,7 @@ describe('WCAG 2.1 AA — public routes', () => {
         if (!slug) return cy.log('No public adventures seeded — skipping')
         cy.visit(`/adventures/${slug}`)
         cy.injectAxe()
-        cy.checkA11y(undefined, A11Y_OPTIONS)
+        cy.checkA11y(A11Y_CONTEXT, A11Y_OPTIONS)
       })
   })
 })
