@@ -17,9 +17,9 @@ export function Sidebar() {
   const visibleItems = NAV_ITEMS.filter(item => item.roles.includes(user.role))
 
   return (
-    <div className="hidden md:flex h-full w-56 flex-col border-r bg-background">
-      <div className="flex h-14 items-center border-b px-4">
-        <span className="font-semibold">PlotRunner</span>
+    <div className="hidden md:flex h-full w-56 flex-col border-r border-border bg-[#080f07]">
+      <div className="flex h-14 items-center border-b border-border px-4">
+        <span className="font-heading text-gold">PlotRunner</span>
       </div>
       <nav aria-label="Main navigation" className="flex-1 space-y-1 p-2">
         {visibleItems.map(item => {
@@ -31,10 +31,10 @@ export function Sidebar() {
               href={item.href}
               data-testid={item.testId ?? `nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                  ? 'rounded-r-md border-l-2 border-gold bg-primary/20 text-foreground'
+                  : 'rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground',
               )}
             >
               <Icon className="h-4 w-4" />
@@ -43,7 +43,7 @@ export function Sidebar() {
           )
         })}
         {user.isSysAdmin && (
-          <div className="mt-2 pt-2 border-t">
+          <div className="mt-2 pt-2 border-t border-border">
             <p className="px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Platform Admin
             </p>
@@ -51,10 +51,10 @@ export function Sidebar() {
               href="/sys-admin/logs"
               data-testid="nav-audit-logs"
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors',
                 pathname === '/sys-admin/logs' || pathname.startsWith('/sys-admin/')
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                  ? 'rounded-r-md border-l-2 border-gold bg-primary/20 text-foreground'
+                  : 'rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground',
               )}
             >
               <ScrollText className="h-4 w-4" />
@@ -63,7 +63,7 @@ export function Sidebar() {
           </div>
         )}
       </nav>
-      <div className="border-t p-2">
+      <div className="border-t border-border p-2">
         <div className="px-3 py-2">
           <p className="text-sm font-medium">{user.displayName}</p>
           <p className="text-xs text-muted-foreground capitalize">{user.isSysAdmin ? 'System Admin' : user.role}</p>
