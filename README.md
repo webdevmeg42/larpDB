@@ -137,7 +137,7 @@ pnpm --filter @larpdb/api dev 2>&1 | tee api.log
 
 ## Monitoring
 
-**Error tracking and performance** — [Sentry](https://sentry.io). Create two projects (`larpdb-api` and `larpdb-web`) and set the environment variables listed in `.env.example` in each Railway service. Alert rules (first-seen issue + volume spike → email) are configured in the Sentry dashboard per project.
+**Error tracking and performance** — [Sentry](https://sentry.io). Create two projects (`larpdb-api` and `larpdb-web`). Set env vars per service: API service gets `SENTRY_DSN`; web service gets `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` (the last three are build-time vars for source map uploads). Alert rules (first-seen issue + volume spike → email) are configured in the Sentry dashboard per project.
 
 **Uptime monitoring** — [BetterStack](https://betterstack.com/uptime). Create two monitors in the BetterStack dashboard:
 
