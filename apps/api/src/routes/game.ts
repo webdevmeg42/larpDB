@@ -241,7 +241,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const userId = request.user.sub
 
       const member = await requireOwner(id, userId)
-      if (!member) {
+      if (!member && !request.user.isSysAdmin) {
         request.log.warn({ id, userId }, "non-owner tried to change adventure status")
         return reply.status(403).send({ error: 'Owner role required' })
       }
@@ -271,7 +271,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const userId = request.user.sub
 
       const member = await requireOwner(id, userId)
-      if (!member) {
+      if (!member && !request.user.isSysAdmin) {
         request.log.warn({ id, userId }, "non-owner tried to update adventure")
         return reply.status(403).send({ error: 'Owner role required' })
       }
@@ -327,21 +327,23 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string }
       const userId = request.user.sub
 
-      const [member] = await db
-        .select()
-        .from(gameMembers)
-        .where(
-          and(
-            eq(gameMembers.gameId, id),
-            eq(gameMembers.userId, userId),
-            eq(gameMembers.status, 'active'),
-          ),
-        )
-        .limit(1)
+      if (!request.user.isSysAdmin) {
+        const [member] = await db
+          .select()
+          .from(gameMembers)
+          .where(
+            and(
+              eq(gameMembers.gameId, id),
+              eq(gameMembers.userId, userId),
+              eq(gameMembers.status, 'active'),
+            ),
+          )
+          .limit(1)
 
-      if (!member || member.role !== 'owner') {
-        request.log.warn({ id, userId }, "non-owner tried to delete adventure")
-        return reply.status(403).send({ error: 'Owner role required' })
+        if (!member || member.role !== 'owner') {
+          request.log.warn({ id, userId }, "non-owner tried to delete adventure")
+          return reply.status(403).send({ error: 'Owner role required' })
+        }
       }
 
       await db.transaction(async (tx) => {

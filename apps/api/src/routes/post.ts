@@ -171,27 +171,42 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
     },
   )
 
-  // DELETE /posts/:postId — game-context, owner/gm
+  // DELETE /posts/:postId — sysAdmin can delete any post; owners/GMs can delete within their game
   fastify.delete(
     '/posts/:postId',
-    { preHandler: [fastify.requireGameContext] },
+    { preHandler: [fastify.authenticate] },
     async (request, reply) => {
       const { postId } = request.params as { postId: string }
-      const { role, gameId } = request.gameContext
+      const userId = request.user.sub
 
-      if (!gmOrOwner(role)) {
-        request.log.warn({ userId: request.gameContext.userId, role }, "non-staff tried to delete a post")
+      if (request.user.isSysAdmin) {
+        const [post] = await db.select().from(posts).where(eq(posts.id, postId)).limit(1)
+        if (!post) return reply.status(404).send({ error: 'Post not found' })
+        await db.delete(posts).where(eq(posts.id, postId))
+        request.log.info({ id: postId, userId }, 'post deleted by sysAdmin')
+        return reply.status(204).send()
+      }
+
+      const gameId = request.headers['x-game-id'] as string | undefined
+      if (!gameId) return reply.status(400).send({ error: 'X-Game-Id header required' })
+
+      const [member] = await db
+        .select({ role: gameMembers.role })
+        .from(gameMembers)
+        .where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId), eq(gameMembers.status, 'active')))
+        .limit(1)
+
+      if (!member) return reply.status(403).send({ error: 'Not a member of this game' })
+      if (!gmOrOwner(member.role)) {
+        request.log.warn({ userId, role: member.role }, 'non-staff tried to delete a post')
         return reply.status(403).send({ error: 'Owner or GM role required' })
       }
 
       const [post] = await db.select().from(posts).where(and(eq(posts.id, postId), eq(posts.gameId, gameId))).limit(1)
-      if (!post) {
-        request.log.warn({ postId, gameId }, "post not found")
-        return reply.status(404).send({ error: 'Post not found' })
-      }
+      if (!post) return reply.status(404).send({ error: 'Post not found' })
 
       await db.delete(posts).where(eq(posts.id, postId))
-      request.log.info({ id: postId, gameId }, "post deleted")
+      request.log.info({ id: postId, gameId }, 'post deleted')
       return reply.status(204).send()
     },
   )
