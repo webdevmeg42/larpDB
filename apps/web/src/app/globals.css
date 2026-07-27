@@ -22,9 +22,10 @@
     --destructive-foreground: 54 97% 90%;
     --border: 138 50% 15%;
     --input: 138 50% 11%;
-    --ring: 142 72% 29%;
+    --ring: 43 65% 52%;
     --radius: 0.5rem;
-    --gold: 43 65% 47%;
+    --gold: 43 65% 52%;
+    --success: 142 70% 48%;
   }
 }
 

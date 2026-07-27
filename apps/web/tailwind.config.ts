@@ -46,6 +46,9 @@ const config: Config = {
         gold: {
           DEFAULT: 'hsl(var(--gold))',
         },
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',
