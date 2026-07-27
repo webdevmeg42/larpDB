@@ -22,10 +22,12 @@
     --destructive-foreground: 54 97% 90%;
     --border: 138 50% 15%;
     --input: 138 50% 11%;
+    /* Focus ring intentionally matches --gold for brand consistency */
     --ring: 43 65% 52%;
     --radius: 0.5rem;
     --gold: 43 65% 52%;
     --success: 142 70% 48%;
+    --success-foreground: 54 97% 90%;
   }
 }
 
