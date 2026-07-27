@@ -8,6 +8,7 @@ Cypress.Commands.add('loginOwner', () => {
     cy.request('GET', `${Cypress.env('API_URL')}/my-games`).then((res) => {
       const first = res.body[0]
       if (first) cy.setCookie('gameId', first.id, { path: '/', sameSite: 'lax' })
+      cy.visit('/dashboard')
     })
   })
 })
@@ -20,6 +21,7 @@ Cypress.Commands.add('loginPlayer', () => {
     cy.request('GET', `${Cypress.env('API_URL')}/my-games`).then((res) => {
       const first = res.body[0]
       if (first) cy.setCookie('gameId', first.id, { path: '/', sameSite: 'lax' })
+      cy.visit('/dashboard')
     })
   })
 })

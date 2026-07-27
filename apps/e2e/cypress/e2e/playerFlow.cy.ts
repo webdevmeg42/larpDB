@@ -35,11 +35,12 @@ describe('Player role — restricted UI not accessible', () => {
     })
   })
 
-  context('Rulebook page — Edit Rulebook is not shown', () => {
-    it('shows View Rulebook but not Edit Rulebook', () => {
+  context('Rulebook page — editor controls are hidden for players', () => {
+    it('shows the rulebook in read-only mode', () => {
       cy.visit('/rulebook')
-      cy.contains('Edit Rulebook').should('not.exist')
-      cy.contains('View Rulebook').should('exist')
+      cy.url().should('include', '/rulebook')
+      cy.get('h1').should('contain', 'Rulebook')
+      cy.contains('+ Add chapter').should('not.exist')
     })
   })
 

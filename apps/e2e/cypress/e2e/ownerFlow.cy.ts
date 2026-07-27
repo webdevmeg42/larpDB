@@ -126,7 +126,9 @@ describe('Owner Flow', () => {
   })
 
   it('Owner cannot build an incorrect Adventure', () => {
+    cy.intercept('GET', '/adventures*').as('advBuilderRsc')
     cy.get(sel.navAdvBuilder).click()
+    cy.wait('@advBuilderRsc', { timeout: 10000 })
     cy.contains('Build New Adventure').click()
 
     cy.get(sel.visibilityPrivateBtn).click()
@@ -160,7 +162,9 @@ describe('Owner Flow', () => {
     cy.get(sel.levelingError)
       .scrollIntoView().should('be.visible').and('contain', 'Please select a leveling system')
 
-    cy.get(sel.tabRulebook).click()
+    // Rulebook chapter editor is at /rulebook (admin view), not the public viewer
+    cy.visit('/rulebook')
+    cy.contains(sel.adventurePanelItem, adventureName).click()
     cy.contains('+ Add chapter').click()
     cy.contains('button', 'Save chapter').click()
     cy.get(sel.chapterTitleError)
@@ -202,7 +206,12 @@ describe('Owner Flow', () => {
     cy.get(sel.saveChangesBtn).should('not.be.disabled')
 
     cy.get(sel.tabRaceBuilds).click()
+    // Wait for config reload to propagate (leveling system now set → link becomes enabled)
+    cy.get(sel.newRaceLink).should('not.have.attr', 'aria-disabled', 'true')
+    // Intercept before click so we can wait for the async template fetch after navigation
+    cy.intercept('GET', '**/schema-templates*').as('schemaTemplates')
     cy.get(sel.newRaceLink).click()
+    cy.wait('@schemaTemplates', { timeout: 10000 })
 
     cy.get(sel.templateCardFantasyAdventure).click()
     cy.get(sel.schemaNameError)
@@ -218,7 +227,9 @@ describe('Owner Flow', () => {
     cy.schemaBuilderAddField('palette-btn-features', 'Features')
     cy.schemaBuilderAddField('palette-btn-influences', 'Influences')
     cy.schemaBuilderAddField('palette-btn-languages', 'Languages')
+    cy.intercept('GET', '/admin/schemas/*').as('schemaEditRsc')
     cy.schemaBuilderSave()
+    cy.wait('@schemaEditRsc', { timeout: 10000 })
 
     // schema-activate-btn only renders on the edit page (schemaId is a real UUID)
     // — this is the navigation guard; Cypress retries until it appears
@@ -235,13 +246,13 @@ describe('Owner Flow', () => {
     cy.schemaBuilderSave('All fields must have a label before saving.')
 
     // Label all 7 unlabeled fields, then one passing save (PATCH)
-    cy.schemaBuilderLabelField(`${adventureName} testRace`)
-    cy.schemaBuilderLabelField(`${adventureName} testRace`)
-    cy.schemaBuilderLabelField(`${adventureName} testRace`)
-    cy.schemaBuilderLabelField(`${adventureName} testRace`)
-    cy.schemaBuilderLabelField(`${adventureName} testRace`)
-    cy.schemaBuilderLabelField(`${adventureName} testRace`)
-    cy.schemaBuilderLabelField(`${adventureName} testRace`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace 1`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace 2`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace 3`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace 4`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace 5`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace 6`)
+    cy.schemaBuilderLabelField(`${adventureName} testRace 7`)
     cy.schemaBuilderSave()
 
     cy.url().should('include', '/admin/schemas')
@@ -268,15 +279,15 @@ describe('Owner Flow', () => {
     cy.get(sel.startBuildingBtn).click()
 
     // Add common fields — labels auto-populate on click, then one save (POST)
-    cy.schemaBuilderAddField('palette-btn-hitpoints', 'Hit Points')
+    // Note: Warrior template already includes Hit Points, so skip it to avoid duplicate label
     cy.schemaBuilderAddField('palette-btn-attacks', 'Attacks')
     cy.schemaBuilderAddField('palette-btn-spells', 'Spells')
     cy.schemaBuilderAddField('palette-btn-features', 'Features')
     cy.schemaBuilderSave()
+    cy.url({ timeout: 10000 }).should('match', /\/admin\/schemas\/[a-f0-9-]{36}/)
 
     // schema-activate-btn only renders on the edit page (schemaId is a real UUID)
-    // — this is the navigation guard; Cypress retries until it appears
-    cy.get(sel.schemaActivateBtn)
+    cy.get(sel.schemaActivateBtn, { timeout: 10000 })
 
     // Add all OTHER fields unlabeled, then one save to trigger validation error (PATCH)
     cy.schemaBuilderAddField('palette-btn-statblock')
@@ -290,14 +301,14 @@ describe('Owner Flow', () => {
     cy.schemaBuilderSave('All fields must have a label before saving.')
 
     // Label all 8 unlabeled fields, then one passing save (PATCH)
-    cy.schemaBuilderLabelField(`${adventureName} testClass`)
-    cy.schemaBuilderLabelField(`${adventureName} testClass`)
-    cy.schemaBuilderLabelField(`${adventureName} testClass`)
-    cy.schemaBuilderLabelField(`${adventureName} testClass`)
-    cy.schemaBuilderLabelField(`${adventureName} testClass`)
-    cy.schemaBuilderLabelField(`${adventureName} testClass`)
-    cy.schemaBuilderLabelField(`${adventureName} testClass`)
-    cy.schemaBuilderLabelField(`${adventureName} testClass`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass 1`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass 2`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass 3`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass 4`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass 5`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass 6`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass 7`)
+    cy.schemaBuilderLabelField(`${adventureName} testClass 8`)
     cy.schemaBuilderSave()
 
     cy.url().should('include', '/admin/schemas')
@@ -318,24 +329,35 @@ describe('Owner Flow', () => {
     cy.get(sel.enableAdvBtn).first().should('contain', 'Disable')
 
     // Public adventure page is accessible once active
+    cy.intercept('GET', `**/games/${adventureSlug}/public`).as('publicPage')
     cy.visit(`/adventures/${adventureSlug}`)
+    cy.wait('@publicPage', { timeout: 10000 })
     cy.contains(adventureName)
+    // Intercept before the edit visit so we can wait for BuilderPageClient's
+    // setCurrentGameAction() server action to complete — it calls revalidatePath('/', 'layout')
+    // and if still in-flight during a soft navigation, it can cancel it.
+    cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
     cy.visit(adventureEditUrl)
+    cy.wait('@builderContextSet', { timeout: 10000 })
 
     // Navigate to My Characters and locate the Adventure
+    cy.intercept('GET', '/characters*').as('charactersRsc')
     cy.get(sel.navMyCharacters).click()
-    cy.get(sel.charactersSearchInput).type(adventureName)
-    cy.contains('button', adventureName).first().click()
+    cy.wait('@charactersRsc', { timeout: 10000 })
+    cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
+    cy.intercept('GET', '/characters/new*').as('newCharacterRsc')
     cy.get(sel.newCharacterBtn).first().click()
+    cy.wait('@newCharacterRsc', { timeout: 10000 })
 
     // Race step — Continue is disabled until a race is selected
     cy.get(sel.continueBtn).should('be.disabled')
-    cy.contains('button', adventureName).first().click()
+    cy.get('[data-testid="race-select-grid"]').contains('button', adventureName).click()
     cy.get(sel.continueBtn).click()
 
-    // Class step — Continue is disabled until a class is selected
+    // Class step — wait for class grid before checking button state
+    cy.get('[data-testid="class-select-grid"]', { timeout: 10000 }).should('be.visible')
     cy.get(sel.continueBtn).should('be.disabled')
-    cy.contains('button', `Warrior ${adventureName}`).first().click()
+    cy.get('[data-testid="class-select-grid"]').contains('button', `Warrior ${adventureName}`).click()
     cy.get(sel.continueBtn).click()
 
     // Character form: validate name required before submitting
@@ -345,13 +367,14 @@ describe('Owner Flow', () => {
     // Fill in name and successfully create the character
     cy.get(sel.characterNameInput).type(characterName)
     cy.get(sel.createCharacterBtn).click()
-    cy.url().should('match', /\/characters\/[a-f0-9-]{36}/)
+    cy.url({ timeout: 10000 }).should('match', /\/characters\/[a-f0-9-]{36}/)
   })
 
   it('Owner can create an event', () => {
+    cy.intercept('GET', '/events*').as('eventsRsc')
     cy.get(sel.navEvents).click()
-    cy.get(sel.eventsSearchInput).type(adventureName)
-    cy.contains('button', adventureName).first().click()
+    cy.wait('@eventsRsc', { timeout: 10000 })
+    cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
     cy.get(sel.newEventBtn).first().click()
 
     cy.get(sel.createEventBtn).should('be.disabled')
@@ -367,9 +390,10 @@ describe('Owner Flow', () => {
 
   describe('Events calendar', () => {
     it('Owner can toggle calendar view on and off', () => {
+      cy.intercept('GET', '/events*').as('eventsRsc')
       cy.get(sel.navEvents).click()
-      cy.get(sel.eventsSearchInput).type(adventureName)
-      cy.contains('button', adventureName).first().click()
+      cy.wait('@eventsRsc', { timeout: 10000 })
+      cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
       cy.get(sel.calendarToggle).click()
       cy.get('[data-testid="event-calendar"]').should('be.visible')
       cy.get(sel.calendarToggle).click()
@@ -377,9 +401,10 @@ describe('Owner Flow', () => {
     })
 
     it('Owner sees event bar and popover in calendar view', () => {
-      cy.get(sel.navEvents).click()
-      cy.get(sel.eventsSearchInput).type(adventureName)
-      cy.contains('button', adventureName).first().click()
+      cy.intercept('GET', '/events*').as('eventsRsc')
+      cy.visit('/events')
+      cy.wait('@eventsRsc', { timeout: 10000 })
+      cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
       cy.get(sel.calendarToggle).click()
       cy.get('[data-testid="event-calendar"]').should('be.visible')
       cy.get('body').then($body => {
@@ -395,6 +420,8 @@ describe('Owner Flow', () => {
   it('Owner can save a draft and resume it', () => {
     const draftTitle = `Draft ${Date.now()}`
 
+    cy.clearLocalStorage('plotrunner_game_id')
+    cy.clearCookie('gameId')
     cy.visit('/admin/posts/new')
     cy.get('#adventure').select(adventureName)
     cy.get('#title').type(draftTitle)
@@ -420,6 +447,7 @@ describe('Owner Flow', () => {
 
     // Create a draft
     cy.clearLocalStorage('plotrunner_game_id')
+    cy.clearCookie('gameId')
     cy.visit('/admin/posts/new')
     cy.get('#adventure').select(adventureName)
     cy.get('#title').type(draftTitle)
@@ -439,6 +467,13 @@ describe('Owner Flow', () => {
     // Draft no longer appears on revisit
     cy.visit('/admin/posts/new')
     cy.contains(draftTitle).should('not.exist')
+
+    // Cleanup: delete the published post
+    cy.visit('/admin/posts')
+    cy.contains(sel.adventurePanelItem, adventureName, { timeout: 10000 }).click()
+    cy.contains('li', draftTitle, { timeout: 10000 }).find('[data-testid="delete-post-btn"]').click()
+    cy.get('[data-testid="confirm-delete-post-btn"]').click()
+    cy.contains('li', draftTitle).should('not.exist')
   })
 
   it('Owner cannot publish a post without required fields', () => {
@@ -473,7 +508,9 @@ describe('Owner Flow', () => {
       cy.contains('button', adventureName, { timeout: 10000 }).click()
 
       // Navigate to Events — same adventure should be pre-selected
+      cy.intercept('GET', '/events*').as('eventsRsc')
       cy.get(sel.navEvents).click()
+      cy.wait('@eventsRsc', { timeout: 10000 })
       cy.url().should('include', '/events')
 
       // The adventure should be highlighted (bg-muted class indicates selection)
@@ -483,6 +520,11 @@ describe('Owner Flow', () => {
 
     it('Posts page shows adventures and navigates to compose with no dropdown', () => {
       cy.loginOwner()
+      // Re-enable the adventure disabled by 'Disabled adventure disappears' test
+      cy.visit('/adventures')
+      cy.get(sel.gamesSearchInput).clear().type(adventureName)
+      cy.get(sel.enableAdvBtn).first().click()
+      cy.get(sel.enableAdvBtn).first().should('contain', 'Disable')
       cy.visit('/admin/posts')
 
       // Left panel shows adventures
@@ -550,6 +592,13 @@ describe('Owner Flow', () => {
     cy.visit('/dashboard')
     cy.contains('h1', 'Feed')
     cy.contains(postTitle).should('be.visible')
+
+    // Cleanup: delete the test post
+    cy.visit('/admin/posts')
+    cy.contains(sel.adventurePanelItem, adventureName, { timeout: 10000 }).click()
+    cy.contains('li', postTitle, { timeout: 10000 }).find('[data-testid="delete-post-btn"]').click()
+    cy.get('[data-testid="confirm-delete-post-btn"]').click()
+    cy.contains('li', postTitle).should('not.exist')
   })
 
   it('Owner cannot create an adventure with a duplicate name', () => {
@@ -562,7 +611,9 @@ describe('Owner Flow', () => {
   })
 
   it('Owner can view and edit the Rulebook via the navbar', () => {
+    cy.intercept('GET', '/rulebook*').as('rulebookRsc')
     cy.get(sel.navRulebook).click()
+    cy.wait('@rulebookRsc', { timeout: 10000 })
     cy.contains('h1', 'Rulebook')
 
     // Old search+table UI is gone
@@ -593,12 +644,14 @@ describe('Owner Flow', () => {
   })
 
   it('Dashboard shows feed heading, empty state, and Discover section', () => {
+    cy.intercept('GET', /\/games(\?|$)/).as('dashGames')
     cy.visit('/dashboard')
+    cy.wait('@dashGames', { timeout: 10000 })
     cy.contains('h1', 'Feed')
     // cy.contains("You're not following any Adventures yet.")
     cy.contains('h2', 'Discover Adventures')
     cy.get(sel.discoverGameRow).should('have.length.gte', 1)
-    cy.contains(sel.discoverGameRow, adventureName).should('be.visible')
+    cy.contains(sel.discoverGameRow, adventureName).scrollIntoView().should('be.visible')
     cy.contains('a', 'Browse all →').should('have.attr', 'href', '/browse')
   })
 
@@ -614,7 +667,9 @@ describe('Owner Flow', () => {
   })
 
   it('Browse page shows adventures, search filter, and join mode filter', () => {
+    cy.intercept('GET', /\/games(\?|$)/).as('browseGames')
     cy.visit('/browse')
+    cy.wait('@browseGames', { timeout: 10000 })
     cy.contains('h1', 'Browse Adventures')
     cy.contains('a', 'My feed →').should('have.attr', 'href', '/dashboard')
 
@@ -642,6 +697,6 @@ describe('Owner Flow', () => {
     cy.get(sel.gamesSearchInput).clear().type(adventureName)
     cy.contains(adventureName).should('be.visible')
     cy.get(sel.deleteAdvBtn).first().click()
-    cy.get(sel.confirmDeleteBtn).click()
+    cy.get(sel.confirmDeleteBtn, { timeout: 10000 }).should('be.visible').click()
   })
 })
