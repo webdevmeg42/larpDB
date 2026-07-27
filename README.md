@@ -117,6 +117,37 @@ Restart the API dev server after rebuilding.
 
 Uploaded files (game logo, banner) are stored on local disk at `apps/api/uploads/`. This is intentional for local development — switch to S3 or equivalent object storage before deploying to production.
 
+## Logs
+
+API and web logs stream to stdout in their respective dev terminals. To follow them:
+
+```bash
+# API logs (Fastify/pino)
+pnpm --filter @larpdb/api dev
+
+# Web logs (Next.js — RSC errors, server action errors)
+pnpm --filter @larpdb/web dev
+```
+
+To persist API logs to a file:
+
+```bash
+pnpm --filter @larpdb/api dev 2>&1 | tee api.log
+```
+
+## Monitoring
+
+**Error tracking and performance** — [Sentry](https://sentry.io). Create two projects (`larpdb-api` and `larpdb-web`). Set env vars per service: API service gets `SENTRY_DSN`; web service gets `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` (the last three are build-time vars for source map uploads). Alert rules (first-seen issue + volume spike → email) are configured in the Sentry dashboard per project.
+
+**Uptime monitoring** — [BetterStack](https://betterstack.com/uptime). Create two monitors in the BetterStack dashboard:
+
+| Monitor | URL | Interval | Alert after |
+|---------|-----|----------|-------------|
+| API | `https://<railway-api-domain>/health` | 30s | 2 consecutive failures |
+| Web | `https://<railway-web-domain>/` | 30s | 2 consecutive failures |
+
+Set alert contact to `webdevmeg@gmail.com` on both. No SDK or code changes are needed for BetterStack — it's a pure HTTP check against the health endpoint built in this feature.
+
 ## Tests
 
 ```bash

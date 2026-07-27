@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { AdventurePublicShell } from '../_components/AdventurePublicShell'
+import { sanitizeRulebookHtml } from '@/lib/sanitize'
 import type { RulebookChapter } from '@plotrunner/shared'
 
 interface RulebookData {
@@ -107,7 +108,7 @@ export default function PublicRulebookPage() {
             <h2 className="text-xl font-bold mb-4">{activeChapter.order + 1}. {activeChapter.title}</h2>
             <div
               className="prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: activeChapter.content }}
+              dangerouslySetInnerHTML={{ __html: sanitizeRulebookHtml(activeChapter.content) }}
             />
           </div>
         )}

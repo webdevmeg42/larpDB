@@ -1,21 +1,20 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import bcrypt from 'bcrypt'
 import { pipeline } from 'stream/promises'
 import fs from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
 import { db } from '../db/index.js'
-import { users, gameMembers } from '../db/schema.js'
+import { users } from '../db/schema.js'
 import { UpdateProfileInput, ChangePasswordInput } from '@plotrunner/shared'
 import { UPLOADS_DIR } from './upload.js'
+import { highestRole } from './auth.js'
+import { stripPassword } from '../lib/user.js'
+import { IMAGE_MIME_TYPES, IMAGE_MIME_TO_EXT } from '../lib/mimeTypes.js'
 
-const ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-])
-const MIME_TO_EXT: Record<string, string> = {
-  'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp',
-}
+const ALLOWED_MIME_TYPES = new Set(IMAGE_MIME_TYPES)
+const MIME_TO_EXT = IMAGE_MIME_TO_EXT
 
 export const profileRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
@@ -24,8 +23,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const [user] = await db.select().from(users).where(eq(users.id, request.user.sub)).limit(1)
       if (!user) return reply.status(404).send({ error: 'User not found' })
-      const { passwordHash: _, ...safeUser } = user
-      return reply.send(safeUser)
+      return reply.send(stripPassword(user))
     },
   )
 
@@ -68,16 +66,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
       }
       if (!updated) return reply.status(404).send({ error: 'User not found' })
 
-      const { passwordHash: _, ...safeUser } = updated
-
-      const ROLE_ORDER = { owner: 3, gm: 2, player: 1 } as const
-      const memberships = await db
-        .select({ role: gameMembers.role })
-        .from(gameMembers)
-        .where(and(eq(gameMembers.userId, userId), eq(gameMembers.status, 'active')))
-      const role = memberships.reduce<'owner' | 'gm' | 'player'>((best, { role: r }) => {
-        return (ROLE_ORDER[r] ?? 0) > ROLE_ORDER[best] ? r : best
-      }, 'player')
+      const role = await highestRole(userId)
 
       const token = fastify.jwt.sign({
         sub: updated.id,
@@ -85,10 +74,17 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         displayName: updated.displayName,
         isSysAdmin: updated.isSysAdmin,
         role,
+      }, { expiresIn: '7d' })
+      reply.setCookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7,
       })
 
       request.log.info({ userId }, "profile updated")
-      return reply.send({ user: safeUser, token })
+      return reply.send({ user: stripPassword(updated) })
     },
   )
 
@@ -139,8 +135,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         await fs.promises.unlink(oldPath).catch(() => {})
       }
 
-      const { passwordHash: _, ...safeUser } = updated
-      return reply.send(safeUser)
+      return reply.send(stripPassword(updated))
     },
   )
 
@@ -155,17 +150,18 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [user] = await db.select().from(users).where(eq(users.id, request.user.sub)).limit(1)
       if (!user) return reply.status(404).send({ error: 'User not found' })
+      const userId = user.id
 
       const valid = await bcrypt.compare(result.data.currentPassword, user.passwordHash)
       if (!valid) {
-        request.log.warn({ userId: user.id }, "password change failed — current password incorrect")
+        request.log.warn({ userId }, "password change failed — current password incorrect")
         return reply.status(401).send({ error: 'Current password is incorrect' })
       }
 
       const passwordHash = await bcrypt.hash(result.data.newPassword, 12)
-      await db.update(users).set({ passwordHash }).where(eq(users.id, user.id))
+      await db.update(users).set({ passwordHash }).where(eq(users.id, userId))
 
-      request.log.info({ userId: user.id }, "password changed")
+      request.log.info({ userId }, "password changed")
       return reply.status(204).send()
     },
   )

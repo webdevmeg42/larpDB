@@ -18,51 +18,9 @@ import {
   npcs,
   plots,
 } from '../db/schema.js'
-import { CreateGameInput, UpdateSiteConfigInput, UpdateGameStatusInput } from '@plotrunner/shared'
+import { CreateGameInput, UpdateSiteConfigInput, UpdateGameStatusInput, generateSlug } from '@plotrunner/shared'
 import { buildPatch } from '../lib/roles.js'
-
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 60)
-}
-
-async function fetchPublicGameCodex(slug: string) {
-  const [row] = await db
-    .select({ codex: siteConfig.codex })
-    .from(game)
-    .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
-    .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
-    .limit(1)
-  return row ?? null
-}
-
-async function fetchPublicSchemas(slug: string, type: 'race' | 'class') {
-  const rows = await db
-    .select({
-      id: characterSchemas.id,
-      name: characterSchemas.name,
-      type: characterSchemas.type,
-      fields: characterSchemas.fields,
-      gameId: characterSchemas.gameId,
-    })
-    .from(characterSchemas)
-    .innerJoin(game, eq(game.id, characterSchemas.gameId))
-    .where(
-      and(
-        eq(game.slug, slug),
-        eq(game.isPublic, true),
-        eq(game.status, 'active'),
-        eq(characterSchemas.isActive, true),
-        eq(characterSchemas.type, type),
-      ),
-    )
-  return rows.length > 0 ? rows : null
-}
+import { parsePagination } from '../lib/pagination.js'
 
 // No max-attempts cap here — after the first DB check finds a free slug, collisions
 // on subsequent attempts would require an exact match including the numeric suffix,
@@ -79,11 +37,28 @@ async function uniqueSlug(base: string): Promise<string> {
 
 const ERR_INVALID_SLUG = 'Adventure name must contain at least one letter or number'
 
+async function requireOwner(gameId: string, userId: string) {
+  const [member] = await db
+    .select()
+    .from(gameMembers)
+    .where(
+      and(
+        eq(gameMembers.gameId, gameId),
+        eq(gameMembers.userId, userId),
+        eq(gameMembers.status, 'active'),
+        eq(gameMembers.role, 'owner'),
+      ),
+    )
+    .limit(1)
+  return member?.role === 'owner' ? member : null
+}
+
 export const gameRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/games', async (request, reply) => {
-    const { limit = '100', offset = '0' } = request.query as { limit?: string; offset?: string }
-    const limitN = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200)
-    const offsetN = Math.max(parseInt(offset, 10) || 0, 0)
+    const { limit: limitN, offset: offsetN } = parsePagination(
+      request.query as { limit?: string; offset?: string },
+      { limit: 100, maxLimit: 200 },
+    )
 
     const filter = and(eq(game.isPublic, true), eq(game.status, 'active'))
 
@@ -198,7 +173,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const baseSlug = generateSlug(result.data.name)
 
       if (!baseSlug) {
-        request.log.warn({ name: result.data.name }, "adventure name produces an empty slug, rejecting")
+        request.log.warn({ name: result.data.name }, "adventure rejected — name produces an empty slug")
         return reply.status(400).send({ error: ERR_INVALID_SLUG })
       }
 
@@ -265,19 +240,8 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string }
       const userId = request.user.sub
 
-      const [member] = await db
-        .select()
-        .from(gameMembers)
-        .where(
-          and(
-            eq(gameMembers.gameId, id),
-            eq(gameMembers.userId, userId),
-            eq(gameMembers.status, 'active'),
-          ),
-        )
-        .limit(1)
-
-      if (!member || member.role !== 'owner') {
+      const member = await requireOwner(id, userId)
+      if (!member && !request.user.isSysAdmin) {
         request.log.warn({ id, userId }, "non-owner tried to change adventure status")
         return reply.status(403).send({ error: 'Owner role required' })
       }
@@ -306,19 +270,8 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string }
       const userId = request.user.sub
 
-      const [member] = await db
-        .select()
-        .from(gameMembers)
-        .where(
-          and(
-            eq(gameMembers.gameId, id),
-            eq(gameMembers.userId, userId),
-            eq(gameMembers.status, 'active'),
-          ),
-        )
-        .limit(1)
-
-      if (!member || member.role !== 'owner') {
+      const member = await requireOwner(id, userId)
+      if (!member && !request.user.isSysAdmin) {
         request.log.warn({ id, userId }, "non-owner tried to update adventure")
         return reply.status(403).send({ error: 'Owner role required' })
       }
@@ -352,14 +305,17 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       } catch (err: unknown) {
         const pgErr = err as { code?: string; constraint?: string }
         if (pgErr.code === '23505' && pgErr.constraint === 'game_name_lower_idx') {
-          request.log.warn({ id, name: result.data.name }, "patch rejected — adventure name already taken")
+          request.log.warn({ id, name: result.data.name }, "adventure update rejected — name already taken")
           return reply.status(400).send({ error: 'Adventure name already taken' })
         }
         throw err
       }
 
-      if (!updated) return reply.status(404).send({ error: 'Game not found' })
-      request.log.info({ id, ...patch }, "adventure updated")
+      if (!updated) {
+        request.log.warn({ id, userId }, "adventure not found")
+        return reply.status(404).send({ error: 'Game not found' })
+      }
+      request.log.info({ id, userId }, "adventure updated")
       return reply.send(updated)
     },
   )
@@ -371,21 +327,23 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
       const { id } = request.params as { id: string }
       const userId = request.user.sub
 
-      const [member] = await db
-        .select()
-        .from(gameMembers)
-        .where(
-          and(
-            eq(gameMembers.gameId, id),
-            eq(gameMembers.userId, userId),
-            eq(gameMembers.status, 'active'),
-          ),
-        )
-        .limit(1)
+      if (!request.user.isSysAdmin) {
+        const [member] = await db
+          .select()
+          .from(gameMembers)
+          .where(
+            and(
+              eq(gameMembers.gameId, id),
+              eq(gameMembers.userId, userId),
+              eq(gameMembers.status, 'active'),
+            ),
+          )
+          .limit(1)
 
-      if (!member || member.role !== 'owner') {
-        request.log.warn({ id, userId }, "non-owner tried to delete adventure")
-        return reply.status(403).send({ error: 'Owner role required' })
+        if (!member || member.role !== 'owner') {
+          request.log.warn({ id, userId }, "non-owner tried to delete adventure")
+          return reply.status(403).send({ error: 'Owner role required' })
+        }
       }
 
       await db.transaction(async (tx) => {
@@ -412,7 +370,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         await tx.delete(game).where(eq(game.id, id))
       })
 
-      request.log.info({ id }, "adventure and all its data deleted")
+      request.log.info({ id, userId }, "adventure deleted")
       return reply.status(204).send()
     },
   )
@@ -492,209 +450,4 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
     },
   )
 
-  fastify.get<{ Params: { slug: string } }>(
-    '/games/:slug/public',
-    async (request, reply) => {
-      const { slug } = request.params
-      const [row] = await db
-        .select({
-          id: game.id,
-          name: game.name,
-          slug: game.slug,
-          joinMode: game.joinMode,
-          status: game.status,
-          siteTitle: siteConfig.siteTitle,
-          tagline: siteConfig.tagline,
-          logoUrl: siteConfig.logoUrl,
-          bannerUrl: siteConfig.bannerUrl,
-          welcomeMessage: siteConfig.welcomeMessage,
-          showDirectory: siteConfig.showDirectory,
-          codex: siteConfig.codex,
-          colorPrimary: siteConfig.colorPrimary,
-          colorSecondary: siteConfig.colorSecondary,
-          colorBackground: siteConfig.colorBackground,
-          colorText: siteConfig.colorText,
-          colorAccent: siteConfig.colorAccent,
-          fontHeading: siteConfig.fontHeading,
-          fontBody: siteConfig.fontBody,
-        })
-        .from(game)
-        .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
-        .limit(1)
-
-      if (!row) return reply.status(404).send({ error: 'Adventure not found' })
-
-      const codexData = row.codex ?? {}
-      const socialKeys = [
-        'socialFacebook', 'socialInstagram', 'socialSnapchat', 'socialTikTok',
-        'socialBluesky', 'socialSubstack', 'socialTwitter', 'socialDiscord',
-      ] as const
-
-      const socials: Record<string, string | undefined> = {}
-      for (const key of socialKeys) {
-        const val = (codexData as Record<string, unknown>)[key]
-        if (typeof val === 'string' && val) socials[key] = val
-      }
-
-      const additionalWebsites = Array.isArray((codexData as Record<string, unknown>).additionalWebsites)
-        ? (codexData as Record<string, unknown>).additionalWebsites
-        : undefined
-
-      return reply.send({
-        id: row.id,
-        name: row.name,
-        slug: row.slug,
-        joinMode: row.joinMode,
-        status: row.status,
-        siteTitle: row.siteTitle ?? row.name,
-        tagline: row.tagline ?? null,
-        logoUrl: row.logoUrl ?? null,
-        bannerUrl: row.bannerUrl ?? null,
-        welcomeMessage: row.welcomeMessage ?? null,
-        showDirectory: row.showDirectory ?? false,
-        colorPrimary: row.colorPrimary ?? '#6366f1',
-        colorSecondary: row.colorSecondary ?? '#a78bfa',
-        colorBackground: row.colorBackground ?? '#0f0f1a',
-        colorText: row.colorText ?? '#ffffff',
-        colorAccent: row.colorAccent ?? '#f59e0b',
-        fontHeading: row.fontHeading ?? 'Inter',
-        fontBody: row.fontBody ?? 'Inter',
-        ...socials,
-        ...(additionalWebsites ? { additionalWebsites } : {}),
-      })
-    },
-  )
-
-  fastify.get<{ Params: { slug: string } }>(
-    '/games/:slug/codex',
-    async (request, reply) => {
-      const row = await fetchPublicGameCodex(request.params.slug)
-      if (!row) return reply.status(404).send({ error: 'Adventure not found' })
-      return reply.send(row.codex ?? {})
-    },
-  )
-
-  fastify.get<{ Params: { slug: string } }>(
-    '/games/:slug/rulebook',
-    async (request, reply) => {
-      const row = await fetchPublicGameCodex(request.params.slug)
-      if (!row) return reply.status(404).send({ error: 'Adventure not found' })
-      const codex = row.codex ?? {}
-      return reply.send({
-        rulebookLink: (codex as Record<string, unknown>).rulebookLink ?? null,
-        chapters: (codex as Record<string, unknown>).rulebook
-          ? ((codex as Record<string, unknown>).rulebook as { chapters: unknown[] }).chapters
-          : [],
-      })
-    },
-  )
-
-  fastify.get<{ Params: { slug: string } }>(
-    '/games/:slug/store',
-    async (request, reply) => {
-      const { slug } = request.params
-      const [gameRow] = await db
-        .select({ id: game.id, currencyName: siteConfig.currencyName })
-        .from(game)
-        .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
-        .limit(1)
-
-      if (!gameRow) return reply.status(404).send({ error: 'Adventure not found' })
-
-      const eventRows = await db
-        .select({
-          eventId: events.id,
-          eventTitle: events.title,
-          startAt: events.startAt,
-          itemId: storeItems.id,
-          itemName: storeItems.name,
-          itemDescription: storeItems.description,
-          itemPrice: storeItems.price,
-          itemIsAvailable: storeItems.isAvailable,
-        })
-        .from(events)
-        .innerJoin(storeItems, eq(storeItems.eventId, events.id))
-        .where(and(eq(events.gameId, gameRow.id), eq(events.status, 'published')))
-        .orderBy(events.startAt)
-
-      const eventMap = new Map<string, {
-        id: string
-        title: string
-        startDate: string | null
-        items: { id: string; name: string; description: string | null; price: number; isAvailable: boolean }[]
-      }>()
-
-      for (const r of eventRows) {
-        if (!eventMap.has(r.eventId)) {
-          eventMap.set(r.eventId, {
-            id: r.eventId,
-            title: r.eventTitle,
-            startDate: r.startAt ? r.startAt.toISOString() : null,
-            items: [],
-          })
-        }
-        eventMap.get(r.eventId)!.items.push({
-          id: r.itemId,
-          name: r.itemName,
-          description: r.itemDescription ?? null,
-          price: r.itemPrice,
-          isAvailable: r.itemIsAvailable,
-        })
-      }
-
-      return reply.send({
-        currencyName: gameRow.currencyName ?? 'monies',
-        events: [...eventMap.values()].filter(e => e.items.length > 0),
-      })
-    },
-  )
-
-  fastify.get<{ Params: { slug: string } }>(
-    '/games/:slug/schemas/race',
-    async (request, reply) => {
-      const schemas = await fetchPublicSchemas(request.params.slug, 'race')
-      if (!schemas) return reply.status(404).send({ error: 'Adventure not found' })
-      return reply.send(schemas)
-    },
-  )
-
-  fastify.get<{ Params: { slug: string } }>(
-    '/games/:slug/schemas/class',
-    async (request, reply) => {
-      const schemas = await fetchPublicSchemas(request.params.slug, 'class')
-      if (!schemas) return reply.status(404).send({ error: 'Adventure not found' })
-      return reply.send(schemas)
-    },
-  )
-
-  fastify.get<{ Params: { slug: string } }>(
-    '/games/:slug/membership',
-    { preHandler: [fastify.authenticate] },
-    async (request, reply) => {
-      const { slug } = request.params
-      const userId = request.user.sub
-
-      const [gameRow] = await db
-        .select({ id: game.id })
-        .from(game)
-        .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
-        .limit(1)
-
-      if (!gameRow) return reply.status(404).send({ error: 'Adventure not found' })
-
-      const [member] = await db
-        .select({ id: gameMembers.id })
-        .from(gameMembers)
-        .where(and(
-          eq(gameMembers.gameId, gameRow.id),
-          eq(gameMembers.userId, userId),
-          eq(gameMembers.status, 'active'),
-        ))
-        .limit(1)
-
-      return reply.send({ isMember: !!member })
-    },
-  )
 }

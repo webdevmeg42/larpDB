@@ -66,26 +66,29 @@ function Lightbox({
     >
       <button
         type="button"
+        aria-label="Close"
         onClick={e => { e.stopPropagation(); onClose() }}
         className="absolute top-4 right-4 text-white text-3xl leading-none"
       >
-        ×
+        <span aria-hidden="true">×</span>
       </button>
       {urls.length > 1 && (
         <>
           <button
             type="button"
+            aria-label="Previous image"
             onClick={e => { e.stopPropagation(); prev() }}
             className="absolute left-4 text-white text-4xl leading-none px-2"
           >
-            ‹
+            <span aria-hidden="true">‹</span>
           </button>
           <button
             type="button"
+            aria-label="Next image"
             onClick={e => { e.stopPropagation(); next() }}
             className="absolute right-16 text-white text-4xl leading-none px-2"
           >
-            ›
+            <span aria-hidden="true">›</span>
           </button>
         </>
       )}

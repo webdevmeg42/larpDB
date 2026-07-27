@@ -28,7 +28,13 @@ declare module 'fastify' {
 }
 
 const jwtPlugin: FastifyPluginAsync = async (fastify) => {
-  await fastify.register(jwt, { secret: env.JWT_SECRET })
+  await fastify.register(jwt, {
+    secret: env.JWT_SECRET,
+    cookie: {
+      cookieName: 'token',
+      signed: false,
+    },
+  })
 
   fastify.decorate('authenticate', async function (request: FastifyRequest, reply: FastifyReply) {
     try {

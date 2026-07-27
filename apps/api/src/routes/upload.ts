@@ -5,33 +5,15 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { randomUUID } from 'crypto'
 import { gmOrOwner } from '../lib/roles.js'
+import { IMAGE_MIME_TYPES, IMAGE_MIME_TO_EXT, VIDEO_MIME_TYPES, VIDEO_MIME_TO_EXT } from '../lib/mimeTypes.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 export const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads')
 
 fs.mkdirSync(UPLOADS_DIR, { recursive: true })
 
-const ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'image/svg+xml',
-  'video/mp4',
-  'video/webm',
-  'video/quicktime',
-])
-
-const MIME_TO_EXT: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/gif': 'gif',
-  'image/webp': 'webp',
-  'image/svg+xml': 'svg',
-  'video/mp4': 'mp4',
-  'video/webm': 'webm',
-  'video/quicktime': 'mov',
-}
+const ALLOWED_MIME_TYPES = new Set([...IMAGE_MIME_TYPES, ...VIDEO_MIME_TYPES])
+const MIME_TO_EXT: Record<string, string> = { ...IMAGE_MIME_TO_EXT, ...VIDEO_MIME_TO_EXT }
 
 export const uploadRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post(

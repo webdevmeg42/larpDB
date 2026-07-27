@@ -85,7 +85,7 @@ export function NpcsTab() {
           onChange={e => setSearch(e.target.value)}
           placeholder="Search NPCs…"
           aria-label="Search NPCs"
-          className="w-full px-4 py-2 rounded-md border border-border bg-card text-sm pr-10 focus:outline-none focus:ring-1 focus:ring-ring"
+          className="w-full px-4 py-2 rounded-md border border-border bg-card text-sm pr-10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
         {search && (
           <button

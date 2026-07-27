@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { api } from '@/lib/api'
-import { getBaseSlug } from '@/lib/slug'
+import { generateSlug } from '@plotrunner/shared'
 
 export type AvailabilityStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid-slug'
 
@@ -33,7 +33,7 @@ export function useNameAvailability(
       return
     }
 
-    const slug = getBaseSlug(trimmed)
+    const slug = generateSlug(trimmed)
     if (!slug) {
       setStatus('invalid-slug')
       return
@@ -54,6 +54,6 @@ export function useNameAvailability(
     }
   }, [name, options?.excludeId, options?.originalName])
 
-  const baseSlug = getBaseSlug(name.trim())
+  const baseSlug = generateSlug(name.trim())
   return { status, baseSlug }
 }

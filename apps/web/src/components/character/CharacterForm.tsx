@@ -1,6 +1,7 @@
 'use client'
 
 import type { SchemaField } from '@plotrunner/shared'
+import { PHYSICAL_FIELDS } from '@plotrunner/shared'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -10,7 +11,6 @@ export interface CharacterFormProps {
   fields: SchemaField[]
   values: Record<string, unknown>
   onChange: (values: Record<string, unknown>) => void
-  mode: 'create' | 'edit'
   errorFields?: Set<string>
 }
 
@@ -201,14 +201,6 @@ function FormField({
       const data = (typeof value === 'object' && value !== null && !Array.isArray(value))
         ? value as Record<string, string>
         : {}
-      const physicalFields = [
-        { key: 'age', label: 'Age' },
-        { key: 'height', label: 'Height' },
-        { key: 'weight', label: 'Weight' },
-        { key: 'eyes', label: 'Eyes' },
-        { key: 'skin', label: 'Skin' },
-        { key: 'hair', label: 'Hair' },
-      ]
       return (
         <div className="space-y-3">
           <Label>
@@ -216,7 +208,7 @@ function FormField({
             {field.required && <span className="text-destructive ml-1">*</span>}
           </Label>
           <div className="grid grid-cols-3 gap-3">
-            {physicalFields.map(({ key, label }) => (
+            {PHYSICAL_FIELDS.map(({ key, label }) => (
               <div key={key} className="space-y-1">
                 <Label className="text-xs">{label}</Label>
                 <Input
@@ -359,7 +351,7 @@ function FormField({
   }
 }
 
-export function CharacterForm({ fields, values, onChange, mode: _mode, errorFields }: CharacterFormProps) {
+export function CharacterForm({ fields, values, onChange, errorFields }: CharacterFormProps) {
   return (
     <div className="space-y-4">
       {fields.map(field => (

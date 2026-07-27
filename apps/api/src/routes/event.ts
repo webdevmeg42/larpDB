@@ -182,7 +182,7 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(404).send({ error: 'Event not found' })
       }
       if (!gmOrOwner(role) && event.status !== 'published') {
-        request.log.warn({ id, status: event.status }, "player tried to view an unpublished event")
+        request.log.warn({ id, gameId, status: event.status }, "non-staff tried to view unpublished event")
         return reply.status(404).send({ error: 'Event not found' })
       }
       return reply.send(event)
@@ -226,7 +226,10 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { gameId, role } = request.gameContext
-      if (!gmOrOwner(role)) return reply.status(403).send({ error: 'GM or owner role required' })
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId: request.gameContext.userId, role, gameId }, "non-staff tried to edit event")
+        return reply.status(403).send({ error: 'GM or owner role required' })
+      }
 
       const { id } = request.params as { id: string }
       const [existing] = await db.select().from(events).where(and(eq(events.id, id), eq(events.gameId, gameId))).limit(1)
@@ -287,15 +290,12 @@ export const eventRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId, userId } = request.gameContext
       const { id } = request.params as { id: string }
 
-      const [event] = await db.select().from(events).where(and(eq(events.id, id), eq(events.gameId, gameId))).limit(1)
+      const [[event], [existing]] = await Promise.all([
+        db.select().from(events).where(and(eq(events.id, id), eq(events.gameId, gameId))).limit(1),
+        db.select().from(eventRegistrations).where(and(eq(eventRegistrations.eventId, id), eq(eventRegistrations.userId, userId))).limit(1),
+      ])
       if (!event) return reply.status(404).send({ error: 'Event not found' })
       if (event.status !== 'published') return reply.status(400).send({ error: 'Event is not open for registration' })
-
-      const [existing] = await db
-        .select()
-        .from(eventRegistrations)
-        .where(and(eq(eventRegistrations.eventId, id), eq(eventRegistrations.userId, userId)))
-        .limit(1)
 
       if (existing && existing.status !== 'cancelled') {
         request.log.warn({ eventId: id, userId }, "duplicate registration attempt")

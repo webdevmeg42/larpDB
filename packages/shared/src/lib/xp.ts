@@ -24,3 +24,35 @@ export function computeCumulativeXp(level: number, codex: GameCodex): number | n
     default: return null
   }
 }
+
+export interface CodexLevelConfig {
+  levelingSystem?: string
+  linearIncrement?: number
+  flatCost?: number
+}
+
+export function computeCodexLevel(base: number, level: number, codex: CodexLevelConfig): number {
+  if (level <= 1) return base
+  const sys = codex.levelingSystem
+  const linInc = codex.linearIncrement ?? 1
+  const flat = codex.flatCost ?? 1
+  switch (sys) {
+    case 'percentage':
+      return Math.round(base * Math.pow(1.5, level - 1))
+    case 'doubling':
+      return Math.round(base * Math.pow(2, level - 1))
+    case 'flat':
+      return Math.round(base + flat * (level - 1))
+    case 'linear':
+      return Math.round(base + linInc * (level - 1))
+    case 'triangular':
+      return Math.round(base + (level - 1) * level / 2)
+    case 'fibonacci': {
+      let a = 1, b = 1
+      for (let n = 3; n <= level + 1; n++) { const next = a + b; a = b; b = next }
+      return Math.round(base + b - 1)
+    }
+    default:
+      return base
+  }
+}

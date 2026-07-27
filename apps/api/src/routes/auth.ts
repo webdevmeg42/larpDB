@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync } from 'fastify'
+import type { FastifyPluginAsync, FastifyReply, FastifyInstance } from 'fastify'
 import bcrypt from 'bcrypt'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../db/index.js'
@@ -7,10 +7,7 @@ import { LoginInput, RegisterInput } from '@plotrunner/shared'
 
 const ROLE_ORDER = { owner: 3, gm: 2, player: 1 } as const
 
-// We fetch all active memberships and pick the best role in JS rather than using
-// ORDER BY + LIMIT 1 because the list is always tiny (one row per game) and future
-// JWT claims may need all membership data anyway — not worth an extra round-trip
-async function highestRole(userId: string): Promise<'owner' | 'gm' | 'player'> {
+export async function highestRole(userId: string): Promise<'owner' | 'gm' | 'player'> {
   const rows = await db
     .select({ role: gameMembers.role })
     .from(gameMembers)
@@ -20,21 +17,41 @@ async function highestRole(userId: string): Promise<'owner' | 'gm' | 'player'> {
   }, 'player')
 }
 
-export const authRoutes: FastifyPluginAsync = async (fastify) => {
-  async function signResponse(user: typeof users.$inferSelect) {
-    const role = await highestRole(user.id)
-    const token = fastify.jwt.sign({
-      sub: user.id,
+async function issueAuthCookie(
+  fastify: FastifyInstance,
+  reply: FastifyReply,
+  user: typeof users.$inferSelect,
+) {
+  const role = await highestRole(user.id)
+  const token = fastify.jwt.sign({
+    sub: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    isSysAdmin: user.isSysAdmin,
+    role,
+  }, { expiresIn: '7d' })
+  reply.setCookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 7,
+  })
+  return {
+    user: {
+      id: user.id,
       email: user.email,
       displayName: user.displayName,
-      isSysAdmin: user.isSysAdmin,
       role,
-    })
-    const { passwordHash: _, ...safeUser } = user
-    return { user: safeUser, token }
+      isSysAdmin: user.isSysAdmin,
+    },
   }
+}
 
-  fastify.post('/auth/login', async (request, reply) => {
+export const authRoutes: FastifyPluginAsync = async (fastify) => {
+  fastify.post('/auth/login', {
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
     const result = LoginInput.safeParse(request.body)
     if (!result.success) {
       return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
@@ -54,18 +71,18 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     request.log.info({ userId: user.id, email }, "user logged in")
-    return reply.status(200).send(await signResponse(user))
+    return reply.status(200).send(await issueAuthCookie(fastify, reply, user))
   })
 
-  fastify.post('/auth/register', async (request, reply) => {
+  fastify.post('/auth/register', {
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, async (request, reply) => {
     const result = RegisterInput.safeParse(request.body)
     if (!result.success) {
       return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
     }
     const { email, password, displayName } = result.data
 
-    // Pre-check for the common case, but concurrent registrations can both pass this
-    // before either commits — the 23505 catch below is the real uniqueness guard
     const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1)
     if (existing) {
       request.log.warn({ email }, "registration rejected — email already in use")
@@ -85,6 +102,32 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     if (!newUser) throw new Error('Failed to create user')
 
     request.log.info({ userId: newUser.id, email }, "new user registered")
-    return reply.status(201).send(await signResponse(newUser))
+    return reply.status(201).send(await issueAuthCookie(fastify, reply, newUser))
+  })
+
+  fastify.post('/auth/logout', async (_request, reply) => {
+    reply.clearCookie('token', {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    })
+    return { ok: true }
+  })
+
+  fastify.get('/auth/me', { onRequest: [fastify.authenticate] }, async (request, reply) => {
+    const { sub: userId } = request.user
+    const [[user], role] = await Promise.all([
+      db.select().from(users).where(eq(users.id, userId)).limit(1),
+      highestRole(userId),
+    ])
+    if (!user) return reply.code(401).send({ error: 'Unauthorized' })
+    return {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      role,
+      isSysAdmin: user.isSysAdmin,
+    }
   })
 }

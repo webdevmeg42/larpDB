@@ -5,6 +5,7 @@ export interface Post {
   authorName: string
   title: string
   body: string
+  status: 'draft' | 'published'
   likeCount: number
   commentCount: number
   likedByMe?: boolean
@@ -25,12 +26,5 @@ export interface Comment {
   authorId: string
   authorName: string
   body: string
-  createdAt: string
-}
-
-export interface AdventureSubscription {
-  id: string
-  gameId: string
-  userId: string
   createdAt: string
 }

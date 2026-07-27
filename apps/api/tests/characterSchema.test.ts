@@ -14,7 +14,10 @@ async function createAndLogin(email = 'owner@test.com') {
     url: '/auth/register',
     payload: { email, password: 'password123', displayName: 'Owner' },
   })
-  const { token } = regRes.json()
+  const setCookie = regRes.headers['set-cookie'] as string | string[]
+  const rawCookie = Array.isArray(setCookie) ? setCookie[0] : setCookie
+  const tokenMatch = rawCookie?.match(/token=([^;]+)/)
+  const token = tokenMatch?.[1] ?? ''
 
   const gameRes = await app.inject({
     method: 'POST',
@@ -71,7 +74,10 @@ describe('POST /character-schemas', () => {
       url: '/auth/register',
       payload: { email: 'player@test.com', password: 'password123', displayName: 'Player One' },
     })
-    const { token: playerToken } = playerRegRes.json()
+    const playerSetCookie = playerRegRes.headers['set-cookie'] as string | string[]
+    const playerRawCookie = Array.isArray(playerSetCookie) ? playerSetCookie[0] : playerSetCookie
+    const playerTokenMatch = playerRawCookie?.match(/token=([^;]+)/)
+    const playerToken = playerTokenMatch?.[1] ?? ''
 
     await app.inject({
       method: 'POST',
@@ -100,6 +106,27 @@ describe('POST /character-schemas', () => {
       payload: { name: 'Hero Sheet', fields: SIMPLE_FIELDS, type: 'race' },
     })
     expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+
+  it('returns 422 when fields contain duplicate labels', async () => {
+    const { app, token, gameId } = await createAndLogin('duprace@test.com')
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/character-schemas',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: {
+        name: 'Dup Sheet',
+        fields: [
+          { id: '11111111-1111-1111-1111-111111111111', label: 'Strength', type: 'text' as const, required: false, order: 0 },
+          { id: '22222222-2222-2222-2222-222222222222', label: 'strength', type: 'text' as const, required: false, order: 1 },
+        ],
+        type: 'race',
+      },
+    })
+
+    expect(res.statusCode).toBe(422)
     await app.close()
   })
 })
@@ -154,6 +181,35 @@ describe('PATCH /character-schemas/:id', () => {
     expect(newVersion.version).toBe(2)
     expect(newVersion.id).not.toBe(original.id)
     expect(newVersion.type).toBe(original.type)
+    await app.close()
+  })
+})
+
+describe('PATCH /character-schemas/:id duplicate labels', () => {
+  it('returns 422 when updated fields contain duplicate labels', async () => {
+    const { app, token, gameId } = await createAndLogin('dupclass@test.com')
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/character-schemas',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { name: 'Patch Test', fields: [{ id: '11111111-1111-1111-1111-111111111111', label: 'Name', type: 'text' as const, required: true, order: 0 }], type: 'race' },
+    })
+    const { id } = createRes.json()
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/character-schemas/${id}`,
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: {
+        fields: [
+          { id: '11111111-1111-1111-1111-111111111111', label: 'Agility', type: 'text' as const, required: false, order: 0 },
+          { id: '22222222-2222-2222-2222-222222222222', label: 'AGILITY', type: 'text' as const, required: false, order: 1 },
+        ],
+      },
+    })
+
+    expect(res.statusCode).toBe(422)
     await app.close()
   })
 })

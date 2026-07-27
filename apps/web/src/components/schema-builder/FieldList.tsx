@@ -57,12 +57,14 @@ function SortableFieldItem({
   onSelect,
   onDelete,
   isUnlabeled,
+  isDuplicate,
 }: {
   field: SchemaField
   isSelected: boolean
   onSelect: () => void
   onDelete: () => void
   isUnlabeled?: boolean
+  isDuplicate?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: field.id })
@@ -81,7 +83,7 @@ function SortableFieldItem({
         'flex items-center gap-2 rounded-md border bg-background p-2 cursor-pointer transition-colors',
         isSelected
           ? 'ring-2 ring-primary border-primary'
-          : isUnlabeled
+          : (isUnlabeled || isDuplicate)
             ? 'border-destructive hover:bg-muted/50'
             : 'hover:bg-muted/50',
       )}
@@ -120,9 +122,10 @@ interface FieldListProps {
   onReorder: (fields: SchemaField[]) => void
   onDelete: (id: string) => void
   highlightUnlabeled?: boolean
+  duplicateIds?: Set<string>
 }
 
-export function FieldList({ fields, lockedFields = [], selectedId, onSelect, onReorder, onDelete, highlightUnlabeled }: FieldListProps) {
+export function FieldList({ fields, lockedFields = [], selectedId, onSelect, onReorder, onDelete, highlightUnlabeled, duplicateIds }: FieldListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -174,6 +177,7 @@ export function FieldList({ fields, lockedFields = [], selectedId, onSelect, onR
                   onSelect={() => onSelect(field.id)}
                   onDelete={() => onDelete(field.id)}
                   isUnlabeled={!!highlightUnlabeled && !field.label.trim()}
+                  isDuplicate={!!duplicateIds?.has(field.id)}
                 />
               ))}
             </div>

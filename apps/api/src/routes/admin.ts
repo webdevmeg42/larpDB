@@ -2,6 +2,8 @@ import type { FastifyPluginAsync } from 'fastify'
 import { eq, and, gte, lte, desc, count } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { users, requestLogs, game, gameMembers } from '../db/schema.js'
+import { parsePagination } from '../lib/pagination.js'
+import { stripPassword } from '../lib/user.js'
 
 export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post(
@@ -12,11 +14,11 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [target] = await db.select().from(users).where(eq(users.id, id)).limit(1)
       if (!target) {
-        request.log.warn({ id, requesterId: request.user.sub }, "user not found for promotion")
+        request.log.warn({ userId: request.user.sub, targetUserId: id }, "user not found for promotion")
         return reply.status(404).send({ error: 'User not found' })
       }
       if (target.isSysAdmin) {
-        request.log.warn({ id, requesterId: request.user.sub }, "user is already a system admin")
+        request.log.warn({ userId: request.user.sub, targetUserId: id }, "user is already a system admin")
         return reply.status(409).send({ error: 'User is already a sys_admin' })
       }
 
@@ -26,8 +28,8 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(users.id, id))
         .returning()
 
-      request.log.info({ id, requesterId: request.user.sub }, "user promoted to system admin")
-      const { passwordHash: _, ...safeUser } = updated!
+      request.log.info({ userId: request.user.sub, targetUserId: id }, "user promoted to system admin")
+      const safeUser = stripPassword(updated!)
       return reply.send(safeUser)
     },
   )
@@ -40,13 +42,13 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       const requesterId = request.user.sub
 
       if (id === requesterId) {
-        request.log.warn({ id }, "system admin tried to self-demote")
+        request.log.warn({ userId: id }, "system admin tried to self-demote")
         return reply.status(400).send({ error: 'Cannot self-demote' })
       }
 
       const [target] = await db.select().from(users).where(eq(users.id, id)).limit(1)
       if (!target) {
-        request.log.warn({ id, requesterId }, "user not found for demotion")
+        request.log.warn({ userId: requesterId, targetUserId: id }, "user not found for demotion")
         return reply.status(404).send({ error: 'User not found' })
       }
 
@@ -56,8 +58,8 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(users.id, id))
         .returning()
 
-      request.log.info({ id, requesterId }, "user demoted from system admin")
-      const { passwordHash: _, ...safeUser } = updated!
+      request.log.info({ userId: requesterId, targetUserId: id }, "user demoted from system admin")
+      const safeUser = stripPassword(updated!)
       return reply.send(safeUser)
     },
   )
@@ -66,16 +68,15 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     '/admin/logs',
     { preHandler: [fastify.requireSysAdmin] },
     async (request, reply) => {
-      const { userId, from, to, limit = '100', offset = '0' } = request.query as {
+      const { userId, from, to } = request.query as {
         userId?: string
         from?: string
         to?: string
-        limit?: string
-        offset?: string
       }
-
-      const limitN = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200)
-      const offsetN = Math.max(parseInt(offset, 10) || 0, 0)
+      const { limit: limitN, offset: offsetN } = parsePagination(
+        request.query as { limit?: string; offset?: string },
+        { limit: 100, maxLimit: 200 },
+      )
 
       const fromDate = from ? new Date(from) : undefined
       const toDate = to ? new Date(to) : undefined

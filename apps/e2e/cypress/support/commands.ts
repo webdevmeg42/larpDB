@@ -1,23 +1,29 @@
 import { testDateTime } from './helpers'
 
 Cypress.Commands.add('loginOwner', () => {
-  cy.clearCookies()
-  cy.clearLocalStorage()
-  cy.visit('/login')
-  cy.get('#email').type(Cypress.env('OWNER_EMAIL') as string)
-  cy.get('#password').type(Cypress.env('OWNER_PASSWORD') as string)
-  cy.contains('button', 'Sign in').click()
-  cy.url().should('not.include', '/login')
+  cy.request('POST', `${Cypress.env('API_URL')}/auth/login`, {
+    email: Cypress.env('OWNER_EMAIL'),
+    password: Cypress.env('OWNER_PASSWORD'),
+  }).then(() => {
+    cy.request('GET', `${Cypress.env('API_URL')}/my-games`).then((res) => {
+      const first = res.body[0]
+      if (first) cy.setCookie('gameId', first.id, { path: '/', sameSite: 'lax' })
+      cy.visit('/dashboard')
+    })
+  })
 })
 
 Cypress.Commands.add('loginPlayer', () => {
-  cy.clearCookies()
-  cy.clearLocalStorage()
-  cy.visit('/login')
-  cy.get('#email').type(Cypress.env('PLAYER_EMAIL') as string)
-  cy.get('#password').type(Cypress.env('PLAYER_PASSWORD') as string)
-  cy.contains('button', 'Sign in').click()
-  cy.url().should('not.include', '/login')
+  cy.request('POST', `${Cypress.env('API_URL')}/auth/login`, {
+    email: Cypress.env('PLAYER_EMAIL'),
+    password: Cypress.env('PLAYER_PASSWORD'),
+  }).then(() => {
+    cy.request('GET', `${Cypress.env('API_URL')}/my-games`).then((res) => {
+      const first = res.body[0]
+      if (first) cy.setCookie('gameId', first.id, { path: '/', sameSite: 'lax' })
+      cy.visit('/dashboard')
+    })
+  })
 })
 
 Cypress.Commands.add('createUser', () => {

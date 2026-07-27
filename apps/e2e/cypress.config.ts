@@ -14,6 +14,7 @@ export default defineConfig({
     specPattern: 'cypress/e2e/**/*.cy.ts',
     supportFile: 'cypress/support/e2e.ts',
     env: {
+      API_URL: process.env.API_URL ?? 'http://localhost:3001',
       OWNER_EMAIL: process.env.OWNER_EMAIL ?? '',
       OWNER_PASSWORD: process.env.OWNER_PASSWORD ?? '',
       PLAYER_EMAIL: process.env.PLAYER_EMAIL ?? '',

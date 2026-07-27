@@ -560,6 +560,277 @@ async function setupMediaTests() {
   return { app, token, gameId }
 }
 
+describe('POST /posts with status:draft', () => {
+  it('creates a draft that does NOT appear in GET /games/:slug/posts', async () => {
+    const { app, token, gameId, slug } = await createAndLogin('draft-owner@test.com')
+    await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { title: 'My Draft', body: 'Not ready yet', status: 'draft' },
+    })
+    const res = await app.inject({ method: 'GET', url: `/games/${slug}/posts` })
+    expect(res.json().total).toBe(0)
+    expect(res.json().items).toHaveLength(0)
+    await app.close()
+  })
+
+  it('draft does NOT appear in GET /feed', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const ownerRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'draft-feed-owner@test.com', password: 'password123', displayName: 'DraftOwner' },
+    })
+    const { token: ownerToken } = ownerRes.json()
+    const gameRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { name: 'Draft Feed Game' },
+    })
+    const { id: gameId } = gameRes.json()
+    await app.inject({
+      method: 'PATCH', url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { status: 'active' },
+    })
+    await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { title: 'Draft Post', body: 'Not visible', status: 'draft' },
+    })
+
+    const subRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'draft-feed-sub@test.com', password: 'password123', displayName: 'Sub' },
+    })
+    const { token: subToken } = subRes.json()
+    await app.inject({
+      method: 'POST', url: '/subscriptions',
+      headers: { authorization: `Bearer ${subToken}` },
+      payload: { gameId },
+    })
+
+    const res = await app.inject({ method: 'GET', url: '/feed', headers: { authorization: `Bearer ${subToken}` } })
+    expect(res.json().total).toBe(0)
+    expect(res.json().items).toHaveLength(0)
+    await app.close()
+  })
+})
+
+describe('GET /posts/drafts', () => {
+  it('returns only the caller\'s drafts', async () => {
+    const { app, token, gameId } = await createAndLogin('drafts-list@test.com')
+    await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { title: 'My Draft', body: 'body', status: 'draft' },
+    })
+    await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { title: 'Published Post', body: 'body' },
+    })
+    const res = await app.inject({
+      method: 'GET', url: '/posts/drafts',
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(res.statusCode).toBe(200)
+    const drafts = res.json()
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0].title).toBe('My Draft')
+    expect(drafts[0].gameName).toBeDefined()
+    await app.close()
+  })
+
+  it('returns 401 without auth', async () => {
+    const { app } = await createAndLogin('drafts-unauth@test.com')
+    const res = await app.inject({ method: 'GET', url: '/posts/drafts' })
+    expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+
+  it('does not return drafts belonging to another user', async () => {
+    const { app, token, gameId } = await createAndLogin('drafts-isolation-a@test.com')
+
+    // User A creates a draft
+    await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { title: 'User A Draft', body: 'body', status: 'draft' },
+    })
+
+    // User B registers, creates their own game, and creates a draft there
+    const userBRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'drafts-isolation-b@test.com', password: 'password123', displayName: 'UserB' },
+    })
+    const { token: tokenB } = userBRes.json()
+
+    const gameBRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${tokenB}` },
+      payload: { name: 'User B Game' },
+    })
+    const { id: gameBId } = gameBRes.json()
+    await app.inject({
+      method: 'PATCH', url: `/games/${gameBId}/status`,
+      headers: { authorization: `Bearer ${tokenB}` },
+      payload: { status: 'active' },
+    })
+    await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${tokenB}`, 'x-game-id': gameBId },
+      payload: { title: "User B Draft", body: 'body', status: 'draft' },
+    })
+
+    // User A's draft list must not include User B's draft
+    const res = await app.inject({
+      method: 'GET', url: '/posts/drafts',
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(res.statusCode).toBe(200)
+    const drafts = res.json()
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0].title).toBe('User A Draft')
+    await app.close()
+  })
+})
+
+describe('PATCH /posts/:postId', () => {
+  it('updates a draft\'s title and body', async () => {
+    const { app, token, gameId } = await createAndLogin('patch-owner@test.com')
+    const createRes = await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { title: 'Original', body: 'original body', status: 'draft' },
+    })
+    const { id: postId } = createRes.json()
+
+    const res = await app.inject({
+      method: 'PATCH', url: `/posts/${postId}`,
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { title: 'Updated', body: 'updated body' },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().title).toBe('Updated')
+    expect(res.json().body).toBe('updated body')
+    await app.close()
+  })
+
+  it('publishing a draft makes it appear in the feed', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const ownerRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'publish-draft@test.com', password: 'password123', displayName: 'Owner' },
+    })
+    const { token } = ownerRes.json()
+    const gameRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Publish Draft Game' },
+    })
+    const { id: gameId, slug } = gameRes.json()
+    await app.inject({
+      method: 'PATCH', url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { status: 'active' },
+    })
+    const createRes = await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { title: 'To Publish', body: 'body', status: 'draft' },
+    })
+    const { id: postId } = createRes.json()
+
+    await app.inject({
+      method: 'PATCH', url: `/posts/${postId}`,
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { status: 'published' },
+    })
+
+    const listRes = await app.inject({ method: 'GET', url: `/games/${slug}/posts` })
+    expect(listRes.json().total).toBe(1)
+    expect(listRes.json().items[0].title).toBe('To Publish')
+    await app.close()
+  })
+
+  it('returns 404 for a post in a different game', async () => {
+    const { app, token, gameId } = await createAndLogin('patch-wrong-game@test.com')
+    const createRes = await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { title: 'Post', body: 'body', status: 'draft' },
+    })
+    const { id: postId } = createRes.json()
+
+    const game2Res = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { name: 'Second Game Wrong' },
+    })
+    const { id: gameId2 } = game2Res.json()
+    await app.inject({
+      method: 'PATCH', url: `/games/${gameId2}/status`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { status: 'active' },
+    })
+
+    const res = await app.inject({
+      method: 'PATCH', url: `/posts/${postId}`,
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId2 },
+      payload: { title: 'Hijacked' },
+    })
+    expect(res.statusCode).toBe(404)
+    await app.close()
+  })
+
+  it('returns 401 without auth', async () => {
+    const { app, token, gameId } = await createAndLogin('patch-unauth@test.com')
+    const createRes = await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { title: 'Post', body: 'body', status: 'draft' },
+    })
+    const { id: postId } = createRes.json()
+    const res = await app.inject({
+      method: 'PATCH', url: `/posts/${postId}`,
+      payload: { title: 'No auth' },
+    })
+    expect(res.statusCode).toBe(401)
+    await app.close()
+  })
+
+  it('returns 400 when PATCHing only mediaType:video on a photo post with 3 URLs', async () => {
+    const { app, token, gameId } = await createAndLogin('patch-media-xfield@test.com')
+
+    // Create a photo post with 3 URLs
+    const createRes = await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: {
+        title: 'Photo Post',
+        body: 'body',
+        status: 'published',
+        mediaType: 'photo',
+        mediaUrls: ['https://example.com/1.jpg', 'https://example.com/2.jpg', 'https://example.com/3.jpg'],
+      },
+    })
+    const { id: postId } = createRes.json()
+
+    // PATCH with only mediaType: 'video' — effective mediaUrls would still be 3, which is invalid for video
+    const res = await app.inject({
+      method: 'PATCH', url: `/posts/${postId}`,
+      headers: { authorization: `Bearer ${token}`, 'x-game-id': gameId },
+      payload: { mediaType: 'video' },
+    })
+    expect(res.statusCode).toBe(400)
+    await app.close()
+  })
+})
+
 describe('POST /posts — media fields', () => {
   it('creates a post with no media', async () => {
     const { app, token, gameId } = await setupMediaTests()

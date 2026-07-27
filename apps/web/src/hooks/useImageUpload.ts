@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react'
-import { getToken, getGameId } from '@/lib/auth'
+import { getGameId } from '@/lib/auth'
+import { getErrorMessage } from '@/lib/utils'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL!
 const MAX_FILE_SIZE = 100 * 1024 * 1024
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 
 export function useImageUpload(onSuccess: (url: string) => void) {
   const [uploading, setUploading] = useState(false)
@@ -32,12 +33,11 @@ export function useImageUpload(onSuccess: (url: string) => void) {
       const formData = new FormData()
       formData.append('file', file)
 
-      const token = getToken()
       const gameId = getGameId()
       const res = await fetch(`${API_URL}/upload`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
           ...(gameId ? { 'X-Game-Id': gameId } : {}),
         },
         body: formData,
@@ -52,7 +52,7 @@ export function useImageUpload(onSuccess: (url: string) => void) {
       if (!url) throw new Error('Upload failed: no URL returned')
       onSuccess(`${API_URL}${url}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed, please try again')
+      setError(getErrorMessage(err, 'Upload failed, please try again'))
     } finally {
       setUploading(false)
     }

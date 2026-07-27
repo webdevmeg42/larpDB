@@ -5,6 +5,7 @@ import { db } from '../db/index.js'
 import { storeItems, purchases, siteConfig, eventRegistrations, characters, users, events } from '../db/schema.js'
 import { CreateStoreItemInput, UpdateStoreItemInput, CreatePurchaseInput } from '@plotrunner/shared'
 import { buildPatch } from '../lib/roles.js'
+import { parsePagination } from '../lib/pagination.js'
 
 export const storeRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
@@ -50,7 +51,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [event] = await db.select().from(events).where(and(eq(events.id, result.data.eventId), eq(events.gameId, gameId))).limit(1)
       if (!event) {
-        request.log.warn({ eventId: result.data.eventId, gameId }, "event not found when creating store item")
+        request.log.warn({ eventId: result.data.eventId, gameId }, "event not found")
         return reply.status(404).send({ error: 'Event not found' })
       }
 
@@ -72,8 +73,9 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
     '/store/items/:id',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { gameId, role } = request.gameContext
+      const { gameId, role, userId } = request.gameContext
       if (role !== 'owner') {
+        request.log.warn({ userId, role, gameId }, "non-owner tried to update store item")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -84,7 +86,10 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         .innerJoin(events, and(eq(events.id, storeItems.eventId), eq(events.gameId, gameId)))
         .where(eq(storeItems.id, id))
         .limit(1)
-      if (!existing) return reply.status(404).send({ error: 'Store item not found' })
+      if (!existing) {
+        request.log.warn({ id, gameId }, "store item not found")
+        return reply.status(404).send({ error: 'Store item not found' })
+      }
 
       const result = UpdateStoreItemInput.safeParse(request.body)
       if (!result.success) {
@@ -98,6 +103,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
           inArray(storeItems.eventId, db.select({ id: events.id }).from(events).where(eq(events.gameId, gameId))),
         ))
         .returning()
+      request.log.info({ id, gameId }, "store item updated")
       return reply.send(updated)
     },
   )
@@ -106,8 +112,9 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
     '/store/items/:id',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      const { gameId, role } = request.gameContext
+      const { gameId, role, userId } = request.gameContext
       if (role !== 'owner') {
+        request.log.warn({ userId, role, gameId }, "non-owner tried to delete store item")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -118,7 +125,10 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         .innerJoin(events, and(eq(events.id, storeItems.eventId), eq(events.gameId, gameId)))
         .where(eq(storeItems.id, id))
         .limit(1)
-      if (!existing) return reply.status(404).send({ error: 'Store item not found' })
+      if (!existing) {
+        request.log.warn({ id, gameId }, "store item not found")
+        return reply.status(404).send({ error: 'Store item not found' })
+      }
 
       try {
         await db.transaction(async (tx) => {
@@ -134,10 +144,17 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         })
       } catch (err: unknown) {
         const code = (err as { statusCode?: number; code?: string })
-        if (code.statusCode === 409) return reply.status(409).send({ error: 'Cannot delete item with existing purchases' })
-        if (code.code === '23503') return reply.status(409).send({ error: 'Cannot delete item with existing purchases' })
+        if (code.statusCode === 409) {
+          request.log.warn({ id, gameId }, "store item delete rejected — item has existing purchases")
+          return reply.status(409).send({ error: 'Cannot delete item with existing purchases' })
+        }
+        if (code.code === '23503') {
+          request.log.warn({ id, gameId }, "store item delete rejected — item has existing purchases")
+          return reply.status(409).send({ error: 'Cannot delete item with existing purchases' })
+        }
         throw err
       }
+      request.log.info({ id, gameId }, "store item deleted")
       return reply.status(204).send()
     },
   )
@@ -159,8 +176,10 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         offset?: string
       }
 
-      const resolvedLimit = Math.min(parseInt(limitParam ?? '100', 10) || 100, 500)
-      const resolvedOffset = Math.max(parseInt(offsetParam ?? '0', 10) || 0, 0)
+      const { limit: resolvedLimit, offset: resolvedOffset } = parsePagination(
+        { limit: limitParam, offset: offsetParam },
+        { limit: 100, maxLimit: 500 },
+      )
 
       const conditions: SQL[] = [eq(events.gameId, gameId)]
       if (eventId) conditions.push(eq(purchases.eventId, eventId))
@@ -234,7 +253,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(storeItems.id, storeItemId))
         .limit(1)
       if (!item) {
-        request.log.warn({ storeItemId, gameId }, "store item not found when creating purchase")
+        request.log.warn({ storeItemId, gameId }, "store item not found")
         return reply.status(404).send({ error: 'Store item not found' })
       }
       if (!item.isAvailable) {
@@ -244,7 +263,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [character] = await db.select().from(characters).where(and(eq(characters.id, characterId), eq(characters.gameId, gameId))).limit(1)
       if (!character) {
-        request.log.warn({ characterId, gameId }, "character not found when creating purchase")
+        request.log.warn({ characterId, gameId }, "character not found")
         return reply.status(404).send({ error: 'Character not found' })
       }
 

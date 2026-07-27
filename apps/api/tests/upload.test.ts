@@ -140,4 +140,22 @@ describe('POST /upload', () => {
     expect(res.statusCode).toBe(403)
     await app.close()
   })
+
+  it('returns 400 for SVG upload (security risk)', async () => {
+    const { app, token, gameId } = await createOwnerWithGame()
+    const boundary = 'testboundary'
+    const body = buildMultipartBody(boundary, 'malicious.svg', 'image/svg+xml', Buffer.from('<svg><script>alert("xss")</script></svg>'))
+    const res = await app.inject({
+      method: 'POST', url: '/upload',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'x-game-id': gameId,
+        'content-type': `multipart/form-data; boundary=${boundary}`,
+      },
+      payload: body,
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error).toBe('Only image or video files are accepted')
+    await app.close()
+  })
 })

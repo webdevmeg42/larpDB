@@ -64,7 +64,7 @@ export function CommentList({ postId }: CommentListProps) {
               </span>
               <p className="mt-0.5">{c.body}</p>
             </div>
-            {user && (user.sub === c.authorId || user.role === 'owner' || user.role === 'gm') && (
+            {user && (user.id === c.authorId || user.role === 'owner' || user.role === 'gm') && (
               <button
                 onClick={() => deleteComment(c.id)}
                 className="text-xs text-muted-foreground hover:text-destructive"
@@ -83,7 +83,7 @@ export function CommentList({ postId }: CommentListProps) {
             value={body}
             onChange={e => setBody(e.target.value)}
             placeholder="Add a comment…"
-            className="flex-1 rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className="flex-1 rounded-md border bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <button
             type="submit"

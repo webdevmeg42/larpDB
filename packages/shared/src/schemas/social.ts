@@ -5,6 +5,7 @@ export const CreatePostInput = z.object({
   body: z.string().min(1).max(10000),
   mediaType: z.enum(['photo', 'video']).optional(),
   mediaUrls: z.array(z.string().url()).optional(),
+  status: z.enum(['draft', 'published']).optional(),
 }).superRefine((data, ctx) => {
   if (data.mediaType === 'photo') {
     if (!data.mediaUrls || data.mediaUrls.length < 1 || data.mediaUrls.length > 8) {
@@ -31,6 +32,15 @@ export const CreatePostInput = z.object({
   }
 })
 export type CreatePostInput = z.infer<typeof CreatePostInput>
+
+export const UpdatePostInput = z.object({
+  title: z.string().min(1).max(300).optional(),
+  body: z.string().min(1).max(10000).optional(),
+  mediaType: z.enum(['photo', 'video']).optional(),
+  mediaUrls: z.array(z.string().url()).optional(),
+  status: z.enum(['draft', 'published']).optional(),
+})
+export type UpdatePostInput = z.infer<typeof UpdatePostInput>
 
 export const CreateCommentInput = z.object({
   body: z.string().min(1).max(2000),

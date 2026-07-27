@@ -6,7 +6,7 @@ import { SiteConfigProvider } from './SiteConfigProvider'
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SiteConfigProvider>
-      <AuthProvider>
+      <AuthProvider initialUser={null}>
         {children}
       </AuthProvider>
     </SiteConfigProvider>

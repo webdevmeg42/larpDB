@@ -10,11 +10,12 @@ export const plotRoutes: FastifyPluginAsync = async (fastify) => {
     '/plots',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.gameContext.role)) {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-staff tried to list plots")
+      const { userId, gameId, role } = request.gameContext
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to list plots")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
-      const rows = await db.select().from(plots).where(eq(plots.gameId, request.gameContext.gameId)).orderBy(plots.createdAt)
+      const rows = await db.select().from(plots).where(eq(plots.gameId, gameId)).orderBy(plots.createdAt)
       return reply.send(rows)
     },
   )
@@ -23,14 +24,15 @@ export const plotRoutes: FastifyPluginAsync = async (fastify) => {
     '/plots/:id',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.gameContext.role)) {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-staff tried to view plot")
+      const { userId, gameId, role } = request.gameContext
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to view plot")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
       const { id } = request.params as { id: string }
-      const [plot] = await db.select().from(plots).where(and(eq(plots.id, id), eq(plots.gameId, request.gameContext.gameId))).limit(1)
+      const [plot] = await db.select().from(plots).where(and(eq(plots.id, id), eq(plots.gameId, gameId))).limit(1)
       if (!plot) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "plot not found")
+        request.log.warn({ id, gameId }, "plot not found")
         return reply.status(404).send({ error: 'Plot not found' })
       }
       return reply.send(plot)
@@ -41,21 +43,22 @@ export const plotRoutes: FastifyPluginAsync = async (fastify) => {
     '/plots',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.gameContext.role)) {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-staff tried to create plot")
+      const { userId, gameId, role } = request.gameContext
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to create plot")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
       const result = CreatePlotInput.safeParse(request.body)
       if (!result.success) return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       const [plot] = await db.insert(plots).values({
-        gameId: request.gameContext.gameId,
+        gameId,
         title: result.data.title,
         description: result.data.description ?? null,
         linkedEventIds: result.data.linkedEventIds,
-        createdBy: request.gameContext.userId,
+        createdBy: userId,
         status: 'active',
       }).returning()
-      request.log.info({ id: plot!.id, title: plot!.title, gameId: request.gameContext.gameId }, "plot created")
+      request.log.info({ id: plot!.id, title: plot!.title, gameId }, "plot created")
       return reply.status(201).send(plot)
     },
   )
@@ -64,8 +67,9 @@ export const plotRoutes: FastifyPluginAsync = async (fastify) => {
     '/plots/:id',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.gameContext.role)) {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-staff tried to update plot")
+      const { userId, gameId, role } = request.gameContext
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to update plot")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
       const { id } = request.params as { id: string }
@@ -73,10 +77,10 @@ export const plotRoutes: FastifyPluginAsync = async (fastify) => {
       if (!result.success) return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       const [updated] = await db.update(plots)
         .set(buildPatch(result.data) as Parameters<ReturnType<typeof db.update<typeof plots>>['set']>[0])
-        .where(and(eq(plots.id, id), eq(plots.gameId, request.gameContext.gameId)))
+        .where(and(eq(plots.id, id), eq(plots.gameId, gameId)))
         .returning()
       if (!updated) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "plot not found for update")
+        request.log.warn({ id, gameId }, "plot not found")
         return reply.status(404).send({ error: 'Plot not found' })
       }
       return reply.send(updated)
@@ -87,19 +91,20 @@ export const plotRoutes: FastifyPluginAsync = async (fastify) => {
     '/plots/:id',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (!gmOrOwner(request.gameContext.role)) {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-staff tried to delete plot")
+      const { userId, gameId, role } = request.gameContext
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to delete plot")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
       const { id } = request.params as { id: string }
       const deleted = await db.delete(plots)
-        .where(and(eq(plots.id, id), eq(plots.gameId, request.gameContext.gameId)))
+        .where(and(eq(plots.id, id), eq(plots.gameId, gameId)))
         .returning({ id: plots.id })
       if (!deleted.length) {
-        request.log.warn({ id, gameId: request.gameContext.gameId }, "plot not found for delete")
+        request.log.warn({ id, gameId }, "plot not found")
         return reply.status(404).send({ error: 'Plot not found' })
       }
-      request.log.info({ id, gameId: request.gameContext.gameId }, "plot deleted")
+      request.log.info({ id, gameId }, "plot deleted")
       return reply.status(204).send()
     },
   )

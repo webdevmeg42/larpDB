@@ -201,6 +201,7 @@ export default function RulebookTab({ config, reload }: Props) {
           {chapters.map(ch => (
             <div
               key={ch.id}
+              data-testid="rulebook-chapter-item"
               onClick={() => selectChapter(ch.id)}
               style={{
                 background: '#fff',
@@ -293,6 +294,7 @@ export default function RulebookTab({ config, reload }: Props) {
                 Chapter title <span style={{ color: '#dc2626' }}>*</span>
               </div>
               <input
+                data-testid="chapter-title-input"
                 value={editingTitle}
                 onChange={e => { setEditingTitle(e.target.value); setTitleError(false) }}
                 style={{

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle, cloneElement } from 'react'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,9 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { useToast } from '@/components/ui/toast'
 import type { SiteConfig, GameCodex, LevelingSystemType, Faction, AdditionalWebsite } from '@plotrunner/shared'
+import { computeCumulativeXp } from '@plotrunner/shared'
 
 interface Props {
   config: SiteConfig | null
@@ -35,8 +37,8 @@ function pick(obj: Record<string, string>): Partial<GameCodex> {
 export default function CodexTab({ config, reload }: Props) {
   const [codex, setCodex] = useState<GameCodex>({})
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
   const [validationSummary, setValidationSummary] = useState<string[]>([])
 
   const gameSettingRef = useRef<SectionRef>(null)
@@ -68,8 +70,7 @@ export default function CodexTab({ config, reload }: Props) {
       await api.patch<SiteConfig>('/config', { codex: merged })
       setCodex(merged)
       reload()
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      toast('Settings saved')
     } catch (err) {
       setError(getErrorMessage(err, 'Save failed'))
     } finally {
@@ -92,17 +93,32 @@ export default function CodexTab({ config, reload }: Props) {
       )}
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button data-testid="save-changes-btn" onClick={handleSave} disabled={saving}>
-        {saving ? 'Saving…' : saved ? 'Saved!' : 'Save changes'}
+        {saving ? 'Saving…' : 'Save changes'}
       </Button>
     </div>
   )
 }
 
-function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
+function Field({
+  label,
+  id: idProp,
+  children,
+}: {
+  label: React.ReactNode
+  id?: string
+  children: React.ReactElement
+}) {
+  const id = idProp ?? (typeof label === 'string'
+    ? label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    : undefined)
   return (
     <div className="space-y-1">
-      <Label>{label}</Label>
-      {children}
+      <Label htmlFor={id}>{label}</Label>
+      {id
+        ? cloneElement(children as React.ReactElement<{ id?: string }>, {
+            id: (children.props as { id?: string }).id ?? id,
+          })
+        : children}
     </div>
   )
 }
@@ -298,8 +314,9 @@ const GameSettingSection = forwardRef<SectionRef, SectionProps>(
 
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <Label>Factions, houses, or groups</Label>
+                <Label htmlFor="codex-faction-count">Factions, houses, or groups</Label>
                 <select
+                  id="codex-faction-count"
                   value={factionCount}
                   onChange={e => changeFactionCount(parseInt(e.target.value, 10))}
                   className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
@@ -315,14 +332,14 @@ const GameSettingSection = forwardRef<SectionRef, SectionProps>(
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       {factionCount > 1 ? `Group ${i + 1}` : 'Group'}
                     </p>
-                    <Field label="Name">
+                    <Field label="Name" id={`faction-name-${i}`}>
                       <Input
                         value={faction.name}
                         onChange={e => updateFaction(i, { name: e.target.value })}
                         placeholder="e.g. The Iron Brotherhood"
                       />
                     </Field>
-                    <Field label="Description">
+                    <Field label="Description" id={`faction-description-${i}`}>
                       <Textarea
                         rows={2}
                         value={faction.description}
@@ -335,15 +352,15 @@ const GameSettingSection = forwardRef<SectionRef, SectionProps>(
               </div>
             </div>
 
-            <Field label={<>Safety mechanics in use <span className="text-destructive">*</span></>}>
+            <Field label={<>Safety mechanics in use <span className="text-destructive">*</span></>} id="safety-mechanics">
               <Input
                 value={form.safetyMechanics}
                 onChange={e => { setForm(f => ({ ...f, safetyMechanics: e.target.value })); setSafetyError(false) }}
                 placeholder="X-card, BRAKE/GAS, Lookdown"
                 className={safetyError ? 'border-destructive' : ''}
               />
-              {safetyError && <p data-testid="safety-error" className="text-xs text-destructive">Safety mechanics in use is required</p>}
             </Field>
+            {safetyError && <p data-testid="safety-error" className="text-xs text-destructive">Safety mechanics in use is required</p>}
             <Field label="Content warnings">
               <Textarea rows={4} value={form.contentWarnings} onChange={e => setForm(f => ({ ...f, contentWarnings: e.target.value }))} />
             </Field>
@@ -398,38 +415,6 @@ const LEVELING_SYSTEMS: {
   },
 ]
 
-function computeCumulativeXP(
-  system: LevelingSystemType | '',
-  level: number,
-  linearIncrement: number,
-  flatCost: number,
-): number | null {
-  if (!system || level < 1) return null
-  switch (system) {
-    case 'linear':
-      if (linearIncrement <= 0) return null
-      return linearIncrement * level * (level + 1) / 2
-    case 'flat':
-      if (flatCost <= 0) return null
-      return flatCost * level
-    case 'doubling':
-      return 5 * (Math.pow(2, level) - 1)
-    case 'triangular':
-      return level * (level + 1) * (level + 2) / 6
-    case 'fibonacci': {
-      if (level === 1) return 1
-      let total = 3, a = 1, b = 2
-      for (let n = 3; n <= level; n++) { const next = a + b; total += next; a = b; b = next }
-      return total
-    }
-    case 'percentage': {
-      let total = 0
-      for (let n = 1; n <= level; n++) total += Math.round(10 * Math.pow(1.5, n - 1))
-      return total
-    }
-    default: return null
-  }
-}
 
 const LevelingSystemSection = forwardRef<SectionRef, SectionProps>(
   function LevelingSystemSection({ codex }, ref) {
@@ -508,8 +493,9 @@ const LevelingSystemSection = forwardRef<SectionRef, SectionProps>(
                       <p className="text-xs text-muted-foreground">{opt.description}</p>
                       {opt.value === 'linear' && system === 'linear' && (
                         <div className="mt-3 space-y-1" onClick={e => e.stopPropagation()}>
-                          <Label className="text-xs">Fixed XP increment per level</Label>
+                          <Label className="text-xs" htmlFor="codex-linear-increment">Fixed XP increment per level</Label>
                           <Input
+                            id="codex-linear-increment"
                             type="number"
                             min={1}
                             value={linearIncrementStr}
@@ -522,8 +508,9 @@ const LevelingSystemSection = forwardRef<SectionRef, SectionProps>(
                       )}
                       {opt.value === 'flat' && system === 'flat' && (
                         <div className="mt-3 space-y-1" onClick={e => e.stopPropagation()}>
-                          <Label className="text-xs">XP cost per level</Label>
+                          <Label className="text-xs" htmlFor="codex-flat-cost">XP cost per level</Label>
                           <Input
+                            id="codex-flat-cost"
                             type="number"
                             min={1}
                             value={flatCostStr}
@@ -547,15 +534,20 @@ const LevelingSystemSection = forwardRef<SectionRef, SectionProps>(
                 const baseLevel = baseLevelStr ? parseInt(baseLevelStr, 10) : 0
                 const linInc = linearIncrementStr ? parseInt(linearIncrementStr, 10) : 0
                 const flatC = flatCostStr ? parseInt(flatCostStr, 10) : 0
-                const baseLevelXP = computeCumulativeXP(system, baseLevel, linInc, flatC)
+                const baseLevelXP = computeCumulativeXp(baseLevel, {
+                  ...(system ? { levelingSystem: system } : {}),
+                  ...(linInc ? { linearIncrement: linInc } : {}),
+                  ...(flatC ? { flatCost: flatC } : {}),
+                })
                 const needsParam = baseLevel > 0 && (
                   (system === 'linear' && !linInc) || (system === 'flat' && !flatC)
                 )
                 return (
                   <div className="flex flex-wrap gap-8 pt-2 border-t">
                     <div className="space-y-1">
-                      <Label>Max level</Label>
+                      <Label htmlFor="codex-max-level">Max level</Label>
                       <Input
+                        id="codex-max-level"
                         type="number"
                         min={1}
                         max={100}
@@ -567,8 +559,9 @@ const LevelingSystemSection = forwardRef<SectionRef, SectionProps>(
                       <p className="text-xs text-muted-foreground">Highest level a character can reach.</p>
                     </div>
                     <div className="space-y-1">
-                      <Label>Base level</Label>
+                      <Label htmlFor="codex-base-level">Base level</Label>
                       <select
+                        id="codex-base-level"
                         value={baseLevelStr}
                         onChange={e => setBaseLevelStr(e.target.value)}
                         className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"

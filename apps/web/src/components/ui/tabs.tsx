@@ -1,60 +1,45 @@
 'use client'
 
 import * as React from 'react'
+import * as RadixTabs from '@radix-ui/react-tabs'
 import { cn } from '@/lib/utils'
 
-interface TabsContextValue {
-  activeTab: string
-  setActiveTab: (tab: string) => void
-}
+const Tabs = RadixTabs.Root
 
-const TabsContext = React.createContext<TabsContextValue | null>(null)
-
-function useTabs() {
-  const ctx = React.useContext(TabsContext)
-  if (!ctx) throw new Error('Tabs component must be used within a Tabs provider')
-  return ctx
-}
-
-function Tabs({ defaultValue, children, className }: { defaultValue: string; children: React.ReactNode; className?: string }) {
-  const [activeTab, setActiveTab] = React.useState(defaultValue)
+function TabsList({ className, ...props }: React.ComponentPropsWithoutRef<typeof RadixTabs.List>) {
   return (
-    <TabsContext.Provider value={{ activeTab, setActiveTab }}>
-      <div className={className}>{children}</div>
-    </TabsContext.Provider>
-  )
-}
-
-function TabsList({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={cn('inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground', className)}>
-      {children}
-    </div>
-  )
-}
-
-function TabsTrigger({ value, children, className, ...rest }: { value: string; children: React.ReactNode; className?: string } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const { activeTab, setActiveTab } = useTabs()
-  return (
-    <button
-      type="button"
-      onClick={() => setActiveTab(value)}
+    <RadixTabs.List
       className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
-        activeTab === value && 'bg-background text-foreground shadow-sm',
+        'inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground',
         className,
       )}
-      {...rest}
-    >
-      {children}
-    </button>
+      {...props}
+    />
   )
 }
 
-function TabsContent({ value, children, className }: { value: string; children: React.ReactNode; className?: string }) {
-  const { activeTab } = useTabs()
-  if (activeTab !== value) return null
-  return <div className={cn('mt-2', className)}>{children}</div>
+function TabsTrigger({ className, ...props }: React.ComponentPropsWithoutRef<typeof RadixTabs.Trigger>) {
+  return (
+    <RadixTabs.Trigger
+      className={cn(
+        'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'disabled:pointer-events-none disabled:opacity-50',
+        'data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+function TabsContent({ className, ...props }: React.ComponentPropsWithoutRef<typeof RadixTabs.Content>) {
+  return (
+    <RadixTabs.Content
+      className={cn('mt-2', className)}
+      {...props}
+    />
+  )
 }
 
 export { Tabs, TabsList, TabsTrigger, TabsContent }

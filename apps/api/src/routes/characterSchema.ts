@@ -35,16 +35,15 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
     '/character-schemas',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (request.gameContext.role !== 'owner') {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-owner tried to create character schema")
+      const { userId, gameId, role } = request.gameContext
+      if (role !== 'owner') {
+        request.log.warn({ userId, role, gameId }, "non-owner tried to create character schema")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
-      const { gameId } = request.gameContext
-
       const result = CreateCharacterSchemaInput.safeParse(request.body)
       if (!result.success) {
-        return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
+        return reply.status(422).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
       const [schema] = await db.insert(characterSchemas).values({
@@ -66,22 +65,22 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
     '/character-schemas/:id',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (request.gameContext.role !== 'owner') {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-owner tried to update character schema")
+      const { userId, gameId, role } = request.gameContext
+      if (role !== 'owner') {
+        request.log.warn({ userId, role, gameId }, "non-owner tried to update character schema")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
-      const { gameId } = request.gameContext
       const { id } = request.params as { id: string }
       const [existing] = await db.select().from(characterSchemas).where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId))).limit(1)
       if (!existing) {
-        request.log.warn({ id, gameId }, "character schema not found for update")
+        request.log.warn({ id, gameId }, "character schema not found")
         return reply.status(404).send({ error: 'Schema not found' })
       }
 
       const result = UpdateCharacterSchemaInput.safeParse(request.body)
       if (!result.success) {
-        return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
+        return reply.status(422).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
       const [newVersion] = await db.insert(characterSchemas).values({
@@ -94,6 +93,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
         isActive: false,
       }).returning()
 
+      request.log.info({ id: newVersion!.id, gameId }, "character schema updated")
       return reply.status(201).send(newVersion)
     },
   )
@@ -102,12 +102,12 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
     '/character-schemas/:id/activate',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (request.gameContext.role !== 'owner') {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-owner tried to activate character schema")
+      const { userId, gameId, role } = request.gameContext
+      if (role !== 'owner') {
+        request.log.warn({ userId, role, gameId }, "non-owner tried to activate character schema")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
-      const { gameId } = request.gameContext
       const { id } = request.params as { id: string }
 
       const [schema] = await db
@@ -116,7 +116,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
         .where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId)))
         .limit(1)
       if (!schema) {
-        request.log.warn({ id, gameId }, "character schema not found for activation")
+        request.log.warn({ id, gameId }, "character schema not found")
         return reply.status(404).send({ error: 'Schema not found' })
       }
 
@@ -144,12 +144,12 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
     '/character-schemas/:id/deactivate',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (request.gameContext.role !== 'owner') {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-owner tried to deactivate character schema")
+      const { userId, gameId, role } = request.gameContext
+      if (role !== 'owner') {
+        request.log.warn({ userId, role, gameId }, "non-owner tried to deactivate character schema")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
-      const { gameId } = request.gameContext
       const { id } = request.params as { id: string }
 
       const [deactivated] = await db
@@ -159,7 +159,7 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
         .returning()
 
       if (!deactivated) {
-        request.log.warn({ id, gameId }, "character schema not found for deactivation")
+        request.log.warn({ id, gameId }, "character schema not found")
         return reply.status(404).send({ error: 'Schema not found' })
       }
       return reply.send(deactivated)
@@ -170,16 +170,16 @@ export const characterSchemaRoutes: FastifyPluginAsync = async (fastify) => {
     '/character-schemas/:id',
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
-      if (request.gameContext.role !== 'owner') {
-        request.log.warn({ userId: request.gameContext.userId, role: request.gameContext.role }, "non-owner tried to delete character schema")
+      const { userId, gameId, role } = request.gameContext
+      if (role !== 'owner') {
+        request.log.warn({ userId, role, gameId }, "non-owner tried to delete character schema")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
-      const { gameId } = request.gameContext
       const { id } = request.params as { id: string }
       const [target] = await db.select().from(characterSchemas).where(and(eq(characterSchemas.id, id), eq(characterSchemas.gameId, gameId))).limit(1)
       if (!target) {
-        request.log.warn({ id, gameId }, "character schema not found for delete")
+        request.log.warn({ id, gameId }, "character schema not found")
         return reply.status(404).send({ error: 'Schema not found' })
       }
 

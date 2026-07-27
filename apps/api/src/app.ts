@@ -1,17 +1,24 @@
+import * as Sentry from '@sentry/node'
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import helmet from '@fastify/helmet'
+import cookie from '@fastify/cookie'
+import rateLimit from '@fastify/rate-limit'
 import multipart from '@fastify/multipart'
 import fastifyStatic from '@fastify/static'
 import fs from 'fs'
 import { env } from './env.js'
 import jwtPlugin from './plugins/jwt.js'
 import gameContextPlugin from './plugins/gameContext.js'
+import { healthRoutes } from './routes/health.js'
 import { authRoutes } from './routes/auth.js'
 import { gameRoutes } from './routes/game.js'
+import { gamePublicRoutes } from './routes/gamePublic.js'
 import { gameMemberRoutes } from './routes/gameMember.js'
 import { schemaTemplateRoutes } from './routes/schemaTemplate.js'
 import { characterSchemaRoutes } from './routes/characterSchema.js'
 import { characterRoutes } from './routes/character.js'
+import { characterXpRoutes } from './routes/characterXp.js'
 import { eventRoutes } from './routes/event.js'
 import { npcRoutes } from './routes/npc.js'
 import { plotRoutes } from './routes/plot.js'
@@ -34,12 +41,36 @@ async function purgeOldLogs() {
   await db.delete(requestLogs).where(lt(requestLogs.createdAt, cutoff))
 }
 
+if (env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: env.SENTRY_DSN,
+    environment: env.NODE_ENV,
+    tracesSampleRate: env.NODE_ENV === 'production' ? 0.2 : 1.0,
+    integrations: [Sentry.fastifyIntegration()],
+    beforeSend(event) {
+      const statusCode = event.contexts?.response?.status_code as number | undefined
+      if (statusCode !== undefined && statusCode < 500) return null
+      return event
+    },
+  })
+}
+
 export function buildApp() {
   const app = Fastify({
     logger: env.NODE_ENV !== 'test',
   })
 
-  app.register(cors, { origin: true })
+  if (env.SENTRY_DSN) {
+    Sentry.setupFastifyErrorHandler(app)
+  }
+
+  // Security: cookie must be registered before jwtPlugin so JWT can read cookies
+  app.register(cookie)
+  app.register(helmet, {
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+  app.register(rateLimit, { global: false })
+  app.register(cors, { origin: env.ALLOWED_ORIGIN, credentials: true })
   app.register(multipart, { limits: { fileSize: 100 * 1024 * 1024 } })
   app.register(fastifyStatic, {
     root: UPLOADS_DIR,
@@ -48,12 +79,15 @@ export function buildApp() {
   })
   app.register(jwtPlugin)
   app.register(gameContextPlugin)
+  app.register(healthRoutes)
   app.register(authRoutes)
   app.register(gameRoutes)
+  app.register(gamePublicRoutes)
   app.register(gameMemberRoutes)
   app.register(schemaTemplateRoutes)
   app.register(characterSchemaRoutes)
   app.register(characterRoutes)
+  app.register(characterXpRoutes)
   app.register(eventRoutes)
   app.register(npcRoutes)
   app.register(plotRoutes)
@@ -89,7 +123,6 @@ export function buildApp() {
       await seedBuiltinTemplates()
       await purgeOldLogs()
       const timer = setInterval(purgeOldLogs, 24 * 60 * 60 * 1000)
-      // unref so the timer doesn't keep the process alive if everything else has shut down
       timer.unref()
     }
   })

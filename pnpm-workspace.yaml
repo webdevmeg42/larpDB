@@ -2,6 +2,7 @@ packages:
   - 'apps/*'
   - 'packages/*'
 allowBuilds:
+  '@sentry/cli': true
   bcrypt: true
   cypress: true
   es5-ext: false

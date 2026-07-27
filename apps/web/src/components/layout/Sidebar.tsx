@@ -4,40 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
-import {
-  LayoutDashboard,
-  Calendar,
-  Users,
-  Settings,
-  LogOut,
-  UserRound,
-  UserCircle,
-  BookOpen,
-  PenSquare,
-  ShieldCheck,
-  ScrollText,
-  type LucideIcon,
-} from 'lucide-react'
-
-interface NavItem {
-  label: string
-  href: string
-  icon: LucideIcon
-  roles: ('owner' | 'gm' | 'player')[]
-  testId?: string
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['owner', 'gm', 'player'] },
-  { label: 'My Characters', href: '/characters', icon: UserRound, roles: ['owner', 'gm', 'player'] },
-  { label: 'My Profile', href: '/profile', icon: UserCircle, roles: ['owner', 'gm', 'player'] },
-  { label: 'Events', href: '/events', icon: Calendar, roles: ['owner', 'gm', 'player'] },
-  { label: 'Rulebook', href: '/rulebook', icon: BookOpen, roles: ['owner', 'gm', 'player'] },
-  { label: 'Admin', href: '/admin/community', icon: ShieldCheck, roles: ['owner', 'gm'] },
-  { label: 'Adventure Builder', href: '/adventures', icon: Settings, roles: ['owner'], testId: 'nav-adv-builder' },
-  { label: 'Users', href: '/admin/users', icon: Users, roles: ['owner'] },
-  { label: 'New Post', href: '/admin/posts/new', icon: PenSquare, roles: ['owner', 'gm'] },
-]
+import { LogOut, ScrollText } from 'lucide-react'
+import { NAV_ITEMS } from '@/lib/nav-items'
+import { HelpButton } from '@/components/help/HelpButton'
 
 export function Sidebar() {
   const { user, logout } = useAuth()
@@ -48,11 +17,11 @@ export function Sidebar() {
   const visibleItems = NAV_ITEMS.filter(item => item.roles.includes(user.role))
 
   return (
-    <div className="flex h-full w-56 flex-col border-r bg-background">
-      <div className="flex h-14 items-center border-b px-4">
-        <span className="font-semibold">PlotRunner</span>
+    <div className="hidden md:flex h-full w-56 flex-col border-r border-border bg-[#080f07]">
+      <div className="flex h-14 items-center border-b border-border px-4">
+        <span className="font-heading text-gold">PlotRunner</span>
       </div>
-      <nav className="flex-1 space-y-1 p-2">
+      <nav aria-label="Main navigation" className="flex-1 space-y-1 p-2">
         {visibleItems.map(item => {
           const Icon = item.icon
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
@@ -62,10 +31,10 @@ export function Sidebar() {
               href={item.href}
               data-testid={item.testId ?? `nav-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                  ? 'rounded-r-md border-l-2 border-gold bg-primary/20 text-foreground'
+                  : 'rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground',
               )}
             >
               <Icon className="h-4 w-4" />
@@ -74,7 +43,7 @@ export function Sidebar() {
           )
         })}
         {user.isSysAdmin && (
-          <div className="mt-2 pt-2 border-t">
+          <div className="mt-2 pt-2 border-t border-border">
             <p className="px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Platform Admin
             </p>
@@ -82,10 +51,10 @@ export function Sidebar() {
               href="/sys-admin/logs"
               data-testid="nav-audit-logs"
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors',
                 pathname === '/sys-admin/logs' || pathname.startsWith('/sys-admin/')
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                  ? 'rounded-r-md border-l-2 border-gold bg-primary/20 text-foreground'
+                  : 'rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground',
               )}
             >
               <ScrollText className="h-4 w-4" />
@@ -94,11 +63,12 @@ export function Sidebar() {
           </div>
         )}
       </nav>
-      <div className="border-t p-2">
+      <div className="border-t border-border p-2">
         <div className="px-3 py-2">
           <p className="text-sm font-medium">{user.displayName}</p>
           <p className="text-xs text-muted-foreground capitalize">{user.isSysAdmin ? 'System Admin' : user.role}</p>
         </div>
+        <HelpButton />
         <button
           onClick={logout}
           data-testid="nav-sign-out"

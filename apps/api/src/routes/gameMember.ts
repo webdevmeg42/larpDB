@@ -4,6 +4,8 @@ import { db } from '../db/index.js'
 import { game, gameMembers, adventureSubscriptions, users } from '../db/schema.js'
 import { UpdateMemberInput } from '@plotrunner/shared'
 import { gmOrOwner, buildPatch } from '../lib/roles.js'
+import { groupByGame } from '../lib/groupByGame.js'
+import { invalidateMembership } from '../lib/membershipCache.js'
 
 const validStatuses = ['active', 'pending', 'banned'] as const
 
@@ -13,8 +15,15 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { gameId } = request.params as { gameId: string }
-      if (request.gameContext.gameId !== gameId) return reply.status(403).send({ error: 'Forbidden' })
-      if (!gmOrOwner(request.gameContext.role)) return reply.status(403).send({ error: 'GM or owner role required' })
+      const { userId, role } = request.gameContext
+      if (request.gameContext.gameId !== gameId) {
+        request.log.warn({ userId, contextGameId: request.gameContext.gameId, requestedGameId: gameId }, "game context mismatch")
+        return reply.status(403).send({ error: 'Forbidden' })
+      }
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to list members")
+        return reply.status(403).send({ error: 'GM or owner role required' })
+      }
 
       const { status } = request.query as { status?: string }
       const statusFilter = validStatuses.includes(status as never) ? (status as typeof validStatuses[number]) : undefined
@@ -43,8 +52,15 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
     { preHandler: [fastify.requireGameContext] },
     async (request, reply) => {
       const { gameId } = request.params as { gameId: string }
-      if (request.gameContext.gameId !== gameId) return reply.status(403).send({ error: 'Forbidden' })
-      if (!gmOrOwner(request.gameContext.role)) return reply.status(403).send({ error: 'GM or owner role required' })
+      const { userId, role } = request.gameContext
+      if (request.gameContext.gameId !== gameId) {
+        request.log.warn({ userId, contextGameId: request.gameContext.gameId, requestedGameId: gameId }, "game context mismatch")
+        return reply.status(403).send({ error: 'Forbidden' })
+      }
+      if (!gmOrOwner(role)) {
+        request.log.warn({ userId, role, gameId }, "non-staff tried to list subscriptions")
+        return reply.status(403).send({ error: 'GM or owner role required' })
+      }
 
       const rows = await db
         .select({
@@ -69,7 +85,7 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId, userId } = request.params as { gameId: string; userId: string }
       if (request.gameContext.gameId !== gameId) return reply.status(403).send({ error: 'Forbidden' })
       if (request.gameContext.role !== 'owner') {
-        request.log.warn({ requestingUserId: request.gameContext.userId, targetUserId: userId, gameId }, "non-owner tried to change member role")
+        request.log.warn({ userId: request.gameContext.userId, targetUserId: userId, gameId }, "non-owner tried to change member role")
         return reply.status(403).send({ error: 'Owner role required' })
       }
 
@@ -99,7 +115,8 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId)))
         .returning()
 
-      request.log.info({ userId, gameId, newRole: role }, "member role updated")
+      invalidateMembership(userId, gameId)
+      request.log.info({ userId: request.gameContext.userId, targetUserId: userId, gameId, newRole: role }, "member role updated")
       return reply.send(updated)
     },
   )
@@ -111,7 +128,7 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
       const { gameId, userId } = request.params as { gameId: string; userId: string }
       if (request.gameContext.gameId !== gameId) return reply.status(403).send({ error: 'Forbidden' })
       if (!gmOrOwner(request.gameContext.role)) {
-        request.log.warn({ requestingUserId: request.gameContext.userId, targetUserId: userId, gameId }, "non-staff tried to update member")
+        request.log.warn({ userId: request.gameContext.userId, targetUserId: userId, gameId }, "non-staff tried to update member")
         return reply.status(403).send({ error: 'GM or owner role required' })
       }
 
@@ -136,6 +153,8 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.userId, userId)))
         .returning()
 
+      invalidateMembership(userId, gameId)
+      request.log.info({ userId: request.gameContext.userId, targetUserId: userId, gameId }, "member updated")
       return reply.send(updated)
     },
   )
@@ -178,29 +197,15 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .where(inArray(game.id, myGameIds))
         .orderBy(asc(game.name), asc(users.displayName))
 
-      const gameMap = new Map<string, {
-        id: string
-        name: string
-        members: { id: string; userId: string; displayName: string; email: string; role: string; joinedAt: string }[]
-      }>()
-
-      for (const row of rows) {
-        if (!gameMap.has(row.gameId)) {
-          gameMap.set(row.gameId, { id: row.gameId, name: row.gameName, members: [] })
-        }
-        if (row.memberId) {
-          gameMap.get(row.gameId)!.members.push({
-            id: row.memberId,
-            userId: row.memberUserId!,
-            displayName: row.memberDisplayName!,
-            email: row.memberEmail!,
-            role: row.memberRole!,
-            joinedAt: row.memberJoinedAt!.toISOString(),
-          })
-        }
-      }
-
-      return reply.send({ games: Array.from(gameMap.values()) })
+      const games = groupByGame(rows, row => row.memberId ? {
+        id: row.memberId,
+        userId: row.memberUserId!,
+        displayName: row.memberDisplayName!,
+        email: row.memberEmail!,
+        role: row.memberRole!,
+        joinedAt: row.memberJoinedAt!.toISOString(),
+      } : null).map(g => ({ id: g.id, name: g.name, members: g.items }))
+      return reply.send({ games })
     },
   )
 
@@ -241,28 +246,14 @@ export const gameMemberRoutes: FastifyPluginAsync = async (fastify) => {
         .where(inArray(game.id, myGameIds))
         .orderBy(asc(game.name), asc(users.displayName))
 
-      const gameMap = new Map<string, {
-        id: string
-        name: string
-        subscribers: { id: string; userId: string; displayName: string; email: string; subscribedAt: string }[]
-      }>()
-
-      for (const row of rows) {
-        if (!gameMap.has(row.gameId)) {
-          gameMap.set(row.gameId, { id: row.gameId, name: row.gameName, subscribers: [] })
-        }
-        if (row.subId) {
-          gameMap.get(row.gameId)!.subscribers.push({
-            id: row.subId,
-            userId: row.subUserId!,
-            displayName: row.subDisplayName!,
-            email: row.subEmail!,
-            subscribedAt: row.subCreatedAt!.toISOString(),
-          })
-        }
-      }
-
-      return reply.send({ games: Array.from(gameMap.values()) })
+      const games = groupByGame(rows, row => row.subId ? {
+        id: row.subId,
+        userId: row.subUserId!,
+        displayName: row.subDisplayName!,
+        email: row.subEmail!,
+        subscribedAt: row.subCreatedAt!.toISOString(),
+      } : null).map(g => ({ id: g.id, name: g.name, subscribers: g.items }))
+      return reply.send({ games })
     },
   )
 }

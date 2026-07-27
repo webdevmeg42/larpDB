@@ -3,6 +3,7 @@ import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify'
 import { eq, and } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { gameMembers, game } from '../db/schema.js'
+import { getCachedMembership, setCachedMembership } from '../lib/membershipCache.js'
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -37,6 +38,15 @@ const gameContextPlugin: FastifyPluginAsync = async (fastify) => {
       return
     }
 
+    const bypassCache = request.headers['x-bypass-cache'] === '1'
+    if (!bypassCache) {
+      const cached = getCachedMembership(userId, gameId)
+      if (cached) {
+        request.gameContext = { userId, gameId, role: cached.role, gameStatus: cached.gameStatus }
+        return
+      }
+    }
+
     const [row] = await db
       .select({ role: gameMembers.role, gameStatus: game.status })
       .from(gameMembers)
@@ -54,6 +64,7 @@ const gameContextPlugin: FastifyPluginAsync = async (fastify) => {
       return reply.status(403).send({ error: 'Not a member of this game' })
     }
 
+    setCachedMembership(userId, gameId, { role: row.role, gameStatus: row.gameStatus })
     request.gameContext = { userId, gameId, role: row.role, gameStatus: row.gameStatus }
   })
 }

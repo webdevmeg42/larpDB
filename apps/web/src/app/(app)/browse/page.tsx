@@ -59,11 +59,12 @@ export default function BrowsePage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Search</p>
             <input
+              data-testid="browse-search-input"
               type="text"
               placeholder="Name or description…"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full rounded-md border bg-background px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
 
@@ -96,6 +97,7 @@ export default function BrowsePage() {
             filtered.map(g => (
               <div
                 key={g.id}
+                data-testid="browse-game-row"
                 className="flex items-start justify-between gap-4 rounded-lg border p-4"
               >
                 <div className="min-w-0">
