@@ -47,6 +47,7 @@ export function SchemaBuilder({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveAttempted, setSaveAttempted] = useState(false)
+  const [duplicateFieldIds, setDuplicateFieldIds] = useState<Set<string>>(new Set())
 
   const selectedField =
     lockedFields.find(f => f.id === selectedId) ??
@@ -79,6 +80,25 @@ export function SchemaBuilder({
   async function handleSave() {
     setSaveError(null)
     try {
+      const labelCount = new Map<string, string[]>()
+      for (const f of [...lockedFields, ...fields]) {
+        const key = f.label.trim().toLowerCase()
+        if (!key) continue
+        if (!labelCount.has(key)) labelCount.set(key, [])
+        labelCount.get(key)!.push(f.id)
+      }
+      const dupes = new Set<string>()
+      for (const ids of labelCount.values()) {
+        if (ids.length > 1) ids.forEach(id => dupes.add(id))
+      }
+      if (dupes.size > 0) {
+        setSaveAttempted(true)
+        setDuplicateFieldIds(dupes)
+        setSaveError('Field labels must be unique.')
+        return
+      }
+      setDuplicateFieldIds(new Set())
+
       const unlabeledField = fields.find(f => !f.label.trim())
       if (unlabeledField) {
         setSaveAttempted(true)
@@ -178,6 +198,7 @@ export function SchemaBuilder({
                 onReorder={reorderFields}
                 onDelete={deleteField}
                 highlightUnlabeled={saveAttempted}
+                duplicateIds={duplicateFieldIds}
               />
             </div>
           </div>
