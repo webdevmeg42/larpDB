@@ -164,7 +164,9 @@ export function ProfilePageClient() {
             >
               {avatarUploading ? 'Uploading…' : 'Upload photo'}
             </button>
-            {avatarError && <p className="text-xs text-destructive mt-1">{avatarError}</p>}
+            <div role="alert" className="min-h-[1rem]">
+              {avatarError && <p className="text-xs text-destructive mt-1">{avatarError}</p>}
+            </div>
           </div>
         </div>
 
@@ -206,7 +208,9 @@ export function ProfilePageClient() {
           </div>
         </div>
 
-        {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+        <div role="alert" className="min-h-[1.25rem]">
+          {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+        </div>
 
         <button
           type="submit"
