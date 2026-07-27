@@ -43,47 +43,45 @@ export default function SetupChecklist({ config, game, onTabChange }: Props) {
   return (
     <div
       data-testid="setup-checklist"
-      className="w-48 shrink-0 border rounded-lg p-4 flex flex-col gap-3 self-start"
+      className="mb-6 border rounded-lg px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-2"
     >
-      <div className="text-xs font-semibold text-foreground">Setup</div>
-      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-        <div
-          className="h-full bg-green-500 rounded-full transition-all"
-          style={{ width: `${pct}%` }}
-        />
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="text-xs font-semibold text-foreground">Setup</span>
+        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-green-500 rounded-full transition-all"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className="text-xs text-muted-foreground">{doneCount} of {items.length}</span>
       </div>
-      <div className="text-xs text-muted-foreground">{doneCount} of {items.length} complete</div>
-      <div className="flex flex-col gap-2">
-        {items.map(item => (
-          <div key={item.label} className="flex flex-col gap-0.5">
-            <div className="flex items-start gap-2">
-              <span className={`mt-0.5 text-sm leading-none ${item.done ? 'text-green-600' : 'text-muted-foreground'}`}>
-                {item.done ? '✅' : '☐'}
-              </span>
-              <span className={`text-xs leading-snug ${item.done ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
-                {item.label}
-              </span>
-            </div>
-            {!item.done && (
-              item.href ? (
-                <Link
-                  href={item.href}
-                  className="ml-5 text-xs text-primary hover:underline"
-                >
-                  {item.actionLabel}
-                </Link>
-              ) : (
-                <button
-                  onClick={item.action}
-                  className="ml-5 text-xs text-primary hover:underline text-left"
-                >
-                  {item.actionLabel}
-                </button>
-              )
-            )}
-          </div>
-        ))}
-      </div>
+
+      <div className="h-4 w-px bg-border shrink-0" />
+
+      {items.map(item => (
+        <div key={item.label} className="flex items-center gap-1.5 shrink-0">
+          <span className={`text-sm leading-none ${item.done ? 'text-green-600' : 'text-muted-foreground'}`}>
+            {item.done ? '✅' : '☐'}
+          </span>
+          <span className={`text-xs ${item.done ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+            {item.label}
+          </span>
+          {!item.done && (
+            item.href ? (
+              <Link href={item.href} className="text-xs text-primary hover:underline">
+                {item.actionLabel}
+              </Link>
+            ) : (
+              <button
+                onClick={item.action}
+                className="text-xs text-primary hover:underline"
+              >
+                {item.actionLabel}
+              </button>
+            )
+          )}
+        </div>
+      ))}
     </div>
   )
 }

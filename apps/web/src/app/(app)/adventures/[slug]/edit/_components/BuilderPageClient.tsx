@@ -170,16 +170,14 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
       </Link>
       <h1 className="text-2xl font-semibold mb-6">Adventure Builder</h1>
 
-      <div className="flex gap-6 items-start">
-        <div className="flex-1 min-w-0">
-          <Tabs value={activeTab} onValueChange={(tab) => {
-            if (tab === 'rulebook') {
-              router.push(`/rulebook/${gameId}`)
-            } else {
-              setActiveTab(tab)
-            }
-          }}>
-          <TabsList className="mb-6">
+      <Tabs value={activeTab} onValueChange={(tab) => {
+          if (tab === 'rulebook') {
+            router.push(`/rulebook/${gameId}`)
+          } else {
+            setActiveTab(tab)
+          }
+        }}>
+          <TabsList className="mb-4">
             <TabsTrigger value="branding" data-testid="tab-branding">Branding</TabsTrigger>
             <TabsTrigger value="codex" data-testid="tab-codex">The Codex</TabsTrigger>
             <TabsTrigger value="rulebook" data-testid="tab-rulebook">Rulebook</TabsTrigger>
@@ -187,6 +185,7 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
             <TabsTrigger value="race-builds" data-testid="tab-race-builds">Race Builds</TabsTrigger>
             <TabsTrigger value="class-builds" data-testid="tab-class-builds">Class Builds</TabsTrigger>
           </TabsList>
+          <SetupChecklist config={config} game={game} onTabChange={setActiveTab} />
 
           <TabsContent value="branding">
             <div className="space-y-6">
@@ -407,9 +406,6 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
             <BuildsTab type="class" hasLevelingSystem={!!config?.codex?.levelingSystem} />
           </TabsContent>
           </Tabs>
-        </div>
-        <SetupChecklist config={config} game={game} onTabChange={setActiveTab} />
-      </div>
     </div>
   )
 }
