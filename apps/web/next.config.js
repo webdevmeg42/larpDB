@@ -19,7 +19,7 @@ const nextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
               `img-src 'self' data: blob: ${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}`,
-              `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}`,
+              `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'} https://*.ingest.sentry.io`,
             ].join('; '),
           },
         ],
