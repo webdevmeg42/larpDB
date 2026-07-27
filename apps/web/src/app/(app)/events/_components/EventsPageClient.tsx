@@ -191,7 +191,7 @@ export function EventsPageClient({ initialData }: { initialData: { games: GameWi
                       onClick={() => { setCalendarView(v => !v); setCalendarDayFilter(null) }}
                       className={cn(buttonVariants({ variant: calendarView ? 'default' : 'outline', size: 'sm' }))}
                     >
-                      <CalendarDays className="h-4 w-4 mr-1" />
+                      <CalendarDays className="h-4 w-4 mr-1" aria-hidden="true" />
                       {calendarView ? 'List' : 'Calendar'}
                     </button>
                     {(selectedGame.role === 'owner' || selectedGame.role === 'gm') && (

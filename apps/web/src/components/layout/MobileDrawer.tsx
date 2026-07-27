@@ -112,7 +112,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
                     : 'rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground',
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-4 w-4" aria-hidden="true" />
                 {item.label}
               </Link>
             )
