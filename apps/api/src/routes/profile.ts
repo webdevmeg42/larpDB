@@ -8,7 +8,7 @@ import { randomUUID } from 'crypto'
 import { db } from '../db/index.js'
 import { users } from '../db/schema.js'
 import { UpdateProfileInput, ChangePasswordInput } from '@plotrunner/shared'
-import { UPLOADS_DIR } from './upload.js'
+import { LOCAL_UPLOADS_DIR } from '../lib/storage.js'
 import { highestRole } from './auth.js'
 import { stripPassword } from '../lib/user.js'
 import { IMAGE_MIME_TYPES, IMAGE_MIME_TO_EXT } from '../lib/mimeTypes.js'
@@ -102,7 +102,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
 
       const ext = MIME_TO_EXT[data.mimetype]
       const filename = `${randomUUID()}.${ext}`
-      const filepath = path.join(UPLOADS_DIR, filename)
+      const filepath = path.join(LOCAL_UPLOADS_DIR, filename)
 
       await pipeline(data.file, fs.createWriteStream(filepath))
 
@@ -131,7 +131,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
       // Delete old avatar file if it was a local upload
       if (current.avatarUrl?.startsWith('/uploads/')) {
         const oldFilename = path.basename(current.avatarUrl)
-        const oldPath = path.join(UPLOADS_DIR, oldFilename)
+        const oldPath = path.join(LOCAL_UPLOADS_DIR, oldFilename)
         await fs.promises.unlink(oldPath).catch(() => {})
       }
 
