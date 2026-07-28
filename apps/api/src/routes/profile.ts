@@ -107,7 +107,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(users.id, request.user.sub))
         .limit(1)
       if (!current) {
-        await storage.delete(avatarUrl)
+        await storage.delete(avatarUrl).catch(() => {})
         return reply.status(404).send({ error: 'User not found' })
       }
 
@@ -117,7 +117,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(users.id, request.user.sub))
         .returning()
       if (!updated) {
-        await storage.delete(avatarUrl)
+        await storage.delete(avatarUrl).catch(() => {})
         return reply.status(404).send({ error: 'User not found' })
       }
 
