@@ -21,7 +21,7 @@ export class LocalStorage implements StorageProvider {
   }
 
   async upload(stream: Readable, filename: string, _mimetype: string): Promise<string> {
-    const filepath = path.join(this.dir, filename)
+    const filepath = path.join(this.dir, path.basename(filename))
     await pipeline(stream, fs.createWriteStream(filepath))
     return `/uploads/${filename}`
   }
@@ -29,7 +29,9 @@ export class LocalStorage implements StorageProvider {
   async delete(url: string): Promise<void> {
     if (!url.startsWith('/uploads/')) return
     const filename = path.basename(url)
-    await fs.promises.unlink(path.join(this.dir, filename)).catch(() => {})
+    await fs.promises.unlink(path.join(this.dir, filename)).catch((err: NodeJS.ErrnoException) => {
+      if (err.code !== 'ENOENT') throw err
+    })
   }
 }
 
@@ -43,6 +45,7 @@ export class R2Storage implements StorageProvider {
     accessKeyId: string,
     secretAccessKey: string,
   ) {
+    this.publicUrl = publicUrl.replace(/\/$/, '')
     this.client = new S3Client({
       region: 'auto',
       endpoint: `https://${accountId}.r2.cloudflarestorage.com`,

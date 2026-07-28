@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import { tmpdir } from 'os'
@@ -53,6 +53,10 @@ describe('LocalStorage', () => {
 })
 
 describe('R2Storage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('upload calls Upload.done and returns publicUrl/filename', async () => {
     const { R2Storage } = await import('../storage.js')
     const { Upload } = await import('@aws-sdk/lib-storage')
@@ -65,10 +69,12 @@ describe('R2Storage', () => {
 
   it('delete calls DeleteObjectCommand with the correct key', async () => {
     const { R2Storage } = await import('../storage.js')
-    const { DeleteObjectCommand } = await import('@aws-sdk/client-s3')
+    const { DeleteObjectCommand, S3Client } = await import('@aws-sdk/client-s3')
     const s = new R2Storage('my-bucket', 'https://pub.r2.dev', 'acc123', 'key', 'secret')
     await s.delete('https://pub.r2.dev/photo.jpg')
     expect(DeleteObjectCommand).toHaveBeenCalledWith({ Bucket: 'my-bucket', Key: 'photo.jpg' })
+    const mockInstance = vi.mocked(S3Client).mock.results[0].value
+    expect(mockInstance.send).toHaveBeenCalledOnce()
   })
 
   it('delete is a no-op for unrecognized URLs', async () => {
