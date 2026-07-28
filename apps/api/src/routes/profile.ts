@@ -1,19 +1,16 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { eq } from 'drizzle-orm'
 import bcrypt from 'bcrypt'
-import { pipeline } from 'stream/promises'
-import fs from 'fs'
-import path from 'path'
 import { randomUUID } from 'crypto'
 import { db } from '../db/index.js'
 import { users } from '../db/schema.js'
 import { UpdateProfileInput, ChangePasswordInput } from '@plotrunner/shared'
-import { LOCAL_UPLOADS_DIR } from '../lib/storage.js'
+import { storage } from '../lib/storage.js'
 import { highestRole } from './auth.js'
 import { stripPassword } from '../lib/user.js'
 import { IMAGE_MIME_TYPES, IMAGE_MIME_TO_EXT } from '../lib/mimeTypes.js'
 
-const ALLOWED_MIME_TYPES = new Set(IMAGE_MIME_TYPES)
+const ALLOWED_MIME_TYPES = new Set<string>(IMAGE_MIME_TYPES)
 const MIME_TO_EXT = IMAGE_MIME_TO_EXT
 
 export const profileRoutes: FastifyPluginAsync = async (fastify) => {
@@ -102,37 +99,30 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
 
       const ext = MIME_TO_EXT[data.mimetype]
       const filename = `${randomUUID()}.${ext}`
-      const filepath = path.join(LOCAL_UPLOADS_DIR, filename)
+      const avatarUrl = await storage.upload(data.file, filename, data.mimetype)
 
-      await pipeline(data.file, fs.createWriteStream(filepath))
-
-      // Read current avatar before overwriting
       const [current] = await db
         .select({ id: users.id, avatarUrl: users.avatarUrl })
         .from(users)
         .where(eq(users.id, request.user.sub))
         .limit(1)
       if (!current) {
-        await fs.promises.unlink(filepath).catch(() => {})
+        await storage.delete(avatarUrl)
         return reply.status(404).send({ error: 'User not found' })
       }
 
-      const avatarUrl = `/uploads/${filename}`
       const [updated] = await db
         .update(users)
         .set({ avatarUrl })
         .where(eq(users.id, request.user.sub))
         .returning()
       if (!updated) {
-        await fs.promises.unlink(filepath).catch(() => {})
+        await storage.delete(avatarUrl)
         return reply.status(404).send({ error: 'User not found' })
       }
 
-      // Delete old avatar file if it was a local upload
-      if (current.avatarUrl?.startsWith('/uploads/')) {
-        const oldFilename = path.basename(current.avatarUrl)
-        const oldPath = path.join(LOCAL_UPLOADS_DIR, oldFilename)
-        await fs.promises.unlink(oldPath).catch(() => {})
+      if (current.avatarUrl) {
+        await storage.delete(current.avatarUrl)
       }
 
       return reply.send(stripPassword(updated))
