@@ -73,7 +73,7 @@ describe('R2Storage', () => {
     const s = new R2Storage('my-bucket', 'https://pub.r2.dev', 'acc123', 'key', 'secret')
     await s.delete('https://pub.r2.dev/photo.jpg')
     expect(DeleteObjectCommand).toHaveBeenCalledWith({ Bucket: 'my-bucket', Key: 'photo.jpg' })
-    const mockInstance = vi.mocked(S3Client).mock.results[0].value
+    const mockInstance = vi.mocked(S3Client).mock.results[0]!.value
     expect(mockInstance.send).toHaveBeenCalledOnce()
   })
 
