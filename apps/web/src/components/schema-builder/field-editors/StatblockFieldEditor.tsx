@@ -108,7 +108,9 @@ export function StatblockFieldEditor({ field, onChange }: Props) {
   }
 
   function addStatLevel(statIdx: number) {
-    const entries = stats[statIdx].levelEntries ?? []
+    const stat = stats[statIdx]
+    if (!stat) return
+    const entries = stat.levelEntries ?? []
     const nextLevel = entries.length > 0 ? Math.max(...entries.map(e => e.level)) + 1 : 1
     checkLevel(nextLevel, () => {
       updateStat(statIdx, { levelEntries: [...entries, { level: nextLevel, value: 0 }] })
@@ -116,7 +118,9 @@ export function StatblockFieldEditor({ field, onChange }: Props) {
   }
 
   function updateStatLevel(statIdx: number, levelIdx: number, patch: Partial<StatLevelEntry>) {
-    const entries = stats[statIdx].levelEntries ?? []
+    const stat = stats[statIdx]
+    if (!stat) return
+    const entries = stat.levelEntries ?? []
     const updated = entries.map((e, i) => i === levelIdx ? { ...e, ...patch } : e)
     if (patch.level !== undefined) {
       checkLevel(patch.level, () => updateStat(statIdx, { levelEntries: updated }))
@@ -126,7 +130,9 @@ export function StatblockFieldEditor({ field, onChange }: Props) {
   }
 
   function removeStatLevel(statIdx: number, levelIdx: number) {
-    const entries = stats[statIdx].levelEntries ?? []
+    const stat = stats[statIdx]
+    if (!stat) return
+    const entries = stat.levelEntries ?? []
     updateStat(statIdx, { levelEntries: entries.filter((_, i) => i !== levelIdx) })
   }
 

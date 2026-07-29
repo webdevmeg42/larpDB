@@ -27,7 +27,7 @@ export default function PublicRulebookPage() {
         if (bookRes.status === 404) { setNotFound(true); return }
         const book = await bookRes.json() as RulebookData
         setData(book)
-        if (book.chapters.length > 0) setActiveId(book.chapters[0].id)
+        if (book.chapters.length > 0 && book.chapters[0]) setActiveId(book.chapters[0].id)
       } catch {
         setNotFound(true)
       } finally {

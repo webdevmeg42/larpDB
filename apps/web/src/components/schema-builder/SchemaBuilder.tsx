@@ -222,7 +222,7 @@ export function SchemaBuilder({
         {/* Field editor */}
         <div className="w-72 shrink-0 overflow-y-auto">
           {selectedField ? (
-            <FieldEditor field={selectedField} onChange={updateField} schemaType={schemaType} highlightUnlabeled={saveAttempted} />
+            <FieldEditor field={selectedField} onChange={updateField} {...(schemaType !== undefined && { schemaType })} highlightUnlabeled={saveAttempted} />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground p-4 text-center">
               Select a field to edit its properties
