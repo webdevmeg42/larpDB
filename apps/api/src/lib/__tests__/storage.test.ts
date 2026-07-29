@@ -50,6 +50,15 @@ describe('LocalStorage', () => {
     const s = new LocalStorage(dir)
     await expect(s.delete('https://example.com/other.png')).resolves.toBeUndefined()
   })
+
+  it('delete re-throws non-ENOENT errors from unlink', async () => {
+    const { LocalStorage } = await import('../storage.js')
+    const s = new LocalStorage(dir)
+    const accessError = Object.assign(new Error('permission denied'), { code: 'EACCES' })
+    const spy = vi.spyOn(fs.promises, 'unlink').mockRejectedValueOnce(accessError)
+    await expect(s.delete('/uploads/any.png')).rejects.toThrow('permission denied')
+    spy.mockRestore()
+  })
 })
 
 describe('R2Storage', () => {

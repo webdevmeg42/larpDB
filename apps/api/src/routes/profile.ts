@@ -122,7 +122,9 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       if (current.avatarUrl) {
-        await storage.delete(current.avatarUrl)
+        await storage.delete(current.avatarUrl).catch((err) => {
+          fastify.log.warn({ err, url: current.avatarUrl }, 'failed to delete old avatar — ignored')
+        })
       }
 
       return reply.send(stripPassword(updated))

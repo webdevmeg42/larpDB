@@ -21,9 +21,10 @@ export class LocalStorage implements StorageProvider {
   }
 
   async upload(stream: Readable, filename: string, _mimetype: string): Promise<string> {
-    const filepath = path.join(this.dir, path.basename(filename))
+    const safe = path.basename(filename)
+    const filepath = path.join(this.dir, safe)
     await pipeline(stream, fs.createWriteStream(filepath))
-    return `/uploads/${filename}`
+    return `/uploads/${safe}`
   }
 
   async delete(url: string): Promise<void> {
@@ -69,7 +70,7 @@ export class R2Storage implements StorageProvider {
   }
 
   async delete(url: string): Promise<void> {
-    if (!url.startsWith(this.publicUrl)) return
+    if (!url.startsWith(this.publicUrl + '/')) return
     const key = url.slice(this.publicUrl.length + 1)
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }))
   }
