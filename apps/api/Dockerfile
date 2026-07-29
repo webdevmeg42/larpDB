@@ -9,6 +9,7 @@ COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 COPY apps/mobile/package.json ./apps/mobile/
 COPY apps/desktop/package.json ./apps/desktop/
+COPY apps/e2e/package.json ./apps/e2e/
 RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
@@ -33,7 +34,11 @@ COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/web/package.json ./apps/web/
 COPY --from=builder /app/apps/mobile/package.json ./apps/mobile/
 COPY --from=builder /app/apps/desktop/package.json ./apps/desktop/
+COPY --from=builder /app/apps/e2e/package.json ./apps/e2e/
 RUN pnpm install --prod --frozen-lockfile
+RUN addgroup --system --gid 1001 nodejs \
+ && adduser --system --uid 1001 apiuser
+USER apiuser
 
 WORKDIR /app/apps/api
 CMD ["sh", "-c", "node dist/db/migrate.js && exec node dist/index.js"]
