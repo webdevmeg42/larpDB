@@ -36,4 +36,4 @@ COPY --from=builder /app/apps/desktop/package.json ./apps/desktop/
 RUN pnpm install --prod --frozen-lockfile
 
 WORKDIR /app/apps/api
-CMD ["node", "dist/index.js"]
+CMD ["sh", "-c", "node dist/db/migrate.js && node dist/index.js"]
