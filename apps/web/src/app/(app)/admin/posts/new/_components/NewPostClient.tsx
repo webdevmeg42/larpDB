@@ -272,7 +272,7 @@ export function NewPostClient({ initialGames, initialGameId, initialDrafts }: Pr
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {games.length > 1 && !selectedGameId && (
+        {!selectedGameId && (
           <div className="space-y-1.5">
             <Label htmlFor="adventure">Adventure</Label>
             <select

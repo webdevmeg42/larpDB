@@ -45,8 +45,11 @@ export function RulebookPageClient({ initialGames }: { initialGames: MyGame[] })
 
   if (games.length === 0) {
     return (
-      <div className="p-6 flex flex-col items-center justify-center min-h-[40vh]">
-        <p className="text-muted-foreground">You haven&apos;t joined any Adventures yet.</p>
+      <div className="p-6 flex flex-col gap-4">
+        <h1 className="text-2xl font-semibold">Rulebook</h1>
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <p className="text-muted-foreground">You haven&apos;t joined any Adventures yet.</p>
+        </div>
       </div>
     )
   }
