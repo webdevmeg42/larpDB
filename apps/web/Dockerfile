@@ -19,7 +19,7 @@ COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_module
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
 RUN pnpm --filter @plotrunner/shared build
-ARG NEXT_PUBLIC_API_URL=https://api-production-6757.up.railway.app
+ARG NEXT_PUBLIC_API_URL=https://api.plotrunner.run
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_SENTRY_DSN
 ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
