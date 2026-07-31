@@ -34,6 +34,8 @@ export const game = pgTable('game', {
   status: text('status', { enum: ['active', 'inactive'] }).notNull().default('inactive'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore drizzle 0.30 accepts SQL expressions in .on(); type updated in 0.36+
   nameLowerIdx: uniqueIndex('game_name_lower_idx').on(sql`LOWER(${t.name})`),
 }))
 

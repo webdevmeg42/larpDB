@@ -4,7 +4,7 @@ import { gmOrOwner } from '../lib/roles.js'
 import { storage } from '../lib/storage.js'
 import { IMAGE_MIME_TYPES, IMAGE_MIME_TO_EXT, VIDEO_MIME_TYPES, VIDEO_MIME_TO_EXT } from '../lib/mimeTypes.js'
 
-const ALLOWED_MIME_TYPES = new Set([...IMAGE_MIME_TYPES, ...VIDEO_MIME_TYPES])
+const ALLOWED_MIME_TYPES = new Set<string>([...IMAGE_MIME_TYPES, ...VIDEO_MIME_TYPES])
 const MIME_TO_EXT: Record<string, string> = { ...IMAGE_MIME_TO_EXT, ...VIDEO_MIME_TO_EXT }
 
 export const uploadRoutes: FastifyPluginAsync = async (fastify) => {
