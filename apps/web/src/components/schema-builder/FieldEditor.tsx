@@ -103,8 +103,8 @@ export function FieldEditor({ field, onChange, schemaType, highlightUnlabeled }:
         <SubEditor
           field={field}
           onChange={onChange}
-          schemaType={schemaType}
-          highlightUnlabeled={highlightUnlabeled}
+          {...(schemaType !== undefined && { schemaType })}
+          {...(highlightUnlabeled !== undefined && { highlightUnlabeled })}
         />
       )}
     </div>

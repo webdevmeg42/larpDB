@@ -150,7 +150,7 @@ export function EventsTab() {
                     onClick={e => { e.stopPropagation(); setGameId(g.id); router.push('/events/new') }}
                     className="ml-2"
                   >
-                    <Plus className="h-4 w-4 mr-1" />
+                    <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
                     New Event
                   </Button>
                 </div>
@@ -160,7 +160,7 @@ export function EventsTab() {
                       <div className="flex flex-col items-center justify-center py-6 gap-3">
                         <p className="text-sm text-muted-foreground">No events yet.</p>
                         <Button size="sm" onClick={() => { setGameId(g.id); router.push('/events/new') }}>
-                          <Plus className="h-4 w-4 mr-1" />
+                          <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
                           New Event
                         </Button>
                       </div>

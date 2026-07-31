@@ -1,16 +1,8 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { pipeline } from 'stream/promises'
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
 import { randomUUID } from 'crypto'
 import { gmOrOwner } from '../lib/roles.js'
+import { storage } from '../lib/storage.js'
 import { IMAGE_MIME_TYPES, IMAGE_MIME_TO_EXT, VIDEO_MIME_TYPES, VIDEO_MIME_TO_EXT } from '../lib/mimeTypes.js'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-export const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads')
-
-fs.mkdirSync(UPLOADS_DIR, { recursive: true })
 
 const ALLOWED_MIME_TYPES = new Set([...IMAGE_MIME_TYPES, ...VIDEO_MIME_TYPES])
 const MIME_TO_EXT: Record<string, string> = { ...IMAGE_MIME_TO_EXT, ...VIDEO_MIME_TO_EXT }
@@ -38,21 +30,16 @@ export const uploadRoutes: FastifyPluginAsync = async (fastify) => {
 
       const ext = MIME_TO_EXT[data.mimetype]
       const filename = `${randomUUID()}.${ext}`
-      const filepath = path.join(UPLOADS_DIR, filename)
-
-      await pipeline(data.file, fs.createWriteStream(filepath)).catch(async (err) => {
-        await fs.promises.unlink(filepath).catch(() => {})
-        throw err
-      })
+      const url = await storage.upload(data.file, filename, data.mimetype)
 
       if (data.file.truncated) {
-        await fs.promises.unlink(filepath)
+        await storage.delete(url)
         request.log.warn({ filename, userId: request.gameContext.userId }, "upload rejected — file exceeded 100MB limit")
         return reply.status(413).send({ error: 'File must be under 100MB' })
       }
 
       request.log.info({ filename, mimetype: data.mimetype, userId: request.gameContext.userId }, "file uploaded successfully")
-      return reply.send({ url: `/uploads/${filename}` })
+      return reply.send({ url })
     },
   )
 }

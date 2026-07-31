@@ -164,7 +164,9 @@ export function ProfilePageClient() {
             >
               {avatarUploading ? 'Uploading…' : 'Upload photo'}
             </button>
-            {avatarError && <p className="text-xs text-destructive mt-1">{avatarError}</p>}
+            <div role="alert" className="min-h-[1rem]">
+              {avatarError && <p className="text-xs text-destructive mt-1">{avatarError}</p>}
+            </div>
           </div>
         </div>
 
@@ -206,7 +208,9 @@ export function ProfilePageClient() {
           </div>
         </div>
 
-        {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+        <div role="alert" className="min-h-[1.25rem]">
+          {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+        </div>
 
         <button
           type="submit"
@@ -262,8 +266,12 @@ export function ProfilePageClient() {
           </div>
         </div>
 
-        {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
-        {passwordSuccess && <p className="text-sm text-green-500">Password updated.</p>}
+        <div role="alert" className="min-h-[1.25rem]">
+          {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
+        </div>
+        <div aria-live="polite" aria-atomic="true" className="min-h-[1.25rem]">
+          {passwordSuccess && <p className="text-sm text-success">Password updated.</p>}
+        </div>
 
         <button
           type="submit"

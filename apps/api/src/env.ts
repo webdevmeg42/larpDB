@@ -8,6 +8,12 @@ const EnvSchema = z.object({
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   SENTRY_DSN: z.string().optional(),
+  STORAGE_PROVIDER: z.enum(['local', 'r2']).default('local'),
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET_NAME: z.string().optional(),
+  R2_PUBLIC_URL: z.string().url().optional(),
 })
 
 export const env = EnvSchema.parse(process.env)

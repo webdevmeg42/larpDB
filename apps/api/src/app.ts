@@ -6,7 +6,6 @@ import cookie from '@fastify/cookie'
 import rateLimit from '@fastify/rate-limit'
 import multipart from '@fastify/multipart'
 import fastifyStatic from '@fastify/static'
-import fs from 'fs'
 import { env } from './env.js'
 import jwtPlugin from './plugins/jwt.js'
 import gameContextPlugin from './plugins/gameContext.js'
@@ -24,7 +23,8 @@ import { npcRoutes } from './routes/npc.js'
 import { plotRoutes } from './routes/plot.js'
 import { userRoutes } from './routes/user.js'
 import { storeRoutes } from './routes/store.js'
-import { uploadRoutes, UPLOADS_DIR } from './routes/upload.js'
+import { uploadRoutes } from './routes/upload.js'
+import { LOCAL_UPLOADS_DIR } from './lib/storage.js'
 import { subscriptionRoutes } from './routes/subscription.js'
 import { postRoutes } from './routes/post.js'
 import { profileRoutes } from './routes/profile.js'
@@ -72,11 +72,13 @@ export function buildApp() {
   app.register(rateLimit, { global: false })
   app.register(cors, { origin: env.ALLOWED_ORIGIN, credentials: true })
   app.register(multipart, { limits: { fileSize: 100 * 1024 * 1024 } })
-  app.register(fastifyStatic, {
-    root: UPLOADS_DIR,
-    prefix: '/uploads/',
-    decorateReply: false,
-  })
+  if (env.STORAGE_PROVIDER === 'local') {
+    app.register(fastifyStatic, {
+      root: LOCAL_UPLOADS_DIR,
+      prefix: '/uploads/',
+      decorateReply: false,
+    })
+  }
   app.register(jwtPlugin)
   app.register(gameContextPlugin)
   app.register(healthRoutes)
@@ -118,7 +120,6 @@ export function buildApp() {
   })
 
   app.addHook('onReady', async () => {
-    await fs.promises.mkdir(UPLOADS_DIR, { recursive: true })
     if (env.NODE_ENV !== 'test') {
       await seedBuiltinTemplates()
       await purgeOldLogs()

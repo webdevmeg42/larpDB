@@ -144,7 +144,7 @@ export function HitpointsFieldEditor({ field, onChange }: Props) {
                     onChange={e => handleHpChange(i, parseInt(e.target.value) || 1)}
                     className="h-7 text-sm w-16"
                   />
-                  <button onClick={() => remove(i)} className="ml-auto text-muted-foreground hover:text-destructive">
+                  <button onClick={() => remove(i)} aria-label="Remove tier" className="ml-auto text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>

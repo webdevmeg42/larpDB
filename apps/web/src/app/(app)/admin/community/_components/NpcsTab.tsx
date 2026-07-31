@@ -129,7 +129,7 @@ export function NpcsTab() {
                     title={!g.isActive ? 'This Adventure is inactive' : undefined}
                     className="ml-2"
                   >
-                    <Plus className="h-4 w-4 mr-1" />
+                    <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
                     New NPC
                   </Button>
                 </div>
@@ -143,7 +143,7 @@ export function NpcsTab() {
                           onClick={() => { setGameId(g.id); router.push('/npcs/new') }}
                           disabled={!g.isActive}
                         >
-                          <Plus className="h-4 w-4 mr-1" />
+                          <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
                           New NPC
                         </Button>
                       </div>

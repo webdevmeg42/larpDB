@@ -47,9 +47,17 @@ export default function SetupChecklist({ config, game, onTabChange }: Props) {
     >
       <div className="flex items-center gap-2 shrink-0">
         <span className="text-xs font-semibold text-foreground">Setup</span>
-        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div
+          role="progressbar"
+          aria-valuenow={doneCount}
+          aria-valuemin={0}
+          aria-valuemax={items.length}
+          aria-label="Setup progress"
+          aria-valuetext={`${doneCount} of ${items.length} steps complete`}
+          className="w-16 h-1.5 bg-muted rounded-full overflow-hidden"
+        >
           <div
-            className="h-full bg-green-500 rounded-full transition-all"
+            className="h-full bg-success rounded-full transition-all"
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -60,7 +68,7 @@ export default function SetupChecklist({ config, game, onTabChange }: Props) {
 
       {items.map(item => (
         <div key={item.label} className="flex items-center gap-1.5 shrink-0">
-          <span className={`text-sm leading-none ${item.done ? 'text-green-600' : 'text-muted-foreground'}`}>
+          <span className={`text-sm leading-none ${item.done ? 'text-success' : 'text-muted-foreground'}`}>
             {item.done ? '✅' : '☐'}
           </span>
           <span className={`text-xs ${item.done ? 'line-through text-muted-foreground' : 'text-foreground'}`}>

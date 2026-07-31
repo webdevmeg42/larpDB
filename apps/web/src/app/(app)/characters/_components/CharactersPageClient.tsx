@@ -152,7 +152,7 @@ export function CharactersPageClient({ initialData }: { initialData: { games: Ga
                     disabled={!selectedGame.isActive}
                     title={!selectedGame.isActive ? 'This Adventure is inactive' : undefined}
                   >
-                    <Plus className="h-4 w-4 mr-1" />
+                    <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
                     New Character
                   </Button>
                 </div>
@@ -166,7 +166,7 @@ export function CharactersPageClient({ initialData }: { initialData: { games: Ga
                       onClick={() => handleNewCharacter(selectedGame)}
                       disabled={!selectedGame.isActive}
                     >
-                      <Plus className="h-4 w-4 mr-1" />
+                      <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
                       New Character
                     </Button>
                   </div>

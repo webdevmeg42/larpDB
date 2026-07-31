@@ -92,6 +92,7 @@ function SortableFieldItem({
       <button
         {...attributes}
         {...listeners}
+        aria-label="Drag to reorder"
         className="cursor-grab text-muted-foreground hover:text-foreground"
         onClick={e => e.stopPropagation()}
       >
@@ -105,6 +106,7 @@ function SortableFieldItem({
         <span className="text-xs text-destructive shrink-0">*</span>
       )}
       <button
+        aria-label="Delete field"
         onClick={e => { e.stopPropagation(); onDelete() }}
         className="text-muted-foreground hover:text-destructive transition-colors"
       >

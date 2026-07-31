@@ -108,7 +108,9 @@ export function StatblockFieldEditor({ field, onChange }: Props) {
   }
 
   function addStatLevel(statIdx: number) {
-    const entries = stats[statIdx].levelEntries ?? []
+    const stat = stats[statIdx]
+    if (!stat) return
+    const entries = stat.levelEntries ?? []
     const nextLevel = entries.length > 0 ? Math.max(...entries.map(e => e.level)) + 1 : 1
     checkLevel(nextLevel, () => {
       updateStat(statIdx, { levelEntries: [...entries, { level: nextLevel, value: 0 }] })
@@ -116,7 +118,9 @@ export function StatblockFieldEditor({ field, onChange }: Props) {
   }
 
   function updateStatLevel(statIdx: number, levelIdx: number, patch: Partial<StatLevelEntry>) {
-    const entries = stats[statIdx].levelEntries ?? []
+    const stat = stats[statIdx]
+    if (!stat) return
+    const entries = stat.levelEntries ?? []
     const updated = entries.map((e, i) => i === levelIdx ? { ...e, ...patch } : e)
     if (patch.level !== undefined) {
       checkLevel(patch.level, () => updateStat(statIdx, { levelEntries: updated }))
@@ -126,7 +130,9 @@ export function StatblockFieldEditor({ field, onChange }: Props) {
   }
 
   function removeStatLevel(statIdx: number, levelIdx: number) {
-    const entries = stats[statIdx].levelEntries ?? []
+    const stat = stats[statIdx]
+    if (!stat) return
+    const entries = stat.levelEntries ?? []
     updateStat(statIdx, { levelEntries: entries.filter((_, i) => i !== levelIdx) })
   }
 
@@ -145,7 +151,7 @@ export function StatblockFieldEditor({ field, onChange }: Props) {
                   placeholder="Stat name (e.g. STR)"
                   className="h-8 text-xs flex-1"
                 />
-                <button onClick={() => removeStat(i)} className="text-muted-foreground hover:text-destructive">
+                <button onClick={() => removeStat(i)} aria-label="Remove stat" className="text-muted-foreground hover:text-destructive">
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -188,13 +194,13 @@ export function StatblockFieldEditor({ field, onChange }: Props) {
                           onChange={ev => updateStatLevel(i, ei, { value: Number(ev.target.value) || 0 })}
                           className="h-7 text-xs w-16"
                         />
-                        <button onClick={() => removeStatLevel(i, ei)} className="text-muted-foreground hover:text-destructive shrink-0">
+                        <button onClick={() => removeStatLevel(i, ei)} aria-label="Remove level" className="text-muted-foreground hover:text-destructive shrink-0">
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
                     ))}
                     <Button variant="ghost" size="sm" onClick={() => addStatLevel(i)} className="w-full h-6 text-xs">
-                      <Plus className="h-3 w-3 mr-1" /> Add level
+                      <Plus className="h-3 w-3 mr-1" aria-hidden="true" /> Add level
                     </Button>
                   </>
                 )}
@@ -204,7 +210,7 @@ export function StatblockFieldEditor({ field, onChange }: Props) {
         })}
         {!useProgression && (
           <Button variant="ghost" size="sm" onClick={addStat} className="w-full h-7 text-xs">
-            <Plus className="h-3 w-3 mr-1" /> Add stat
+            <Plus className="h-3 w-3 mr-1" aria-hidden="true" /> Add stat
           </Button>
         )}
         {renderProgressionToggle(stats.some(s => (s.levelEntries ?? []).length > 0))}

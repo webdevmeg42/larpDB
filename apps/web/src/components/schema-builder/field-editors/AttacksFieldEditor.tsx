@@ -152,7 +152,7 @@ export function AttacksFieldEditor({ field, onChange }: Props) {
                     </span>
                     <span className="text-xs text-muted-foreground">Lv</span>
                     <LevelSelect value={entry.level} max={maxLevel} onChange={n => updateEntry(i, { level: n })} />
-                    <button onClick={() => remove(i)} className="ml-auto text-muted-foreground hover:text-destructive">
+                    <button onClick={() => remove(i)} aria-label="Remove attack" className="ml-auto text-muted-foreground hover:text-destructive">
                       <Trash2 className="h-3 w-3" />
                     </button>
                   </div>

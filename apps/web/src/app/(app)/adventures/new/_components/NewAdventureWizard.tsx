@@ -104,7 +104,7 @@ export default function NewAdventureWizard() {
                     isActive ? 'bg-primary/10 border-l-2 border-primary font-medium text-primary' : 'text-muted-foreground',
                   )}
                 >
-                  <span className={cn('text-xs font-bold w-4 text-center', isActive ? 'text-primary' : isDone ? 'text-green-600' : '')}>
+                  <span className={cn('text-xs font-bold w-4 text-center', isActive ? 'text-primary' : isDone ? 'text-success' : '')}>
                     {isDone ? '✓' : s.n}
                   </span>
                   <span>{s.label}</span>
