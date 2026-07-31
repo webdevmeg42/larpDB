@@ -38,7 +38,9 @@ COPY --from=builder /app/apps/desktop/package.json ./apps/desktop/
 COPY --from=builder /app/apps/e2e/package.json ./apps/e2e/
 RUN pnpm install --prod --frozen-lockfile
 RUN addgroup --system --gid 1001 nodejs \
- && adduser --system --uid 1001 apiuser
+ && adduser --system --uid 1001 apiuser \
+ && mkdir -p /app/apps/api/uploads \
+ && chown -R apiuser:nodejs /app/apps/api/uploads
 USER apiuser
 
 WORKDIR /app/apps/api
