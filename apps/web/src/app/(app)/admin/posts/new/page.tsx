@@ -25,7 +25,7 @@ export default async function NewPostPage() {
 
   const eligible = games.filter(g => g.status === 'active' && (g.role === 'owner' || g.role === 'gm'))
   const fromCookie = eligible.find(g => g.id === gameIdFromCookie) ?? null
-  const initialGame = fromCookie ?? (eligible.length === 1 ? eligible[0] : null)
+  const initialGame = fromCookie ?? null
 
   return (
     <NewPostClient

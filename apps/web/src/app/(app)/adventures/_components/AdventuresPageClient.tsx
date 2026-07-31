@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
-import { getErrorMessage, cn } from '@/lib/utils'
+import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -104,7 +104,7 @@ export function AdventuresPageClient({ initialGames }: { initialGames: MyGame[] 
               {visibleGames.map(g => (
                 <tr
                   key={g.id}
-                  className={cn('border-b last:border-0', g.status === 'inactive' && 'opacity-60')}
+                  className="border-b last:border-0"
                 >
                   <td className="px-4 py-3">
                     <div className="font-medium">{g.name}</div>
@@ -128,7 +128,7 @@ export function AdventuresPageClient({ initialGames }: { initialGames: MyGame[] 
                       <div className="flex items-center justify-end gap-3">
                         <Link
                           href={`/adventures/${g.id}/edit`}
-                          className="text-primary hover:underline text-xs"
+                          className="text-gold hover:underline text-xs"
                         >
                           Edit
                         </Link>
@@ -144,7 +144,7 @@ export function AdventuresPageClient({ initialGames }: { initialGames: MyGame[] 
                         <button
                           data-testid="delete-adv-btn"
                           onClick={() => setDeleteTarget(g)}
-                          className="text-xs text-destructive hover:underline"
+                          className="text-xs text-muted-foreground hover:text-destructive hover:underline"
                         >
                           Delete
                         </button>

@@ -205,3 +205,7 @@ apps/
 packages/
   shared/               Shared TypeScript types, Zod schemas, API client, XP utilities
 ```
+
+---
+
+Source available for review. All rights reserved — see Megan Petty.

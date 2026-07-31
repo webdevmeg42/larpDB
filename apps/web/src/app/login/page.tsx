@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -96,6 +97,14 @@ export default function LoginPage() {
                 ? isSignUp ? 'Creating account…' : 'Signing in…'
                 : isSignUp ? 'Create account' : 'Sign in'}
             </Button>
+            {isSignUp && (
+              <p className="text-xs text-muted-foreground text-center">
+                By creating an account, you agree to our{' '}
+                <Link href="/terms" className="underline hover:text-foreground">Terms of Service</Link>
+                {' '}and{' '}
+                <Link href="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
+              </p>
+            )}
             <p className="text-sm text-muted-foreground text-center">
               {isSignUp ? (
                 <>Already have an account?{' '}

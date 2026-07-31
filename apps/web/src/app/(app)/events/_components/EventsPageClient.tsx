@@ -120,6 +120,7 @@ export function EventsPageClient({ initialData }: { initialData: { games: GameWi
         </div>
         <select
           data-testid="events-time-filter"
+          aria-label="Filter events by time"
           value={timeFilter}
           onChange={e => setTimeFilter(e.target.value as TimeFilter)}
           className="rounded-md border border-border bg-card text-sm px-3 py-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0"

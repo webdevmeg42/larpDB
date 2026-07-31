@@ -31,13 +31,16 @@ await db.insert(users).values({
 const [player] = await db.select().from(users).where(eq(users.email, 'webdevmeg+testuser1@gmail.com'))
 if (!player) throw new Error('Failed to find/create player')
 
-// Upsert game
+// Upsert game — always reset to active/public so re-seeding restores test state
 await db.insert(game).values({
   name: 'My Adventure',
   slug: 'my-adventure',
   isPublic: true,
   status: 'active',
-}).onConflictDoNothing()
+}).onConflictDoUpdate({
+  target: game.slug,
+  set: { name: 'My Adventure', isPublic: true, status: 'active' },
+})
 
 const [testGame] = await db.select().from(game).where(eq(game.slug, 'my-adventure'))
 if (!testGame) throw new Error('Failed to find/create game')

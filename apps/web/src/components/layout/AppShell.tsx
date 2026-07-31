@@ -32,7 +32,7 @@ export function AppShell({ initialUser, initialGames, initialGameId, children }:
           <Sidebar />
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             <MobileHeader onMenuClick={() => setDrawerOpen(true)} />
-            <main id="main-content" className="flex-1 overflow-y-auto">{children}</main>
+            <main id="main-content" tabIndex={0} className="flex-1 overflow-y-auto">{children}</main>
           </div>
           <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
         </div>

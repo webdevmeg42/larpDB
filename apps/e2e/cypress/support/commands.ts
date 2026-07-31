@@ -2,6 +2,8 @@
 import { testDateTime } from './helpers'
 
 Cypress.Commands.add('loginOwner', () => {
+  cy.clearCookies()
+  cy.clearLocalStorage()
   cy.request('POST', `${Cypress.env('API_URL')}/auth/login`, {
     email: Cypress.env('OWNER_EMAIL'),
     password: Cypress.env('OWNER_PASSWORD'),
@@ -15,6 +17,8 @@ Cypress.Commands.add('loginOwner', () => {
 })
 
 Cypress.Commands.add('loginPlayer', () => {
+  cy.clearCookies()
+  cy.clearLocalStorage()
   cy.request('POST', `${Cypress.env('API_URL')}/auth/login`, {
     email: Cypress.env('PLAYER_EMAIL'),
     password: Cypress.env('PLAYER_PASSWORD'),

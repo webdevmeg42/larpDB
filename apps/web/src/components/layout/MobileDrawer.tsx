@@ -32,6 +32,13 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
     }
   }, [open])
 
+  useEffect(() => {
+    const el = panelRef.current
+    if (!el) return
+    // Imperative: avoids React 18 dev-mode hydration errors from inert as a JSX prop.
+    ;(el as HTMLDivElement & { inert: boolean }).inert = !open
+  }, [open])
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Escape') { onClose(); return }
     if (e.key !== 'Tab') return
@@ -66,14 +73,13 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
       {/* Drawer panel */}
       <div
         ref={panelRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Navigation menu"
+        role={open ? 'dialog' : undefined}
+        aria-modal={open ? true : undefined}
+        aria-label={open ? 'Navigation menu' : undefined}
         data-testid="mobile-drawer"
         data-state={open ? 'open' : 'closed'}
         aria-hidden={!open}
         onKeyDown={open ? handleKeyDown : undefined}
-        {...(!open ? ({ inert: '' } as Record<string, string>) : {})}
         className={cn(
           'absolute left-0 top-0 h-full w-64 bg-[#080f07] border-r border-border flex flex-col',
           'transition-transform duration-200 ease-in-out',
