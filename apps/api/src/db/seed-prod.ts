@@ -16,7 +16,7 @@ await db.insert(users).values({
   isSysAdmin: true,
 }).onConflictDoUpdate({
   target: users.email,
-  set: { isSysAdmin: true },
+  set: { isSysAdmin: true, passwordHash },
 })
 
 const [user] = await db.select().from(users).where(eq(users.email, email))
