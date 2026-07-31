@@ -35,6 +35,7 @@ async function issueAuthCookie(
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
+    domain: process.env.COOKIE_DOMAIN,
     maxAge: 60 * 60 * 24 * 7,
   })
   return {
@@ -111,6 +112,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      domain: process.env.COOKIE_DOMAIN,
     })
     return { ok: true }
   })
