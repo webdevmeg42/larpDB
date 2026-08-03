@@ -3,7 +3,7 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import type { SchemaField, SchemaFieldOption, CharacterSchemaType } from '@plotrunner/shared'
+import type { SchemaField, SchemaFieldOption, CharacterSchemaType, Faction } from '@plotrunner/shared'
 import { Trash2, Plus } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
 import { Row } from './_shared'
@@ -13,9 +13,10 @@ interface Props {
   onChange: (field: SchemaField) => void
   schemaType?: CharacterSchemaType
   highlightUnlabeled?: boolean
+  codexFactions?: Faction[]
 }
 
-export function SelectFieldEditor({ field, onChange }: Props) {
+export function SelectFieldEditor({ field, onChange, codexFactions }: Props) {
   function update(patch: Partial<SchemaField>) {
     onChange({ ...field, ...patch } as SchemaField)
   }
@@ -34,8 +35,33 @@ export function SelectFieldEditor({ field, onChange }: Props) {
     update({ options: options.filter((_, i) => i !== index) })
   }
 
+  function syncFromCodexFactions() {
+    if (!codexFactions?.length) return
+    const existing = new Map(options.map(o => [o.label, o]))
+    const synced: SchemaFieldOption[] = codexFactions.map(f => {
+      const prev = existing.get(f.name)
+      return prev ? { ...prev, label: f.name } : { value: uuidv4(), label: f.name }
+    })
+    update({ options: synced })
+  }
+
+  const hasFactions = (codexFactions?.length ?? 0) > 0
+
   return (
     <>
+      {hasFactions && (
+        <div className="rounded border border-dashed px-3 py-2 space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">Codex factions</p>
+          <p className="text-xs text-muted-foreground">{codexFactions!.map(f => f.name).join(' · ')}</p>
+          <button
+            type="button"
+            onClick={syncFromCodexFactions}
+            className="text-xs text-primary hover:underline"
+          >
+            Use these as options
+          </button>
+        </div>
+      )}
       <div className="space-y-2">
         <Label className="text-xs">Options</Label>
         {options.map((opt, i) => (

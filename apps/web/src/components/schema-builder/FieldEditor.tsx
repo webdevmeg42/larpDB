@@ -4,7 +4,7 @@ import type { ComponentType } from 'react'
 import { Input } from '@/components/ui/input'
 import { Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { SchemaField, CharacterSchemaType, SchemaFieldType } from '@plotrunner/shared'
+import type { SchemaField, CharacterSchemaType, SchemaFieldType, Faction } from '@plotrunner/shared'
 import { Row, CheckRow } from './field-editors/_shared'
 import { NumberFieldEditor } from './field-editors/NumberFieldEditor'
 import { ToggleFieldEditor } from './field-editors/ToggleFieldEditor'
@@ -25,6 +25,7 @@ interface FieldEditorProps {
   onChange: (field: SchemaField) => void
   schemaType?: CharacterSchemaType
   highlightUnlabeled?: boolean
+  codexFactions?: Faction[]
 }
 
 const TYPE_EDITORS: Partial<Record<SchemaFieldType, ComponentType<FieldEditorProps>>> = {
@@ -44,7 +45,7 @@ const TYPE_EDITORS: Partial<Record<SchemaFieldType, ComponentType<FieldEditorPro
   spells: SpellsFieldEditor,
 }
 
-export function FieldEditor({ field, onChange, schemaType, highlightUnlabeled }: FieldEditorProps) {
+export function FieldEditor({ field, onChange, schemaType, highlightUnlabeled, codexFactions }: FieldEditorProps) {
   function update(patch: Partial<SchemaField>) {
     onChange({ ...field, ...patch } as SchemaField)
   }
@@ -99,14 +100,22 @@ export function FieldEditor({ field, onChange, schemaType, highlightUnlabeled }:
         />
       )}
 
-      {SubEditor && (
+      {SubEditor && (field.type === 'select' || field.type === 'multiselect' ? (
+        <SelectFieldEditor
+          field={field}
+          onChange={onChange}
+          {...(schemaType !== undefined && { schemaType })}
+          {...(highlightUnlabeled !== undefined && { highlightUnlabeled })}
+          {...(codexFactions !== undefined && { codexFactions })}
+        />
+      ) : (
         <SubEditor
           field={field}
           onChange={onChange}
           {...(schemaType !== undefined && { schemaType })}
           {...(highlightUnlabeled !== undefined && { highlightUnlabeled })}
         />
-      )}
+      ))}
     </div>
   )
 }

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
 import { SchemaBuilder } from '@/components/schema-builder/SchemaBuilder'
-import type { CharacterSchema, SchemaField } from '@plotrunner/shared'
+import type { CharacterSchema, SchemaField, Faction, SiteConfig } from '@plotrunner/shared'
 
 interface Props {
   initialSchema: CharacterSchema
@@ -14,6 +14,13 @@ export function SchemaBuilderClient({ initialSchema }: Props) {
   const { user } = useAuth()
   const [schema, setSchema] = useState<CharacterSchema>(initialSchema)
   const [isSaving, setIsSaving] = useState(false)
+  const [codexFactions, setCodexFactions] = useState<Faction[]>([])
+
+  useEffect(() => {
+    api.get<SiteConfig>('/config')
+      .then(cfg => setCodexFactions(cfg.codex?.factions ?? []))
+      .catch(() => {})
+  }, [])
 
   async function handleSave(name: string, fields: SchemaField[]) {
     setIsSaving(true)
@@ -44,6 +51,7 @@ export function SchemaBuilderClient({ initialSchema }: Props) {
         onActivate={handleActivate}
         isActive={schema.isActive}
         isSaving={isSaving}
+        codexFactions={codexFactions}
       />
     </div>
   )

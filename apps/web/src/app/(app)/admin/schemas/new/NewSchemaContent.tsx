@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SchemaBuilder } from '@/components/schema-builder/SchemaBuilder'
-import type { SchemaTemplate, CharacterSchema, SchemaField } from '@plotrunner/shared'
+import type { SchemaTemplate, CharacterSchema, SchemaField, Faction, SiteConfig } from '@plotrunner/shared'
 
 export default function NewSchemaContent() {
   const { user } = useAuth()
@@ -23,12 +23,19 @@ export default function NewSchemaContent() {
   const [building, setBuilding] = useState(false)
   const [initialFields, setInitialFields] = useState<SchemaField[]>([])
   const [isSaving, setIsSaving] = useState(false)
+  const [codexFactions, setCodexFactions] = useState<Faction[]>([])
 
   useEffect(() => {
     api.get<SchemaTemplate[]>(`/schema-templates?type=${schemaType}`)
       .then(setTemplates)
       .catch(() => {})
   }, [schemaType])
+
+  useEffect(() => {
+    api.get<SiteConfig>('/config')
+      .then(cfg => setCodexFactions(cfg.codex?.factions ?? []))
+      .catch(() => {})
+  }, [])
 
   function handleStartBuilding() {
     if (!name.trim()) return
@@ -72,6 +79,7 @@ export default function NewSchemaContent() {
           onActivate={async () => {}}
           isActive={false}
           isSaving={isSaving}
+          codexFactions={codexFactions}
         />
       </div>
     )
