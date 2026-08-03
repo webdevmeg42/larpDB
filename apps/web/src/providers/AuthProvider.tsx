@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { AuthUser } from '@/lib/auth'
 import { clearGameId } from '@/lib/auth'
 import { clearCurrentGameAction } from '@/app/actions/game'
+import { loginAction, registerAction, logoutAction } from '@/app/actions/auth'
 import { api } from '@/lib/api'
 import type { LoginInput, RegisterInput } from '@plotrunner/shared'
 
@@ -13,7 +14,7 @@ interface AuthContextValue {
   loading: boolean
   login: (input: LoginInput) => Promise<void>
   register: (input: RegisterInput) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   refreshUser: () => Promise<void>
 }
 
@@ -30,19 +31,19 @@ export function AuthProvider({
   const router = useRouter()
 
   const login = useCallback(async (input: LoginInput) => {
-    const { user } = await api.post<{ user: AuthUser }>('/auth/login', input)
+    const { user } = await loginAction(input)
     setUser(user)
     router.push('/dashboard')
   }, [router])
 
   const register = useCallback(async (input: RegisterInput) => {
-    const { user } = await api.post<{ user: AuthUser }>('/auth/register', input)
+    const { user } = await registerAction(input)
     setUser(user)
     router.push('/dashboard')
   }, [router])
 
-  const logout = useCallback(() => {
-    api.post('/auth/logout', {}).catch(() => {})
+  const logout = useCallback(async () => {
+    await logoutAction()
     setUser(null)
     clearGameId()
     void clearCurrentGameAction()
