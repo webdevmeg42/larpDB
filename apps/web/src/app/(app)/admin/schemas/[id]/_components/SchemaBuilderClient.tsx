@@ -15,10 +15,6 @@ export function SchemaBuilderClient({ initialSchema }: Props) {
   const [schema, setSchema] = useState<CharacterSchema>(initialSchema)
   const [isSaving, setIsSaving] = useState(false)
 
-  if (user?.role !== 'owner') {
-    return <div className="p-6 text-muted-foreground">This page doesn&apos;t exist.</div>
-  }
-
   async function handleSave(name: string, fields: SchemaField[]) {
     setIsSaving(true)
     try {

@@ -30,10 +30,6 @@ export default function NewSchemaContent() {
       .catch(() => {})
   }, [schemaType])
 
-  if (user?.role !== 'owner') {
-    return <div className="p-6 text-muted-foreground">This page doesn&apos;t exist.</div>
-  }
-
   function handleStartBuilding() {
     if (!name.trim()) return
     const rawFields = selected ? selected.fields : []
