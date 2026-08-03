@@ -27,7 +27,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Events',            href: '/events',           icon: Calendar,        roles: ['owner', 'gm', 'player'] },
   { label: 'Rulebook',          href: '/rulebook',         icon: BookOpen,        roles: ['owner', 'gm', 'player'] },
   { label: 'Admin',             href: '/admin/community',  icon: ShieldCheck,     roles: ['owner', 'gm'] },
-  { label: 'Adventure Builder', href: '/adventures',       icon: Settings,        roles: ['owner'], testId: 'nav-adv-builder' },
+  { label: 'Adventure Builder', href: '/adventures',       icon: Settings,        roles: ['owner', 'gm', 'player'], testId: 'nav-adv-builder' },
   { label: 'Users',             href: '/admin/users',      icon: Users,           roles: ['owner'] },
   { label: 'Posts',             href: '/admin/posts',      icon: PenSquare,       roles: ['owner', 'gm'] },
   { label: 'Help',              href: '/help',             icon: HelpCircle,      roles: ['owner', 'gm', 'player'], testId: 'nav-help' },

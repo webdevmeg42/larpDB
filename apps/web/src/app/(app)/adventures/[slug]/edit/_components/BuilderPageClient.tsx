@@ -106,10 +106,6 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
     setIsPublic(game.isPublic)
   }, [game])
 
-  if (user?.role !== 'owner') {
-    return <div className="p-6 text-muted-foreground">This page doesn&apos;t exist.</div>
-  }
-
   function reload() {
     api.get<SiteConfig>('/config').then(setConfig).catch(() => {})
   }

@@ -26,10 +26,6 @@ export function AdventuresPageClient({ initialGames }: { initialGames: MyGame[] 
     ? games.filter(g => g.name.toLowerCase().includes(normalizedQuery))
     : games
 
-  if (user?.role !== 'owner') {
-    return <div className="p-6 text-muted-foreground">This page doesn&apos;t exist.</div>
-  }
-
   async function handleStatusToggle(target: MyGame) {
     const newStatus = target.status === 'active' ? 'inactive' : 'active'
     setRowError(null)

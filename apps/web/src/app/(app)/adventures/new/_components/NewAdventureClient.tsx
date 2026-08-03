@@ -44,10 +44,6 @@ export function NewAdventureClient({ hasAdventures }: Props) {
   const [titleError, setTitleError] = useState(false)
   const { status: nameStatus, baseSlug } = useNameAvailability(form.siteTitle)
 
-  if (user?.role !== 'owner') {
-    return <div className="p-6 text-muted-foreground">This page doesn&apos;t exist.</div>
-  }
-
   if (!hasAdventures) {
     return <NewAdventureWizard />
   }
