@@ -639,9 +639,6 @@ const LogisticsSection = forwardRef<SectionRef, SectionProps>(
             <Field label="What's provided">
               <Textarea rows={4} value={form.whatProvided} onChange={e => setForm(f => ({ ...f, whatProvided: e.target.value }))} placeholder="Meals, lodging, loaner gear…" />
             </Field>
-            <Field label="Ticket tiers + prices">
-              <Textarea rows={6} value={form.ticketTiers} onChange={e => setForm(f => ({ ...f, ticketTiers: e.target.value }))} />
-            </Field>
             <Field label="Cancellation / refund policy">
               <Textarea rows={4} value={form.cancellationPolicy} onChange={e => setForm(f => ({ ...f, cancellationPolicy: e.target.value }))} />
             </Field>
