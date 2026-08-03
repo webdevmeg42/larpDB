@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
@@ -18,6 +17,7 @@ import type { SiteConfig, GameCodex, Game } from '@plotrunner/shared'
 import { useImageUpload } from '@/hooks/useImageUpload'
 import { useNameAvailability } from '@/hooks/useNameAvailability'
 import CodexTab, { BrandingSection, type BrandingSectionRef } from '../../../_components/CodexTab'
+import RulebookTab from '../../../_components/RulebookTab'
 import StoreTab from '../../../_components/StoreTab'
 import BuildsTab from '../../../_components/BuildsTab'
 import SetupChecklist from '../../../_components/SetupChecklist'
@@ -48,7 +48,6 @@ interface Props {
 }
 
 export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props) {
-  const router = useRouter()
   const { user } = useAuth()
   const [config, setConfig] = useState<SiteConfig>(initialConfig)
   const game = initialGame
@@ -166,13 +165,7 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
       </Link>
       <h1 className="text-2xl font-semibold mb-6">Adventure Builder</h1>
 
-      <Tabs value={activeTab} onValueChange={(tab) => {
-          if (tab === 'rulebook') {
-            router.push(`/rulebook/${gameId}`)
-          } else {
-            setActiveTab(tab)
-          }
-        }}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="branding" data-testid="tab-branding">Branding</TabsTrigger>
             <TabsTrigger value="codex" data-testid="tab-codex">The Codex</TabsTrigger>
@@ -388,6 +381,10 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
 
           <TabsContent value="codex">
             <CodexTab config={config} reload={reload} />
+          </TabsContent>
+
+          <TabsContent value="rulebook">
+            <RulebookTab config={config} reload={reload} />
           </TabsContent>
 
           <TabsContent value="store">
