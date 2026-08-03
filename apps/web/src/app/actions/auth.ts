@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 import type { AuthUser } from '@/lib/auth'
 import type { LoginInput, RegisterInput } from '@plotrunner/shared'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL!
+const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL!
 
 const COOKIE_OPTS = {
   httpOnly: true,

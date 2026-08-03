@@ -1,7 +1,7 @@
 import { cookies, headers } from 'next/headers'
 import { redirect, notFound } from 'next/navigation'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+const API_URL = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const [cookieStore, headerStore] = await Promise.all([cookies(), headers()])
