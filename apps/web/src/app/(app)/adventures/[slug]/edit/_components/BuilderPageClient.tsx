@@ -388,7 +388,7 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
           </TabsContent>
 
           <TabsContent value="store">
-            <StoreTab config={config} reload={reload} />
+            <div className="p-6 text-muted-foreground">Coming soon.</div>
           </TabsContent>
 
           <TabsContent value="race-builds">
