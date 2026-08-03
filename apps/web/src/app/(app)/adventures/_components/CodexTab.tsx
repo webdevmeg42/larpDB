@@ -633,9 +633,6 @@ const LogisticsSection = forwardRef<SectionRef, SectionProps>(
         <CardHeader><CardTitle>Logistics</CardTitle></CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <Field label="How to register / create a character">
-              <Textarea rows={4} value={form.registrationInfo} onChange={e => setForm(f => ({ ...f, registrationInfo: e.target.value }))} />
-            </Field>
             <Field label="What to bring">
               <Textarea rows={6} value={form.whatToBring} onChange={e => setForm(f => ({ ...f, whatToBring: e.target.value }))} placeholder="Costume requirements, weapon policies, camping gear…" />
             </Field>
