@@ -297,4 +297,44 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     cy.get(sel.schemaActivateBtn, { timeout: 10000 }).should('be.visible').click()
     cy.get(sel.schemaActivateBtn).should('contain', 'Active')
   })
+
+  it('Owner creates character Talon Ashveil with Elven Heritage race and Shadow Scout class', () => {
+    // Enable the adventure so New Character button is available
+    cy.get(sel.navAdvBuilder).click()
+    cy.get(sel.gamesSearchInput, { timeout: 10000 }).clear().type(adventureName)
+    cy.get(sel.enableAdvBtn, { timeout: 10000 }).first().click()
+    cy.get(sel.enableAdvBtn).first().should('contain', 'Disable')
+
+    cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
+    cy.visit(adventureEditUrl)
+    cy.wait('@builderContextSet', { timeout: 10000 })
+
+    cy.intercept('GET', '/characters*').as('charactersRsc')
+    cy.get(sel.navMyCharacters).click()
+    cy.wait('@charactersRsc', { timeout: 10000 })
+
+    cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
+    cy.intercept('GET', '/characters/new*').as('newCharRsc')
+    cy.get(sel.newCharacterBtn).first().click()
+    cy.wait('@newCharRsc', { timeout: 10000 })
+
+    // Race step
+    cy.get('[data-testid="race-select-grid"]', { timeout: 10000 }).should('be.visible')
+    cy.get(sel.continueBtn).should('be.disabled')
+    cy.get('[data-testid="race-select-grid"]').contains('button', 'Elven Heritage').click()
+    cy.get(sel.continueBtn).click()
+
+    // Class step
+    cy.get('[data-testid="class-select-grid"]', { timeout: 10000 }).should('be.visible')
+    cy.get(sel.continueBtn).should('be.disabled')
+    cy.get('[data-testid="class-select-grid"]').contains('button', 'Shadow Scout').click()
+    cy.get(sel.continueBtn).click()
+
+    // Name step
+    cy.get(sel.characterNameInput, { timeout: 10000 }).type('Talon Ashveil')
+    cy.get(sel.createCharacterBtn).click()
+
+    cy.url({ timeout: 15000 }).should('match', /\/characters\/[a-f0-9-]{36}/)
+    cy.url().then(url => { characterUrl = url })
+  })
 })
