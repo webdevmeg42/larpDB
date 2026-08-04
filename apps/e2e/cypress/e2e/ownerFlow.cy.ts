@@ -520,11 +520,6 @@ describe('Owner Flow', () => {
 
     it('Posts page shows adventures and navigates to compose with no dropdown', () => {
       cy.loginOwner()
-      // Re-enable the adventure disabled by 'Disabled adventure disappears' test
-      cy.visit('/adventures')
-      cy.get(sel.gamesSearchInput).clear().type(adventureName)
-      cy.get(sel.enableAdvBtn).first().click()
-      cy.get(sel.enableAdvBtn).first().should('contain', 'Disable')
       cy.visit('/admin/posts')
 
       // Left panel shows adventures
@@ -667,6 +662,12 @@ describe('Owner Flow', () => {
   })
 
   it('Browse page shows adventures, search filter, and join mode filter', () => {
+    // Re-enable the adventure disabled by the previous test so it appears in browse
+    cy.get(sel.navAdvBuilder).click()
+    cy.get(sel.gamesSearchInput).clear().type(adventureName)
+    cy.get(sel.enableAdvBtn).first().click()
+    cy.get(sel.enableAdvBtn).first().should('contain', 'Disable')
+
     cy.intercept('GET', /\/games(\?|$)/).as('browseGames')
     cy.visit('/browse')
     cy.wait('@browseGames', { timeout: 10000 })
@@ -679,8 +680,8 @@ describe('Owner Flow', () => {
     })
 
     // Search filters the list
-    cy.get(sel.browseSearchInput).type('My Adventure')
-    cy.contains(sel.browseGameRow, 'My Adventure').should('be.visible')
+    cy.get(sel.browseSearchInput).type(adventureName)
+    cy.contains(sel.browseGameRow, adventureName).should('be.visible')
     cy.get(sel.browseSearchInput).clear()
     cy.get(sel.browseGameRow).should('have.length.gte', 1)
 

@@ -42,21 +42,43 @@ A management platform for live-action roleplay (LARP) groups. Handles characters
 - Node.js via nvm (`nvm use 20`)
 - pnpm via corepack (`corepack enable`)
 
+> **Mac note:** Docker Desktop does not add `docker` to your shell PATH automatically. Add it once:
+> ```bash
+> echo 'export PATH="/Applications/Docker.app/Contents/Resources/bin:$PATH"' >> ~/.bash_profile
+> source ~/.bash_profile
+> ```
+
 ## First-time setup
 
-**1. Start the database**
+**1. Create the API environment file**
+
+```bash
+cp apps/api/.env.example apps/api/.env
+```
+
+If `.env.example` doesn't exist, create `apps/api/.env` with:
+
+```
+DATABASE_URL=postgresql://larpdb:larpdb@localhost:5432/larpdb
+JWT_SECRET=dev-secret-key-at-least-16-chars
+ALLOWED_ORIGIN=http://localhost:3000
+PORT=3001
+NODE_ENV=development
+```
+
+**2. Start the database**
 
 ```bash
 docker compose up -d db
 ```
 
-**2. Run migrations**
+**3. Run migrations**
 
 ```bash
 pnpm --filter @larpdb/api db:migrate
 ```
 
-**3. Seed the database** (creates the owner account and game)
+**4. Seed the database** (creates the owner account and game)
 
 ```bash
 pnpm --filter @larpdb/api db:seed

@@ -19,8 +19,8 @@ describe('Player role — restricted UI not accessible', () => {
       cy.get(sel.navAdmin).should('not.exist')
     })
 
-    it('does not show the Adventure Builder tab', () => {
-      cy.get(sel.navAdvBuilder).should('not.exist')
+    it('shows the Adventure Builder tab', () => {
+      cy.get(sel.navAdvBuilder).should('exist')
     })
 
     it('does not show the New Post tab', () => {
@@ -50,9 +50,10 @@ describe('Player role — restricted UI not accessible', () => {
       cy.contains("This page doesn't exist.").should('be.visible')
     })
 
-    it('blocks direct navigation to /adventures', () => {
+    it('allows direct navigation to /adventures', () => {
       cy.visit('/adventures')
-      cy.contains("This page doesn't exist.").should('be.visible')
+      cy.url().should('include', '/adventures')
+      cy.contains("This page doesn't exist.").should('not.exist')
     })
   })
 })
