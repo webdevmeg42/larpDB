@@ -436,4 +436,24 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
 
     cy.contains('130 XP available').should('be.visible')
   })
+
+  it('Player cannot save changes that exceed their XP balance', () => {
+    cy.visit(characterUrl)
+
+    cy.contains('button', 'Edit').click()
+
+    // Focus Points: increase to 20 → cost = 200 XP, balance = 130, over by 70
+    cy.contains('label', 'Focus Points').then(($label) => {
+      const inputId = $label.attr('for')
+      cy.get(`#${inputId}`).clear().type('20')
+    })
+
+    cy.contains('over budget').should('be.visible')
+    cy.contains('70 XP over budget').should('be.visible')
+    cy.contains('button', 'Save changes').should('be.disabled')
+
+    // Cancel — balance unchanged
+    cy.contains('button', 'Cancel').click()
+    cy.contains('130 XP available').should('be.visible')
+  })
 })
