@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
 import { setCurrentGameAction } from '@/app/actions/game'
+import { setGameId } from '@/lib/auth'
 import { getErrorMessage, cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -75,6 +76,7 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
 
   useEffect(() => {
     void setCurrentGameAction(gameId)
+    setGameId(gameId)
   }, [gameId])
 
   useEffect(() => {
