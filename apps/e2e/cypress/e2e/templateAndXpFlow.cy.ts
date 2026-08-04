@@ -456,4 +456,34 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     cy.contains('button', 'Cancel').click()
     cy.contains('130 XP available').should('be.visible')
   })
+
+  // ── Level cap ─────────────────────────────────────────────────────
+
+  it('Character level is capped at maxLevel 3 even when excess XP is awarded', () => {
+    cy.visit(characterUrl)
+    cy.contains('GM Tools').click()
+
+    // Award 200 XP → total = 330 → Level 3 (computeCumulativeXp(3) = 300 ≤ 330)
+    cy.contains('Award / Deduct XP').parent().within(() => {
+      cy.get('input[inputmode="numeric"]').type('200')
+      cy.get('input[required]').type('Major quest completion bonus')
+      cy.contains('button', 'Save').click()
+      cy.contains('button', 'Saved!', { timeout: 10000 }).should('be.visible')
+    })
+
+    cy.contains('330 XP available').should('be.visible')
+    cy.contains('Level 3').should('be.visible')
+
+    // Award 100 more → total = 430 → still Level 3 (capped at maxLevel)
+    cy.contains('Award / Deduct XP').parent().within(() => {
+      cy.get('input[inputmode="numeric"]').clear().type('100')
+      cy.get('input[required]').clear().type('Bonus event XP')
+      cy.contains('button', 'Save').click()
+      cy.contains('button', 'Saved!', { timeout: 10000 }).should('be.visible')
+    })
+
+    cy.contains('430 XP available').should('be.visible')
+    cy.contains('Level 3').should('be.visible')
+    cy.contains('Level 4').should('not.exist')
+  })
 })
