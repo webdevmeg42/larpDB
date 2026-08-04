@@ -139,4 +139,77 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     cy.get(sel.tabRaceBuilds).click()
     cy.get(sel.newRaceLink, { timeout: 10000 }).should('not.have.attr', 'aria-disabled', 'true')
   })
+
+  // ── Helper: verify fields in a loaded schema builder (no save)
+  function verifyBuilderFields(fields: Array<{ label: string; type: string }>) {
+    fields.forEach(({ label }) => {
+      cy.get(sel.fieldList).should('contain', label)
+    })
+    const last = fields[fields.length - 1]!
+    cy.get(sel.fieldList).contains(last.label).click()
+    const typeLabel = last.type === 'select' ? 'Dropdown Select field' : `${last.type} field`
+    cy.contains(typeLabel, { matchCase: false }).should('be.visible')
+  }
+
+  // ── Race template checks ──────────────────────────────────────────
+
+  it('Humanoid race template has correct pre-built fields', () => {
+    cy.visit(adventureEditUrl)
+    cy.get(sel.tabRaceBuilds).click()
+    cy.intercept('GET', '**/schema-templates*').as('templates')
+    cy.get(sel.newRaceLink).click()
+    cy.wait('@templates', { timeout: 10000 })
+
+    cy.get('[data-testid="template-card-humanoid"]').click()
+    cy.get(sel.schemaNameInput).type('Verify Humanoid')
+    cy.get(sel.startBuildingBtn).click()
+
+    verifyBuilderFields([
+      { label: 'Appearance', type: 'appearance' },
+      { label: 'Languages', type: 'languages' },
+      { label: 'Personality', type: 'personality' },
+      { label: 'Racial Features', type: 'features' },
+    ])
+
+    cy.visit(adventureEditUrl)
+  })
+
+  it('Creature race template has correct pre-built fields', () => {
+    cy.get(sel.tabRaceBuilds).click()
+    cy.intercept('GET', '**/schema-templates*').as('templates')
+    cy.get(sel.newRaceLink).click()
+    cy.wait('@templates', { timeout: 10000 })
+
+    cy.get('[data-testid="template-card-creature"]').click()
+    cy.get(sel.schemaNameInput).type('Verify Creature')
+    cy.get(sel.startBuildingBtn).click()
+
+    verifyBuilderFields([
+      { label: 'Appearance', type: 'appearance' },
+      { label: 'Natural Features', type: 'features' },
+      { label: 'Languages', type: 'languages' },
+    ])
+
+    cy.visit(adventureEditUrl)
+  })
+
+  it('Supernatural race template has correct pre-built fields', () => {
+    cy.get(sel.tabRaceBuilds).click()
+    cy.intercept('GET', '**/schema-templates*').as('templates')
+    cy.get(sel.newRaceLink).click()
+    cy.wait('@templates', { timeout: 10000 })
+
+    cy.get('[data-testid="template-card-supernatural"]').click()
+    cy.get(sel.schemaNameInput).type('Verify Supernatural')
+    cy.get(sel.startBuildingBtn).click()
+
+    verifyBuilderFields([
+      { label: 'Appearance', type: 'appearance' },
+      { label: 'Personality', type: 'personality' },
+      { label: 'Supernatural Features', type: 'features' },
+      { label: 'Languages', type: 'languages' },
+    ])
+
+    cy.visit(adventureEditUrl)
+  })
 })
