@@ -337,4 +337,34 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     cy.url({ timeout: 15000 }).should('match', /\/characters\/[a-f0-9-]{36}/)
     cy.url().then(url => { characterUrl = url })
   })
+
+  // ── Character sheet verification ──────────────────────────────────
+
+  it('Homeland field from template extra appears on character sheet view', () => {
+    cy.visit(characterUrl)
+    cy.contains('Homeland').should('be.visible')
+  })
+
+  it('Homeland field is editable (not locked) in edit mode', () => {
+    cy.visit(characterUrl)
+    cy.contains('button', 'Edit').click()
+    cy.contains('label', 'Homeland').should('be.visible')
+    cy.contains('button', 'Cancel').click()
+  })
+
+  it('Locked Sneak Points field is visible in view mode but absent from edit form', () => {
+    cy.visit(characterUrl)
+
+    // View mode: CharacterSheet renders all fields including gmOnly
+    cy.contains('Sneak Points').should('be.visible')
+
+    // Edit mode: editFields excludes gmOnly fields
+    cy.contains('button', 'Edit').click()
+    cy.contains('label', 'Sneak Points').should('not.exist')
+
+    // Focus Points IS editable (not locked)
+    cy.contains('label', 'Focus Points').should('be.visible')
+
+    cy.contains('button', 'Cancel').click()
+  })
 })
