@@ -261,4 +261,40 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     cy.get(sel.schemaActivateBtn, { timeout: 10000 }).should('be.visible').click()
     cy.get(sel.schemaActivateBtn).should('contain', 'Active')
   })
+
+  it('Owner builds Shadow Scout class from blank builder with locked and XP-costed fields', () => {
+    cy.visit(adventureEditUrl)
+    cy.get(sel.tabClassBuilds).click()
+    cy.intercept('GET', '**/schema-templates*').as('templates')
+    cy.get(sel.newClassLink).click()
+    cy.wait('@templates', { timeout: 10000 })
+
+    cy.get(sel.schemaNameInput).type('Shadow Scout')
+    // Blank card is selected by default
+    cy.get(sel.startBuildingBtn).click()
+
+    cy.get(sel.fieldList).should('not.contain', 'Hit Points')
+
+    // "Sneak Points" — locked for players (gmOnly)
+    cy.schemaBuilderAddField('palette-btn-number')
+    cy.get(sel.fieldLabelInput).clear().type('Sneak Points')
+    cy.contains('Lock for players').click()
+
+    // "Focus Points" — XP cost per point = 10
+    cy.schemaBuilderAddField('palette-btn-number')
+    cy.get(sel.fieldLabelInput).clear().type('Focus Points')
+    cy.contains('XP per point').parent().find('input[type="number"]').clear().type('10')
+
+    // "Scout Abilities" — features field
+    cy.schemaBuilderAddField('palette-btn-features')
+    cy.get(sel.fieldLabelInput).clear().type('Scout Abilities')
+
+    cy.intercept('GET', '/admin/schemas/*').as('schemaEditRsc')
+    cy.schemaBuilderSave()
+    cy.wait('@schemaEditRsc', { timeout: 15000 })
+    cy.url().should('match', /\/admin\/schemas\/[a-f0-9-]{36}/)
+
+    cy.get(sel.schemaActivateBtn, { timeout: 10000 }).should('be.visible').click()
+    cy.get(sel.schemaActivateBtn).should('contain', 'Active')
+  })
 })
