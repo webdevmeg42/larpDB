@@ -232,4 +232,33 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
       cy.visit(adventureEditUrl)
     })
   })
+
+  // ── Schema builds ────────────────────────────────────────────────
+
+  it('Owner builds Elven Heritage race from Humanoid template with Homeland field', () => {
+    cy.visit(adventureEditUrl)
+    cy.get(sel.tabRaceBuilds).click()
+    cy.intercept('GET', '**/schema-templates*').as('templates')
+    cy.get(sel.newRaceLink).click()
+    cy.wait('@templates', { timeout: 10000 })
+
+    cy.get(sel.schemaNameInput).type('Elven Heritage')
+    cy.get('[data-testid="template-card-humanoid"]').click()
+    cy.get(sel.startBuildingBtn).click()
+
+    cy.get(sel.fieldList).should('contain', 'Appearance')
+    cy.get(sel.fieldList).should('contain', 'Languages')
+    cy.get(sel.fieldList).should('contain', 'Racial Features')
+
+    cy.schemaBuilderAddField('palette-btn-text')
+    cy.get(sel.fieldLabelInput).clear().type('Homeland')
+
+    cy.intercept('GET', '/admin/schemas/*').as('schemaEditRsc')
+    cy.schemaBuilderSave()
+    cy.wait('@schemaEditRsc', { timeout: 15000 })
+    cy.url().should('match', /\/admin\/schemas\/[a-f0-9-]{36}/)
+
+    cy.get(sel.schemaActivateBtn, { timeout: 10000 }).should('be.visible').click()
+    cy.get(sel.schemaActivateBtn).should('contain', 'Active')
+  })
 })
