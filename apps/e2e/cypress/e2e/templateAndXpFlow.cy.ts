@@ -406,4 +406,34 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     cy.get('tr.bg-muted\\/40').first().contains('Active').should('be.visible')
     cy.get('tr.bg-muted\\/40').eq(1).contains('Inactive').should('be.visible')
   })
+
+  // ── XP operations ─────────────────────────────────────────────────
+
+  it('GM awards 50 XP to Talon and balance updates to 150 XP available', () => {
+    cy.visit(characterUrl)
+    cy.contains('GM Tools').click()
+
+    cy.contains('Award / Deduct XP').parent().within(() => {
+      cy.get('input[inputmode="numeric"]').type('50')
+      cy.get('input[required]').type('Completed the forest ambush')
+      cy.contains('button', 'Save').click()
+      cy.contains('button', 'Saved!', { timeout: 10000 }).should('be.visible')
+    })
+
+    cy.contains('150 XP available').should('be.visible')
+  })
+
+  it('GM deducts 20 XP from Talon and balance updates to 130 XP available', () => {
+    cy.visit(characterUrl)
+    cy.contains('GM Tools').click()
+
+    cy.contains('Award / Deduct XP').parent().within(() => {
+      cy.get('input[inputmode="numeric"]').type('-20')
+      cy.get('input[required]').type('Used group healing scroll')
+      cy.contains('button', 'Save').click()
+      cy.contains('button', 'Saved!', { timeout: 10000 }).should('be.visible')
+    })
+
+    cy.contains('130 XP available').should('be.visible')
+  })
 })
