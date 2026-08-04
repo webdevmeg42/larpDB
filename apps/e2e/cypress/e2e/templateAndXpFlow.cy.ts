@@ -212,4 +212,24 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
 
     cy.visit(adventureEditUrl)
   })
+
+  // ── Class template checks (3 random from 7) ──────────────────────
+
+  CLASS_TEMPLATES_TO_TEST.forEach(({ testid, fields }) => {
+    it(`${testid} class template has correct pre-built fields`, () => {
+      cy.visit(adventureEditUrl)
+      cy.get(sel.tabClassBuilds).click()
+      cy.intercept('GET', '**/schema-templates*').as('templates')
+      cy.get(sel.newClassLink).click()
+      cy.wait('@templates', { timeout: 10000 })
+
+      cy.get(`[data-testid="template-card-${testid}"]`).click()
+      cy.get(sel.schemaNameInput).type(`Verify ${testid}`)
+      cy.get(sel.startBuildingBtn).click()
+
+      verifyBuilderFields(fields)
+
+      cy.visit(adventureEditUrl)
+    })
+  })
 })
