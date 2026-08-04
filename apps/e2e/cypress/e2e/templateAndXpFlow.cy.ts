@@ -367,4 +367,43 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
 
     cy.contains('button', 'Cancel').click()
   })
+
+  // ── Schema versioning ─────────────────────────────────────────────
+
+  it('Owner edits Elven Heritage race schema to create v2 and activates it', () => {
+    cy.visit(adventureEditUrl)
+    cy.get(sel.tabRaceBuilds).click()
+
+    cy.get(sel.buildsSearchInput, { timeout: 10000 }).type('Elven Heritage')
+    cy.contains('Elven Heritage', { timeout: 10000 }).should('be.visible')
+
+    cy.contains('tr', 'Elven Heritage').contains('a', 'Edit').click()
+    cy.url({ timeout: 10000 }).should('match', /\/admin\/schemas\/[a-f0-9-]{36}/)
+
+    cy.schemaBuilderAddField('palette-btn-text')
+    cy.get(sel.fieldLabelInput).clear().type('Eye Color')
+
+    cy.schemaBuilderSave()
+
+    cy.visit(adventureEditUrl)
+    cy.get(sel.tabRaceBuilds).click()
+    cy.get(sel.buildsSearchInput).clear().type('Elven Heritage')
+
+    // 2 versions now → expand button appears
+    cy.get(sel.buildsExpandBtn, { timeout: 10000 }).first().click()
+
+    // v2 (newest, inactive) has the activate button; v1 (active) does not
+    cy.get(sel.buildsActivateBtn).first().click()
+
+    // After activation re-expand if collapsed
+    cy.contains('Elven Heritage', { timeout: 10000 })
+    cy.get('[data-testid="builds-expand-btn"]').first().then(($btn) => {
+      if ($btn.find('svg').hasClass('lucide-chevron-right')) {
+        cy.wrap($btn).click()
+      }
+    })
+
+    cy.get('tr.bg-muted\\/40').first().contains('Active').should('be.visible')
+    cy.get('tr.bg-muted\\/40').eq(1).contains('Inactive').should('be.visible')
+  })
 })
