@@ -259,7 +259,8 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     cy.url().should('match', /\/admin\/schemas\/[a-f0-9-]{36}/)
 
     cy.get(sel.schemaActivateBtn, { timeout: 10000 }).should('be.visible').click()
-    cy.get(sel.schemaActivateBtn).should('contain', 'Active')
+    // Button renders only when !isActive — disappears after successful activation
+    cy.get(sel.schemaActivateBtn).should('not.exist')
   })
 
   it('Owner builds Shadow Scout class from blank builder with locked and XP-costed fields', () => {
@@ -295,7 +296,7 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     cy.url().should('match', /\/admin\/schemas\/[a-f0-9-]{36}/)
 
     cy.get(sel.schemaActivateBtn, { timeout: 10000 }).should('be.visible').click()
-    cy.get(sel.schemaActivateBtn).should('contain', 'Active')
+    cy.get(sel.schemaActivateBtn).should('not.exist')
   })
 
   it('Owner creates character Talon Ashveil with Elven Heritage race and Shadow Scout class', () => {
@@ -305,18 +306,10 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     cy.get(sel.enableAdvBtn, { timeout: 10000 }).first().click()
     cy.get(sel.enableAdvBtn).first().should('contain', 'Disable')
 
-    cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
-    cy.visit(adventureEditUrl)
-    cy.wait('@builderContextSet', { timeout: 10000 })
-
-    cy.intercept('GET', '/characters*').as('charactersRsc')
     cy.get(sel.navMyCharacters).click()
-    cy.wait('@charactersRsc', { timeout: 10000 })
-
-    cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
-    cy.intercept('GET', '/characters/new*').as('newCharRsc')
-    cy.get(sel.newCharacterBtn).first().click()
-    cy.wait('@newCharRsc', { timeout: 10000 })
+    cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 15000 }).click()
+    cy.get(sel.newCharacterBtn, { timeout: 10000 }).first().should('not.be.disabled').click()
+    cy.url({ timeout: 10000 }).should('include', '/characters/new')
 
     // Race step
     cy.get('[data-testid="race-select-grid"]', { timeout: 10000 }).should('be.visible')
@@ -395,16 +388,9 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     // v2 (newest, inactive) has the activate button; v1 (active) does not
     cy.get(sel.buildsActivateBtn).first().click()
 
-    // After activation re-expand if collapsed
-    cy.contains('Elven Heritage', { timeout: 10000 })
-    cy.get('[data-testid="builds-expand-btn"]').first().then(($btn) => {
-      if ($btn.find('svg').hasClass('lucide-chevron-right')) {
-        cy.wrap($btn).click()
-      }
-    })
-
-    cy.get('tr.bg-muted\\/40').first().contains('Active').should('be.visible')
-    cy.get('tr.bg-muted\\/40').eq(1).contains('Inactive').should('be.visible')
+    // Expanded rows persist through refresh — assert by version text in each row
+    cy.contains('td', 'v2', { timeout: 10000 }).parent('tr').contains('Active').should('be.visible')
+    cy.contains('td', 'v1').parent('tr').contains('Inactive').should('be.visible')
   })
 
   // ── XP operations ─────────────────────────────────────────────────
