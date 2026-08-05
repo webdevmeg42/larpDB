@@ -44,7 +44,13 @@ const config: Config = {
           foreground: 'hsl(var(--popover-foreground))',
         },
         gold: {
-          DEFAULT: 'hsl(var(--gold))',
+          DEFAULT: 'hsl(var(--gold) / <alpha-value>)',
+        },
+        steel: {
+          DEFAULT: 'hsl(var(--steel) / <alpha-value>)',
+        },
+        sidebar: {
+          DEFAULT: 'hsl(var(--sidebar-bg))',
         },
         success: {
           DEFAULT: 'hsl(var(--success))',
@@ -58,6 +64,7 @@ const config: Config = {
       },
       fontFamily: {
         heading: ['var(--font-heading)', 'Georgia', 'serif'],
+        label:   ['var(--font-label)',   'Georgia', 'serif'],
       },
     },
   },
