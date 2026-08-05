@@ -98,11 +98,11 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="px-4 py-3 text-left font-medium">Game</th>
-                <th className="px-4 py-3 text-left font-medium">Owner</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-left font-medium">Members</th>
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
+                <th scope="col" className="px-4 py-3 text-left font-medium">Game</th>
+                <th scope="col" className="px-4 py-3 text-left font-medium">Owner</th>
+                <th scope="col" className="px-4 py-3 text-left font-medium">Status</th>
+                <th scope="col" className="px-4 py-3 text-left font-medium">Members</th>
+                <th scope="col" className="px-4 py-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -125,22 +125,25 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
                     <div className="flex items-center justify-end gap-3">
                       <Link
                         href={`/adventures/${g.id}/edit`}
+                        aria-label={`Edit ${g.name}`}
                         className="text-gold hover:underline text-xs"
                       >
                         Edit
                       </Link>
-                      <span className="text-muted-foreground">|</span>
+                      <span aria-hidden="true" className="text-muted-foreground">|</span>
                       <button
                         data-testid="enable-adv-btn"
                         onClick={() => void handleStatusToggle(g)}
+                        aria-label={g.status === 'active' ? `Disable ${g.name}` : `Enable ${g.name}`}
                         className="text-xs text-muted-foreground hover:text-foreground"
                       >
                         {g.status === 'active' ? 'Disable' : 'Enable'}
                       </button>
-                      <span className="text-muted-foreground">|</span>
+                      <span aria-hidden="true" className="text-muted-foreground">|</span>
                       <button
                         data-testid="delete-adv-btn"
                         onClick={() => setDeleteTarget(g)}
+                        aria-label={`Delete ${g.name}`}
                         className="text-xs text-muted-foreground hover:text-destructive hover:underline"
                       >
                         Delete
