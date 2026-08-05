@@ -31,9 +31,6 @@
     --success:                142 70% 48%;
     --success-foreground:     210 40% 83%;
   }
-}
-
-@layer base {
   * {
     @apply border-border;
   }
@@ -102,6 +99,9 @@
   .corner-marks::after  { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
 
   /* Sidebar diagonal gold stripe --------------------------------------- */
+  .sidebar-stripe {
+    position: relative;
+  }
   .sidebar-stripe::before {
     content: '';
     position: absolute;
