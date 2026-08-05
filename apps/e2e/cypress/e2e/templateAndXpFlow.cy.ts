@@ -103,6 +103,7 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     cy.get(sel.navAdvBuilder, { timeout: 10000 }).should('be.visible').click()
     cy.wait('@advBuilderRsc', { timeout: 10000 })
     cy.contains('Build New Adventure').click()
+    cy.url({ timeout: 10000 }).should('include', '/adventures/new')
     cy.contains('button', 'Public').click()
     cy.get('[data-testid="adv-name-input"]').type(adventureName)
     cy.contains('button', 'Create Adventure').click()

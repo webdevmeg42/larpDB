@@ -558,6 +558,8 @@ describe('Owner Flow', () => {
 
       // Inline editor appears (not a navigation away)
       cy.url().should('match', /\/rulebook$/)
+      // Open the new-chapter form to confirm the editor is present
+      cy.contains('+ Add chapter', { timeout: 10000 }).click()
       cy.get(sel.chapterTitleInput, { timeout: 10000 }).should('exist')
     })
   })
@@ -695,11 +697,13 @@ describe('Owner Flow', () => {
   })
 
   after(() => {
-    cy.visit('/adventures')
-    cy.contains('h1', 'Adventure Builder')
-    cy.get(sel.gamesSearchInput).clear().type(adventureName)
-    cy.contains(adventureName).should('be.visible')
-    cy.get(sel.deleteAdvBtn).first().click()
-    cy.get(sel.confirmDeleteBtn, { timeout: 10000 }).should('be.visible').click()
+    // Radix dialog timing bug in after() hooks: the pointerup from clicking
+    // deleteAdvBtn propagates to the freshly-rendered overlay and immediately
+    // closes the dialog. Skip the UI and delete via API instead.
+    cy.loginOwner()
+    const match = adventureEditUrl.match(/\/adventures\/([a-f0-9-]{36})/)
+    if (match) {
+      cy.request('DELETE', `${Cypress.env('API_URL')}/games/${match[1]}`)
+    }
   })
 })

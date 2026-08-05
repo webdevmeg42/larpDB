@@ -4,12 +4,19 @@ import { buildApp } from '../src/app.js'
 import { testDb } from './setup.js'
 import { users, requestLogs } from '../src/db/schema.js'
 
+function extractCookieToken(headers: Record<string, unknown>): string {
+  const raw = headers['set-cookie']
+  const cookieStr = Array.isArray(raw) ? raw[0] : (raw as string | undefined) ?? ''
+  return cookieStr.match(/\btoken=([^;]+)/)?.[1] ?? ''
+}
+
 async function registerAndLogin(app: ReturnType<typeof buildApp>, email = 'user@test.com') {
   const regRes = await app.inject({
     method: 'POST', url: '/auth/register',
     payload: { email, password: 'password123', displayName: 'Test User' },
   })
-  const { token, user } = regRes.json()
+  const user = regRes.json().user
+  const token = extractCookieToken(regRes.headers as Record<string, unknown>)
   return { token, userId: user.id as string }
 }
 
@@ -21,7 +28,8 @@ async function createSysAdmin(app: ReturnType<typeof buildApp>, email = 'admin@t
     method: 'POST', url: '/auth/login',
     payload: { email, password: 'password123' },
   })
-  return { token: loginRes.json().token as string, userId }
+  const token = extractCookieToken(loginRes.headers as Record<string, unknown>)
+  return { token, userId }
 }
 
 describe('isSysAdmin in JWT', () => {
