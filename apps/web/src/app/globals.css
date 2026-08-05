@@ -1,33 +1,35 @@
+/* apps/web/src/app/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 138 50% 8%;
-    --foreground: 54 97% 90%;
-    --card: 138 55% 6%;
-    --card-foreground: 54 97% 90%;
-    --popover: 138 55% 6%;
-    --popover-foreground: 54 97% 90%;
-    --primary: 142 72% 29%;
-    --primary-foreground: 55 100% 93%;
-    --secondary: 138 50% 10%;
-    --secondary-foreground: 54 90% 75%;
-    --muted: 138 45% 11%;
-    --muted-foreground: 54 60% 55%;
-    --accent: 138 45% 14%;
-    --accent-foreground: 54 97% 90%;
-    --destructive: 0 72% 49%;
-    --destructive-foreground: 54 97% 90%;
-    --border: 138 50% 15%;
-    --input: 138 50% 11%;
-    /* Focus ring intentionally matches --gold for brand consistency */
-    --ring: 43 65% 52%;
-    --radius: 0.5rem;
-    --gold: 43 65% 52%;
-    --success: 142 70% 48%;
-    --success-foreground: 54 97% 90%;
+    --background:             222 47%  9%;   /* #0b1020 */
+    --foreground:             210 40% 83%;   /* #c4d4e6 */
+    --card:                   220 43% 10%;   /* #0e1825 */
+    --card-foreground:        210 40% 83%;
+    --popover:                220 43% 10%;
+    --popover-foreground:     210 40% 83%;
+    --primary:                 43 53% 54%;   /* #c9a84c gold */
+    --primary-foreground:     222 47%  6%;   /* near-black for text on gold */
+    --secondary:              222 42% 14%;
+    --secondary-foreground:   210 40% 70%;
+    --muted:                  222 42% 11%;
+    --muted-foreground:       215 33% 30%;   /* #2a3d58 */
+    --accent:                 222 42% 15%;
+    --accent-foreground:      210 40% 83%;
+    --destructive:              0 72% 49%;
+    --destructive-foreground: 210 40% 83%;
+    --border:                 222 40% 18%;   /* #1a2640 */
+    --input:                  222 55%  7%;   /* #070c18 */
+    --ring:                    43 53% 54%;   /* gold focus ring */
+    --radius:                 0.125rem;      /* 2px — sharp heraldic corners */
+    --gold:                    43 53% 54%;   /* #c9a84c */
+    --steel:                  210 45% 69%;   /* #8ab0d4 */
+    --sidebar-bg:             222 55%  6%;   /* #060c18 */
+    --success:                142 70% 48%;
+    --success-foreground:     210 40% 83%;
   }
 }
 
@@ -38,7 +40,80 @@
   body {
     @apply bg-background text-foreground;
   }
-  h1 {
+  h1, h2 {
     font-family: var(--font-heading), Georgia, serif;
+  }
+}
+
+@layer utilities {
+  /* Triple-gem divider ------------------------------------------------- */
+  .gem-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .gem-divider::before,
+  .gem-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, hsl(var(--gold) / 0.4), transparent);
+  }
+  .gem-divider::after {
+    background: linear-gradient(to left, hsl(var(--gold) / 0.4), transparent);
+  }
+  .gem-divider-center {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+  }
+  .gem-sm {
+    width: 5px;
+    height: 5px;
+    background: hsl(var(--gold));
+    transform: rotate(45deg);
+    flex-shrink: 0;
+  }
+  .gem-lg {
+    width: 8px;
+    height: 8px;
+    background: hsl(var(--gold));
+    transform: rotate(45deg);
+    box-shadow: 0 0 6px hsl(var(--gold) / 0.6);
+    flex-shrink: 0;
+  }
+
+  /* Card corner brackets ----------------------------------------------- */
+  .corner-marks {
+    position: relative;
+  }
+  .corner-marks::before,
+  .corner-marks::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-color: hsl(var(--gold) / 0.4);
+    border-style: solid;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .corner-marks::before { top: -1px;    left: -1px;  border-width: 1px 0 0 1px; }
+  .corner-marks::after  { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+  /* Sidebar diagonal gold stripe --------------------------------------- */
+  .sidebar-stripe::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      45deg,
+      hsl(var(--gold) / 0.04) 0px,
+      hsl(var(--gold) / 0.04) 1px,
+      transparent 1px,
+      transparent 16px
+    );
+    pointer-events: none;
+    z-index: 0;
   }
 }
