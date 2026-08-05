@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq, and, gte, lte, desc, count } from 'drizzle-orm'
+import { eq, and, gte, lte, desc, count, ilike } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../db/index.js'
 import { users, requestLogs, game, gameMembers } from '../db/schema.js'
 import { parsePagination } from '../lib/pagination.js'
@@ -117,7 +118,10 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get(
     '/admin/games',
     { preHandler: [fastify.requireSysAdmin] },
-    async (_request, reply) => {
+    async (request, reply) => {
+      const { ownerName } = request.query as { ownerName?: string }
+      const ownerMember = alias(gameMembers, 'owner_member')
+
       const rows = await db
         .select({
           id: game.id,
@@ -129,10 +133,15 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
           joinMode: game.joinMode,
           createdAt: game.createdAt,
           memberCount: count(gameMembers.id),
+          ownerId: ownerMember.userId,
+          ownerDisplayName: users.displayName,
         })
         .from(game)
         .leftJoin(gameMembers, and(eq(gameMembers.gameId, game.id), eq(gameMembers.status, 'active')))
-        .groupBy(game.id)
+        .leftJoin(ownerMember, and(eq(ownerMember.gameId, game.id), eq(ownerMember.role, 'owner')))
+        .leftJoin(users, eq(users.id, ownerMember.userId))
+        .where(ownerName ? ilike(users.displayName, `%${ownerName}%`) : undefined)
+        .groupBy(game.id, ownerMember.userId, users.displayName)
         .orderBy(desc(game.createdAt))
 
       return reply.send(rows)
