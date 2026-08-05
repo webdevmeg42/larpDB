@@ -117,7 +117,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
                 aria-label="Close navigation menu"
                 className="p-1 rounded-sm hover:bg-muted text-muted-foreground"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
             {/* Sub-rule */}
