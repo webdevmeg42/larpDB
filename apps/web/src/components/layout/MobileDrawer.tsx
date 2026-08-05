@@ -81,7 +81,7 @@ export function MobileDrawer({ open, onClose }: MobileDrawerProps) {
         aria-hidden={!open}
         onKeyDown={open ? handleKeyDown : undefined}
         className={cn(
-          'absolute left-0 top-0 h-full w-64 bg-sidebar border-r border-border flex flex-col',
+          'h-full w-64 bg-sidebar border-r border-border flex flex-col',
           'relative overflow-hidden sidebar-stripe',
           'transition-transform duration-200 ease-in-out',
           open ? 'translate-x-0' : '-translate-x-full',
