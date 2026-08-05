@@ -10,8 +10,8 @@ const buttonVariants = cva(
       variant: {
         default:
           'bg-gradient-to-br from-[#d4b25a] via-gold to-[#a8862a] text-primary-foreground ' +
-          'shadow-[0_0_10px_hsl(var(--gold)/0.4),0_0_24px_hsl(var(--gold)/0.15)] ' +
-          'hover:shadow-[0_0_14px_hsl(var(--gold)/0.55),0_0_30px_hsl(var(--gold)/0.2)]',
+          'shadow-[0_0_10px_hsl(var(--gold)_/_0.4),0_0_24px_hsl(var(--gold)_/_0.15)] ' +
+          'hover:shadow-[0_0_14px_hsl(var(--gold)_/_0.55),0_0_30px_hsl(var(--gold)_/_0.2)]',
         destructive:
           'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         outline:
