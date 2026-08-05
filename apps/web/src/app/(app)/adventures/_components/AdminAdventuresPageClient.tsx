@@ -131,6 +131,7 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
                       </Link>
                       <span className="text-muted-foreground">|</span>
                       <button
+                        data-testid="enable-adv-btn"
                         onClick={() => void handleStatusToggle(g)}
                         className="text-xs text-muted-foreground hover:text-foreground"
                       >
