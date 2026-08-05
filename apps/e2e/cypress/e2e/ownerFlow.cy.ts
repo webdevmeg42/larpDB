@@ -44,11 +44,9 @@ const sel = {
   templateCard: '[data-testid^="template-card"]',
   // race templates
   templateCardBlank: '[data-testid="template-card-blank"]',
-  templateCardFantasyAdventure: '[data-testid="template-card-fantasy-adventure"]',
-  templateCardSciFiOperative: '[data-testid="template-card-sci-fi-operative"]',
-  templateCardModernThriller: '[data-testid="template-card-modern-thriller"]',
-  templateCardHorrorSurvivor: '[data-testid="template-card-horror-survivor"]',
-  templateCardPostApocalyptic: '[data-testid="template-card-post-apocalyptic"]',
+  templateCardHumanoid: '[data-testid="template-card-humanoid"]',
+  templateCardCreature: '[data-testid="template-card-creature"]',
+  templateCardSupernatural: '[data-testid="template-card-supernatural"]',
   // class templates
   templateCardWarrior: '[data-testid="template-card-warrior"]',
   templateCardDruid: '[data-testid="template-card-druid"]',
@@ -213,11 +211,14 @@ describe('Owner Flow', () => {
     cy.get(sel.newRaceLink).click()
     cy.wait('@schemaTemplates', { timeout: 10000 })
 
-    cy.get(sel.templateCardFantasyAdventure).click()
+    cy.get(sel.templateCardHumanoid).click()
     cy.get(sel.schemaNameError)
       .should('be.visible').and('contain', 'Name is required')
 
     cy.get(sel.schemaNameInput).click().type(adventureName)
+    // Switch to Blank so the builder starts with no pre-populated fields
+    // (Humanoid would duplicate Appearance/Languages/Personality from the palette adds below)
+    cy.get(sel.templateCardBlank).click()
     cy.get(sel.startBuildingBtn).click()
 
     // Add common fields — labels auto-populate on click, then one save (POST)
@@ -276,13 +277,14 @@ describe('Owner Flow', () => {
       .should('be.visible').and('contain', 'Name is required')
 
     cy.get(sel.schemaNameInput).click().type(`Warrior ${adventureName}`)
+    // Switch to Blank — Warrior template includes hitpoints and attacks fields that
+    // require ≥ 3 entries defined to pass class schema validation
+    cy.get(sel.templateCardBlank).click()
     cy.get(sel.startBuildingBtn).click()
 
-    // Add common fields — labels auto-populate on click, then one save (POST)
-    // Note: Warrior template already includes Hit Points, so skip it to avoid duplicate label
-    cy.schemaBuilderAddField('palette-btn-attacks', 'Attacks')
-    cy.schemaBuilderAddField('palette-btn-spells', 'Spells')
+    // Add labeled fields — auto-populate on click, then one save (POST)
     cy.schemaBuilderAddField('palette-btn-features', 'Features')
+    cy.schemaBuilderAddField('palette-btn-influences', 'Influences')
     cy.schemaBuilderSave()
     cy.url({ timeout: 10000 }).should('match', /\/admin\/schemas\/[a-f0-9-]{36}/)
 
@@ -556,6 +558,8 @@ describe('Owner Flow', () => {
 
       // Inline editor appears (not a navigation away)
       cy.url().should('match', /\/rulebook$/)
+      // Open the new-chapter form to confirm the editor is present
+      cy.contains('+ Add chapter', { timeout: 10000 }).click()
       cy.get(sel.chapterTitleInput, { timeout: 10000 }).should('exist')
     })
   })
@@ -693,11 +697,13 @@ describe('Owner Flow', () => {
   })
 
   after(() => {
-    cy.visit('/adventures')
-    cy.contains('h1', 'Adventure Builder')
-    cy.get(sel.gamesSearchInput).clear().type(adventureName)
-    cy.contains(adventureName).should('be.visible')
-    cy.get(sel.deleteAdvBtn).first().click()
-    cy.get(sel.confirmDeleteBtn, { timeout: 10000 }).should('be.visible').click()
+    // Radix dialog timing bug in after() hooks: the pointerup from clicking
+    // deleteAdvBtn propagates to the freshly-rendered overlay and immediately
+    // closes the dialog. Skip the UI and delete via API instead.
+    cy.loginOwner()
+    const match = adventureEditUrl.match(/\/adventures\/([a-f0-9-]{36})/)
+    if (match) {
+      cy.request('DELETE', `${Cypress.env('API_URL')}/games/${match[1]}`)
+    }
   })
 })

@@ -4,12 +4,19 @@ import { buildApp } from '../src/app.js'
 import { testDb } from './setup.js'
 import { users, requestLogs } from '../src/db/schema.js'
 
+function extractCookieToken(headers: Record<string, unknown>): string {
+  const raw = headers['set-cookie']
+  const cookieStr = Array.isArray(raw) ? raw[0] : (raw as string | undefined) ?? ''
+  return cookieStr.match(/\btoken=([^;]+)/)?.[1] ?? ''
+}
+
 async function registerAndLogin(app: ReturnType<typeof buildApp>, email = 'user@test.com') {
   const regRes = await app.inject({
     method: 'POST', url: '/auth/register',
     payload: { email, password: 'password123', displayName: 'Test User' },
   })
-  const { token, user } = regRes.json()
+  const user = regRes.json().user
+  const token = extractCookieToken(regRes.headers as Record<string, unknown>)
   return { token, userId: user.id as string }
 }
 
@@ -21,7 +28,8 @@ async function createSysAdmin(app: ReturnType<typeof buildApp>, email = 'admin@t
     method: 'POST', url: '/auth/login',
     payload: { email, password: 'password123' },
   })
-  return { token: loginRes.json().token as string, userId }
+  const token = extractCookieToken(loginRes.headers as Record<string, unknown>)
+  return { token, userId }
 }
 
 describe('isSysAdmin in JWT', () => {
@@ -396,6 +404,98 @@ describe('GET /admin/games', () => {
     })
 
     expect(res.statusCode).toBe(403)
+    await app.close()
+  })
+
+  it('includes ownerId and ownerDisplayName in the response', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+
+    const ownerReg = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'owner@test.com', password: 'password123', displayName: 'Named Owner' },
+    })
+    const ownerId = ownerReg.json().user.id as string
+    const ownerCookie = (ownerReg.headers['set-cookie'] as string[] | string)
+    const ownerCookieHeader = Array.isArray(ownerCookie) ? ownerCookie.join('; ') : (ownerCookie ?? '')
+
+    await app.inject({
+      method: 'POST', url: '/games',
+      headers: { cookie: ownerCookieHeader },
+      payload: { name: 'Named Owner Game' },
+    })
+
+    const adminLoginRes = await app.inject({
+      method: 'POST', url: '/auth/login',
+      payload: { email: 'admin@test.com', password: 'password123' },
+    })
+    const adminCookie = (adminLoginRes.headers['set-cookie'] as string[] | string)
+    const adminCookieHeader = Array.isArray(adminCookie) ? adminCookie.join('; ') : (adminCookie ?? '')
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin/games',
+      headers: { authorization: `Bearer ${adminToken}`, cookie: adminCookieHeader },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    const g = body.find((g: { name: string }) => g.name === 'Named Owner Game')
+    expect(g).toBeDefined()
+    expect(g.ownerDisplayName).toBe('Named Owner')
+    expect(g.ownerId).toBe(ownerId)
+    await app.close()
+  })
+
+  it('filters games by ownerName query param (case-insensitive substring)', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+
+    const aliceReg = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'alice@test.com', password: 'password123', displayName: 'Alice Keeper' },
+    })
+    const aliceCookie = (aliceReg.headers['set-cookie'] as string[] | string)
+    const aliceCookieHeader = Array.isArray(aliceCookie) ? aliceCookie.join('; ') : (aliceCookie ?? '')
+
+    const bobReg = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'bob@test.com', password: 'password123', displayName: 'Bob Runner' },
+    })
+    const bobCookie = (bobReg.headers['set-cookie'] as string[] | string)
+    const bobCookieHeader = Array.isArray(bobCookie) ? bobCookie.join('; ') : (bobCookie ?? '')
+
+    await app.inject({
+      method: 'POST', url: '/games',
+      headers: { cookie: aliceCookieHeader },
+      payload: { name: 'Alice Game' },
+    })
+    await app.inject({
+      method: 'POST', url: '/games',
+      headers: { cookie: bobCookieHeader },
+      payload: { name: 'Bob Game' },
+    })
+
+    const adminLoginRes = await app.inject({
+      method: 'POST', url: '/auth/login',
+      payload: { email: 'admin@test.com', password: 'password123' },
+    })
+    const adminCookie = (adminLoginRes.headers['set-cookie'] as string[] | string)
+    const adminCookieHeader = Array.isArray(adminCookie) ? adminCookie.join('; ') : (adminCookie ?? '')
+
+    const res = await app.inject({
+      method: 'GET', url: '/admin/games?ownerName=alice',
+      headers: { authorization: `Bearer ${adminToken}`, cookie: adminCookieHeader },
+    })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.length).toBe(1)
+    expect(body[0].name).toBe('Alice Game')
+    expect(body[0].ownerDisplayName).toBe('Alice Keeper')
     await app.close()
   })
 })

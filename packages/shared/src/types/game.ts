@@ -19,6 +19,12 @@ export interface MyGame extends Game {
   role: GameMemberRole
 }
 
+export interface AdminGame extends Game {
+  memberCount: number
+  ownerId: string | null
+  ownerDisplayName: string | null
+}
+
 export interface GameMember {
   id: string
   gameId: string

@@ -122,7 +122,7 @@ export function FieldPalette({ onAdd, schemaType }: FieldPaletteProps) {
               variant="ghost"
               size="sm"
               className="w-full justify-start gap-2 text-muted-foreground"
-              onClick={() => onAdd(type)}
+              onClick={() => onAdd(type, SELF_LABELED.has(type) ? label : undefined)}
             >
               <Icon className="h-4 w-4" />
               {label}

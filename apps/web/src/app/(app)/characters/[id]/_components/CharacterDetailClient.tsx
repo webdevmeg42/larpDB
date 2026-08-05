@@ -114,6 +114,7 @@ export function CharacterDetailClient({ character: characterProp, xpData, schema
 
   const xpToNextLevel = (currentLevel !== undefined && codex)
     ? (() => {
+        if (currentLevel >= (codex.maxLevel ?? 20)) return null
         const next = computeCumulativeXp(currentLevel + 1, codex)
         return next !== null ? Math.max(0, next - xpBalance) : null
       })()
