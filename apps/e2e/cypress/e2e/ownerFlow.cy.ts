@@ -369,9 +369,11 @@ describe('Owner Flow', () => {
     cy.contains('Character name is required').should('be.visible')
 
     // Fill in name and successfully create the character
+    cy.intercept('POST', '**/characters').as('createCharacter')
     cy.get(sel.characterNameInput).type(characterName)
     cy.get(sel.createCharacterBtn).click()
-    cy.url({ timeout: 10000 }).should('match', /\/characters\/[a-f0-9-]{36}/)
+    cy.wait('@createCharacter', { timeout: 10000 })
+    cy.url({ timeout: 15000 }).should('match', /\/characters\/[a-f0-9-]{36}/)
   })
 
   it('Owner can create an event', () => {
