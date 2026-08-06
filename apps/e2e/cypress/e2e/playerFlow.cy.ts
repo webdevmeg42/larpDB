@@ -53,7 +53,7 @@ describe('Player role — restricted UI not accessible', () => {
     it('allows direct navigation to /adventures', () => {
       cy.visit('/adventures')
       cy.url().should('include', '/adventures')
-      cy.contains("This page doesn't exist.").should('not.exist')
+      cy.contains('h1', 'Adventure Builder').should('be.visible')
     })
   })
 })
