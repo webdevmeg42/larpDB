@@ -388,10 +388,12 @@ describe('Owner Flow', () => {
     cy.get(sel.eventTitleInput).type(`Event ${adventureName}`)
     cy.get(sel.createEventBtn).should('be.disabled')
 
+    cy.intercept('POST', '**/events').as('createEvent')
     cy.get(sel.eventStartAtInput).type(tomorrowDatetimeLocal())
     cy.get(sel.createEventBtn).click()
+    cy.wait('@createEvent', { timeout: 10000 })
 
-    cy.contains('h1', `Event ${adventureName}`)
+    cy.contains('h1', `Event ${adventureName}`, { timeout: 15000 }).should('be.visible')
   })
 
   describe('Events calendar', () => {
