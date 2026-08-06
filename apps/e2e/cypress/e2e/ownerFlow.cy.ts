@@ -409,13 +409,9 @@ describe('Owner Flow', () => {
       cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
       cy.get(sel.calendarToggle).click()
       cy.get('[data-testid="event-calendar"]').should('be.visible')
-      cy.get('body').then($body => {
-        if ($body.find('[data-testid="event-bar"]').length > 0) {
-          cy.get('[data-testid="event-bar"]').first().click()
-          cy.get('[data-testid="event-popover"]').should('be.visible')
-          cy.get('[data-testid="event-popover"]').contains('View').should('have.attr', 'href')
-        }
-      })
+      cy.get('[data-testid="event-bar"]', { timeout: 10000 }).first().click()
+      cy.get('[data-testid="event-popover"]').should('be.visible')
+      cy.get('[data-testid="event-popover"]').contains('View').should('have.attr', 'href')
     })
   })
 
@@ -692,8 +688,10 @@ describe('Owner Flow', () => {
     // Join mode filter toggles active state
     cy.contains('button', 'Open only').click()
     cy.contains('button', 'Open only').should('have.class', 'bg-primary')
+    cy.contains(sel.browseGameRow, adventureName).should('be.visible')
     cy.contains('button', 'Any').click()
     cy.contains('button', 'Any').should('have.class', 'bg-primary')
+    cy.contains(sel.browseGameRow, adventureName).should('be.visible')
   })
 
   after(() => {
