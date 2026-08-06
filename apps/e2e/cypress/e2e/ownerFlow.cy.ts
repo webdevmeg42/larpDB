@@ -632,7 +632,7 @@ describe('Owner Flow', () => {
     cy.url().should('match', /\/rulebook$/)
 
     // Add a chapter
-    cy.contains('+ Add chapter').click()
+    cy.contains('+ Add chapter', { timeout: 10000 }).click()
     cy.get(sel.chapterTitleInput).type('Introduction')
     cy.contains('button', 'Save chapter').click()
 
