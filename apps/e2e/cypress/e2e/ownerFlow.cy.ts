@@ -134,11 +134,13 @@ describe('Owner Flow', () => {
     cy.get(sel.advNameError)
       .should('be.visible').and('contain', 'Adventure Name is required')
 
+    cy.intercept('POST', '**/games').as('createGame')
     cy.contains('button', 'Public').click()
     cy.get(sel.advNameInput).type(adventureName)
     cy.contains('button', 'Create Adventure').click()
+    cy.wait('@createGame', { timeout: 10000 })
 
-    cy.url({ timeout: 10000 }).should('include', '/edit')
+    cy.url({ timeout: 15000 }).should('include', '/edit')
     cy.get(sel.tabBranding).should('be.visible')
     cy.url().then(url => { adventureEditUrl = url })
     cy.get(sel.advSlugDisplay)
