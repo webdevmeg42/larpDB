@@ -62,7 +62,7 @@ const ALL_CLASS_TEMPLATES = [
     ],
   },
 ]
-const CLASS_TEMPLATES_TO_TEST = Cypress._.sampleSize(ALL_CLASS_TEMPLATES, 3)
+const CLASS_TEMPLATES_TO_TEST = ALL_CLASS_TEMPLATES
 
 const sel = {
   navAdvBuilder: '[data-testid="nav-adv-builder"]',
@@ -145,13 +145,14 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
 
   // ── Helper: verify fields in a loaded schema builder (no save)
   function verifyBuilderFields(fields: Array<{ label: string; type: string }>) {
-    fields.forEach(({ label }) => {
-      cy.get(sel.fieldList).should('contain', label)
+    cy.get('[data-testid="field-list"] [data-testid="field-item"]')
+      .should('have.length', fields.length)
+
+    fields.forEach(({ label, type }) => {
+      cy.get('[data-testid="field-list"]').contains(label).click()
+      const typeLabel = type === 'select' ? 'Dropdown Select field' : `${type} field`
+      cy.contains(typeLabel, { matchCase: false }).should('be.visible')
     })
-    const last = fields[fields.length - 1]!
-    cy.get(sel.fieldList).contains(last.label).click()
-    const typeLabel = last.type === 'select' ? 'Dropdown Select field' : `${last.type} field`
-    cy.contains(typeLabel, { matchCase: false }).should('be.visible')
   }
 
   // ── Race template checks ──────────────────────────────────────────
@@ -398,6 +399,11 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
 
   // ── XP operations ─────────────────────────────────────────────────
 
+  it('Character starts with 100 XP from base level 1', () => {
+    cy.visit(characterUrl)
+    cy.get('[data-testid="xp-balance"]').should('contain', '100 XP available')
+  })
+
   it('GM awards 50 XP to Talon and balance updates to 150 XP available', () => {
     cy.visit(characterUrl)
     cy.contains('GM Tools').click()
@@ -458,7 +464,7 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     })
 
     cy.contains('330 XP available', { timeout: 10000 }).should('exist')
-    cy.contains('Level 3').should('exist')
+    cy.get('[data-testid="character-level"]').should('contain', 'Level 3')
 
     // Award 100 more → total = 430 → still Level 3 (capped at maxLevel)
     cy.contains('Award / Deduct XP').parent().parent().within(() => {
@@ -468,7 +474,7 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     })
 
     cy.contains('430 XP available', { timeout: 10000 }).should('exist')
-    cy.contains('Level 3').should('exist')
-    cy.contains('Level 4').should('not.exist')
+    cy.get('[data-testid="character-level"]').should('contain', 'Level 3')
+    cy.get('[data-testid="character-level"]').should('not.contain', 'Level 4')
   })
 })
