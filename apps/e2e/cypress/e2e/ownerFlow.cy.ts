@@ -124,10 +124,9 @@ describe('Owner Flow', () => {
   })
 
   it('Owner cannot build an incorrect Adventure', () => {
-    cy.intercept('GET', '/adventures*').as('advBuilderRsc')
     cy.get(sel.navAdvBuilder).click()
-    cy.wait('@advBuilderRsc', { timeout: 10000 })
-    cy.contains('Build New Adventure').click()
+    cy.url({ timeout: 15000 }).should('include', '/adventures')
+    cy.contains('Build New Adventure', { timeout: 10000 }).click()
 
     cy.get(sel.visibilityPrivateBtn).click()
     cy.contains('button', 'Create Adventure').click()
@@ -604,10 +603,13 @@ describe('Owner Flow', () => {
 
   it('Owner cannot create an adventure with a duplicate name', () => {
     cy.get(sel.navAdvBuilder).click()
-    cy.contains('Build New Adventure').click()
+    cy.url({ timeout: 15000 }).should('include', '/adventures')
+    cy.contains('Build New Adventure', { timeout: 10000 }).click()
 
+    cy.intercept('GET', '**/games/check-name*').as('checkName')
     cy.get(sel.advNameInput).type(adventureName)
-    cy.get(sel.advNameAvailability, { timeout: 3000 }).should('contain', '✗ Already taken')
+    cy.wait('@checkName', { timeout: 10000 })
+    cy.get(sel.advNameAvailability).should('contain', '✗ Already taken')
     cy.contains('button', 'Create Adventure').should('be.disabled')
   })
 
