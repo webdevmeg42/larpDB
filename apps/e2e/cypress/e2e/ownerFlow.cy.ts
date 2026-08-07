@@ -579,10 +579,12 @@ describe('Owner Flow', () => {
     cy.get('#adventure').select(adventureName)
     cy.get('#title').type(postTitle)
     cy.get('#body').type('test')
+    cy.intercept('POST', '**/upload').as('imageUpload')
     cy.get('input[type="file"][accept="image/*"]').selectFile('cypress/fixtures/PRLogo.png', { force: true })
 
     // Wait for upload to finish (button is disabled while uploading)
-    cy.contains('button', 'Publish', { timeout: 15000 }).should('not.be.disabled')
+    cy.wait('@imageUpload', { timeout: 15000 })
+    cy.contains('button', 'Publish').should('not.be.disabled')
     cy.contains('button', 'Publish').click()
 
     // Successful publish redirects away from the form
