@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { eq, and, gte, lte, desc, count, ilike } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../db/index.js'
-import { users, requestLogs, game, gameMembers } from '../db/schema.js'
+import { users, requestLogs, game, gameMembers, characters } from '../db/schema.js'
 import { parsePagination } from '../lib/pagination.js'
 import { stripPassword } from '../lib/user.js'
 
@@ -165,4 +165,24 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.send(allUsers)
     },
   )
+
+  fastify.get('/admin/characters', { preHandler: [fastify.requireSysAdmin] }, async (request, reply) => {
+    const rows = await db
+      .select({
+        id: characters.id,
+        name: characters.name,
+        gameId: characters.gameId,
+        gameName: game.name,
+        playerDisplayName: users.displayName,
+        totalXp: characters.totalXp,
+        isActive: characters.isActive,
+        createdAt: characters.createdAt,
+      })
+      .from(characters)
+      .innerJoin(game, eq(characters.gameId, game.id))
+      .innerJoin(users, eq(characters.userId, users.id))
+      .orderBy(desc(characters.createdAt))
+
+    return reply.send(rows)
+  })
 }

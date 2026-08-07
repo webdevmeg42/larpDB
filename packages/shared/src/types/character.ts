@@ -147,3 +147,14 @@ export interface Character {
   createdAt: string
   updatedAt: string
 }
+
+export interface AdminCharacter {
+  id: string
+  name: string
+  gameId: string
+  gameName: string
+  playerDisplayName: string
+  totalXp: number
+  isActive: boolean
+  createdAt: string
+}
