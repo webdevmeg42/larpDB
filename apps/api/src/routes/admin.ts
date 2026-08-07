@@ -166,7 +166,10 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     },
   )
 
-  fastify.get('/admin/characters', { preHandler: [fastify.requireSysAdmin] }, async (request, reply) => {
+  fastify.get(
+    '/admin/characters',
+    { preHandler: [fastify.requireSysAdmin] },
+    async (_request, reply) => {
     const rows = await db
       .select({
         id: characters.id,
@@ -184,5 +187,6 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       .orderBy(desc(characters.createdAt))
 
     return reply.send(rows)
-  })
+    },
+  )
 }
