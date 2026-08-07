@@ -557,13 +557,15 @@ describe('Owner Flow', () => {
       cy.get(sel.adventurePanelItem, { timeout: 10000 }).should('have.length.gte', 1)
 
       // Click the adventure
+      cy.intercept('GET', '**/config').as('rulebookConfig')
       cy.contains(sel.adventurePanelItem, adventureName, { timeout: 5000 }).click()
 
       // Inline editor appears (not a navigation away)
       cy.url().should('match', /\/rulebook$/)
       // Open the new-chapter form to confirm the editor is present
-      cy.contains('+ Add chapter', { timeout: 10000 }).click()
-      cy.get(sel.chapterTitleInput, { timeout: 10000 }).should('exist')
+      cy.wait('@rulebookConfig', { timeout: 10000 })
+      cy.contains('+ Add chapter').click()
+      cy.get(sel.chapterTitleInput).should('exist')
     })
   })
 
@@ -634,13 +636,15 @@ describe('Owner Flow', () => {
     cy.contains(sel.adventurePanelItem, adventureName).should('be.visible')
 
     // Click the adventure to load it inline
+    cy.intercept('GET', '**/config').as('rulebookConfig')
     cy.contains(sel.adventurePanelItem, adventureName).click()
 
     // Owner sees the inline rulebook editor (not navigating away)
     cy.url().should('match', /\/rulebook$/)
 
     // Add a chapter
-    cy.contains('+ Add chapter', { timeout: 10000 }).click()
+    cy.wait('@rulebookConfig', { timeout: 10000 })
+    cy.contains('+ Add chapter').click()
     cy.get(sel.chapterTitleInput).type('Introduction')
     cy.contains('button', 'Save chapter').click()
 
