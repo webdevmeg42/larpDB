@@ -473,8 +473,10 @@ describe('Owner Flow', () => {
 
     // Cleanup: delete the published post
     cy.visit('/admin/posts')
+    cy.intercept('GET', '**/posts*').as('adventurePosts')
     cy.contains(sel.adventurePanelItem, adventureName, { timeout: 10000 }).click()
-    cy.contains('li', draftTitle, { timeout: 10000 }).find('[data-testid="delete-post-btn"]').click()
+    cy.wait('@adventurePosts', { timeout: 10000 })
+    cy.contains('li', draftTitle).find('[data-testid="delete-post-btn"]').click()
     cy.get('[data-testid="confirm-delete-post-btn"]').click()
     cy.contains('li', draftTitle).should('not.exist')
   })
@@ -597,8 +599,10 @@ describe('Owner Flow', () => {
 
     // Cleanup: delete the test post
     cy.visit('/admin/posts')
+    cy.intercept('GET', '**/posts*').as('adventurePosts')
     cy.contains(sel.adventurePanelItem, adventureName, { timeout: 10000 }).click()
-    cy.contains('li', postTitle, { timeout: 10000 }).find('[data-testid="delete-post-btn"]').click()
+    cy.wait('@adventurePosts', { timeout: 10000 })
+    cy.contains('li', postTitle).find('[data-testid="delete-post-btn"]').click()
     cy.get('[data-testid="confirm-delete-post-btn"]').click()
     cy.contains('li', postTitle).should('not.exist')
   })
