@@ -210,7 +210,7 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
                       <button
                         data-testid="enable-adv-btn"
                         onClick={() => void handleStatusToggle(g)}
-                        aria-label={g.status === 'active' ? `Disable ${g.name}` : `Enable ${g.name}`}
+                        aria-label={!g.isBlocked && g.status === 'active' ? `Disable ${g.name}` : `Enable ${g.name}`}
                         className="text-xs text-muted-foreground hover:text-foreground"
                       >
                         {g.status === 'active' ? 'Disable' : 'Enable'}
