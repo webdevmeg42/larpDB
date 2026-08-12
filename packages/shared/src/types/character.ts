@@ -153,8 +153,11 @@ export interface AdminCharacter {
   name: string
   gameId: string
   gameName: string
+  userId: string
   playerDisplayName: string
   totalXp: number
   isActive: boolean
+  isBlocked: boolean
+  userIsBlocked: boolean
   createdAt: string
 }
