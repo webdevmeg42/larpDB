@@ -170,23 +170,23 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     '/admin/characters',
     { preHandler: [fastify.requireSysAdmin] },
     async (_request, reply) => {
-    const rows = await db
-      .select({
-        id: characters.id,
-        name: characters.name,
-        gameId: characters.gameId,
-        gameName: game.name,
-        playerDisplayName: users.displayName,
-        totalXp: characters.totalXp,
-        isActive: characters.isActive,
-        createdAt: characters.createdAt,
-      })
-      .from(characters)
-      .innerJoin(game, eq(characters.gameId, game.id))
-      .innerJoin(users, eq(characters.userId, users.id))
-      .orderBy(desc(characters.createdAt))
+      const rows = await db
+        .select({
+          id: characters.id,
+          name: characters.name,
+          gameId: characters.gameId,
+          gameName: game.name,
+          playerDisplayName: users.displayName,
+          totalXp: characters.totalXp,
+          isActive: characters.isActive,
+          createdAt: characters.createdAt,
+        })
+        .from(characters)
+        .innerJoin(game, eq(characters.gameId, game.id))
+        .innerJoin(users, eq(characters.userId, users.id))
+        .orderBy(desc(characters.createdAt))
 
-    return reply.send(rows)
+      return reply.send(rows)
     },
   )
 }

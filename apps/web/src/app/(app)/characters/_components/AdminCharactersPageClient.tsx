@@ -14,20 +14,24 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<AdminCharacter | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [rowError, setRowError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  const filtered = search.trim()
+  const term = search.trim().toLowerCase()
+  const filtered = term
     ? characters.filter(c =>
-        [c.name, c.gameName, c.playerDisplayName].some(s =>
-          s.toLowerCase().includes(search.trim().toLowerCase())
-        )
+        [c.name, c.gameName, c.playerDisplayName].some(s => s.toLowerCase().includes(term))
       )
     : characters
+
+  function closeDialog() {
+    setDeleteTarget(null)
+    setDeleteError(null)
+  }
 
   async function handleDelete() {
     if (!deleteTarget) return
     setDeleting(true)
-    setRowError(null)
+    setDeleteError(null)
     try {
       const res = await fetch(`${API_URL}/characters/${deleteTarget.id}`, {
         method: 'DELETE',
@@ -39,10 +43,9 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
         throw new Error(body.error ?? 'Failed to delete character')
       }
       setCharacters(cs => cs.filter(c => c.id !== deleteTarget.id))
-      setDeleteTarget(null)
+      closeDialog()
     } catch (err) {
-      setDeleteTarget(null)
-      setRowError(getErrorMessage(err, 'Failed to delete character'))
+      setDeleteError(getErrorMessage(err, 'Failed to delete character'))
     } finally {
       setDeleting(false)
     }
@@ -51,10 +54,6 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
   return (
     <div className="p-6 max-w-4xl">
       <h1 className="text-2xl font-semibold mb-6">All Characters</h1>
-
-      {rowError && (
-        <p className="text-sm text-destructive mb-4">{rowError}</p>
-      )}
 
       <input
         data-testid="characters-search-input"
@@ -97,7 +96,7 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      data-testid="delete-char-btn"
+                      data-testid={`delete-char-btn-${c.id}`}
                       onClick={() => setDeleteTarget(c)}
                       aria-label={`Delete ${c.name}`}
                       className="text-xs text-muted-foreground hover:text-destructive hover:underline"
@@ -112,13 +111,16 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
         </div>
       )}
 
-      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)}>
+      <Dialog open={!!deleteTarget} onClose={closeDialog}>
         <DialogTitle>Delete {deleteTarget?.name}?</DialogTitle>
         <DialogDescription>
           This permanently deletes the character and all associated data. This cannot be undone.
         </DialogDescription>
+        {deleteError && (
+          <p role="alert" className="text-sm text-destructive mt-2">{deleteError}</p>
+        )}
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+          <Button variant="outline" onClick={closeDialog} disabled={deleting}>
             Cancel
           </Button>
           <Button data-testid="confirm-delete-btn" variant="destructive" onClick={() => void handleDelete()} disabled={deleting}>
