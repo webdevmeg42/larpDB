@@ -34,7 +34,7 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
         credentials: 'include',
         headers: { 'X-Game-Id': deleteTarget.gameId },
       })
-      if (!res.ok && res.status !== 204) {
+      if (!res.ok) {
         const body = await res.json().catch(() => ({})) as { error?: string }
         throw new Error(body.error ?? 'Failed to delete character')
       }
@@ -57,6 +57,7 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
       )}
 
       <input
+        data-testid="characters-search-input"
         type="search"
         aria-label="Search characters"
         placeholder="Search by name, game, or player…"
@@ -74,12 +75,12 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="px-4 py-3 text-left font-medium">Character</th>
-                <th className="px-4 py-3 text-left font-medium">Game</th>
-                <th className="px-4 py-3 text-left font-medium">Player</th>
-                <th className="px-4 py-3 text-left font-medium">XP</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium">Actions</th>
+                <th scope="col" className="px-4 py-3 text-left font-medium">Character</th>
+                <th scope="col" className="px-4 py-3 text-left font-medium">Game</th>
+                <th scope="col" className="px-4 py-3 text-left font-medium">Player</th>
+                <th scope="col" className="px-4 py-3 text-left font-medium">XP</th>
+                <th scope="col" className="px-4 py-3 text-left font-medium">Status</th>
+                <th scope="col" className="px-4 py-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -96,6 +97,7 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
+                      data-testid="delete-char-btn"
                       onClick={() => setDeleteTarget(c)}
                       aria-label={`Delete ${c.name}`}
                       className="text-xs text-muted-foreground hover:text-destructive hover:underline"
@@ -119,7 +121,7 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
           <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={() => void handleDelete()} disabled={deleting}>
+          <Button data-testid="confirm-delete-btn" variant="destructive" onClick={() => void handleDelete()} disabled={deleting}>
             {deleting ? 'Deleting…' : 'Delete'}
           </Button>
         </div>
