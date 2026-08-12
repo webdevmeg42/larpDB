@@ -288,7 +288,7 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
       <Dialog open={isBlockDialog} onClose={closeBlockDialog}>
         <DialogTitle>
           {blockAction?.type === 'block-adv' && `Block ${blockAction.row.name}?`}
-          {blockAction?.type === 'block-owner' && `Block ${blockAction.row.ownerDisplayName}?`}
+          {blockAction?.type === 'block-owner' && `Block ${blockAction.row.ownerDisplayName ?? 'owner'}?`}
         </DialogTitle>
         <DialogDescription>
           {blockAction?.type === 'block-adv' && 'This will make this adventure not available to its members. '}
@@ -319,7 +319,7 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
       <Dialog open={isUnblockDialog} onClose={closeBlockDialog}>
         <DialogTitle>
           {blockAction?.type === 'unblock-adv' && `Unblock ${blockAction.row.name}?`}
-          {blockAction?.type === 'unblock-owner' && `Unblock ${blockAction.row.ownerDisplayName}?`}
+          {blockAction?.type === 'unblock-owner' && `Unblock ${blockAction.row.ownerDisplayName ?? 'owner'}?`}
         </DialogTitle>
         <DialogDescription>
           {blockAction?.type === 'unblock-owner' && "This will restore the user's access and set all their characters and owned adventures to active. "}
