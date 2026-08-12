@@ -16,7 +16,7 @@
     --secondary:              222 42% 14%;
     --secondary-foreground:   210 40% 70%;
     --muted:                  222 42% 11%;
-    --muted-foreground:       215 33% 30%;   /* #2a3d58 */
+    --muted-foreground:       215 25% 55%;   /* ~5:1 contrast on dark bg — WCAG AA */
     --accent:                 222 42% 15%;
     --accent-foreground:      210 40% 83%;
     --destructive:              0 72% 49%;
@@ -81,9 +81,7 @@
   }
 
   /* Card corner brackets ----------------------------------------------- */
-  .corner-marks {
-    position: relative;
-  }
+  /* Note: callers must supply their own positioning context (relative/fixed/etc.) */
   .corner-marks::before,
   .corner-marks::after {
     content: '';

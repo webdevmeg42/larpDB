@@ -19,7 +19,7 @@ function Dialog({ open, onClose, children, className }: DialogProps) {
         <RadixDialog.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <RadixDialog.Content
           className={cn(
-            'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2',
+            'fixed inset-0 z-50 m-auto h-fit w-full max-w-lg',
             'corner-marks border border-t-2 border-t-gold/50',
             'bg-gradient-to-b from-[#0f1d30] to-background p-6',
             'shadow-[0_8px_40px_hsl(0_0%_0%_/_0.6),0_0_20px_hsl(var(--gold)_/_0.08)]',
