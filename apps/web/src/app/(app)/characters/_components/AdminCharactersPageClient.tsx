@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import {
@@ -75,15 +76,13 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
 
   async function handleBlock() {
     if (!blockAction) return
+    const action = blockAction
     setBlocking(true)
     setBlockError(null)
     try {
-      const { type, row } = blockAction
-      const isBlockOp = type.startsWith('block-')
-      const suffix = isBlockOp ? 'block' : 'unblock'
-
-      if (type === 'block-char' || type === 'unblock-char') {
-        const res = await fetch(`${API_URL}/admin/characters/${row.id}/${suffix}`, {
+      if (action.type === 'block-char' || action.type === 'unblock-char') {
+        const suffix = action.type === 'block-char' ? 'block' : 'unblock'
+        const res = await fetch(`${API_URL}/admin/characters/${action.row.id}/${suffix}`, {
           method: 'PATCH',
           credentials: 'include',
         })
@@ -91,9 +90,10 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
           const body = await res.json().catch(() => ({})) as { error?: string }
           throw new Error(body.error ?? 'Failed to update character')
         }
-        setCharacters(cs => cs.map(c => c.id === row.id ? { ...c, isBlocked: isBlockOp } : c))
+        setCharacters(cs => cs.map(c => c.id === action.row.id ? { ...c, isBlocked: action.type === 'block-char' } : c))
       } else {
-        const res = await fetch(`${API_URL}/admin/users/${row.userId}/${suffix}`, {
+        const suffix = action.type === 'block-user' ? 'block' : 'unblock'
+        const res = await fetch(`${API_URL}/admin/users/${action.row.userId}/${suffix}`, {
           method: 'PATCH',
           credentials: 'include',
         })
@@ -101,7 +101,7 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
           const body = await res.json().catch(() => ({})) as { error?: string }
           throw new Error(body.error ?? 'Failed to update user')
         }
-        setCharacters(cs => cs.map(c => c.userId === row.userId ? { ...c, userIsBlocked: isBlockOp } : c))
+        setCharacters(cs => cs.map(c => c.userId === action.row.userId ? { ...c, userIsBlocked: action.type === 'block-user' } : c))
       }
       closeBlockDialog()
     } catch (err) {
@@ -175,6 +175,7 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
+                            type="button"
                             aria-label={`More actions for ${c.name}`}
                             className="text-xs text-muted-foreground hover:text-foreground px-1 leading-none"
                           >
@@ -242,12 +243,12 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
           You can reverse this at any time.
         </DialogDescription>
         {blockError && <p role="alert" className="text-sm text-destructive mt-2">{blockError}</p>}
-        <input
+        <Input
           aria-label="Type BLOCK to confirm"
           placeholder="Type BLOCK to confirm"
           value={blockInput}
           onChange={e => setBlockInput(e.target.value)}
-          className="mt-3 w-full px-3 py-1.5 text-sm border rounded-md bg-background"
+          className="mt-3"
         />
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={closeBlockDialog} disabled={blocking}>Cancel</Button>
