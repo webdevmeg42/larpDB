@@ -280,8 +280,9 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Cannot self-block' })
       }
 
-      const [target] = await db.select({ id: users.id }).from(users).where(eq(users.id, id)).limit(1)
+      const [target] = await db.select({ id: users.id, isSysAdmin: users.isSysAdmin }).from(users).where(eq(users.id, id)).limit(1)
       if (!target) return reply.status(404).send({ error: 'User not found' })
+      if (target.isSysAdmin) return reply.status(400).send({ error: 'Cannot block a sys_admin' })
 
       await db.transaction(async (tx) => {
         const ownedGames = await tx
@@ -307,6 +308,21 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .where(and(eq(gameMembers.userId, id), eq(gameMembers.status, 'active')))
       for (const m of userMemberships) {
         invalidateMembership(id, m.gameId)
+      }
+
+      // Invalidate all members of the user's newly-inactive owned games
+      const ownedGamesForCache = await db
+        .select({ gameId: gameMembers.gameId })
+        .from(gameMembers)
+        .where(and(eq(gameMembers.userId, id), eq(gameMembers.role, 'owner')))
+      for (const { gameId } of ownedGamesForCache) {
+        const members = await db
+          .select({ userId: gameMembers.userId })
+          .from(gameMembers)
+          .where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.status, 'active')))
+        for (const m of members) {
+          invalidateMembership(m.userId, gameId)
+        }
       }
 
       request.log.info({ userId: request.user.sub, targetId: id }, "user blocked")

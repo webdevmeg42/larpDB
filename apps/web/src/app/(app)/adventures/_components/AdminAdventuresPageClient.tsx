@@ -111,7 +111,11 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
           const body = await res.json().catch(() => ({})) as { error?: string }
           throw new Error(body.error ?? 'Failed to update owner')
         }
-        setGames(gs => gs.map(g => g.ownerId === action.row.ownerId ? { ...g, ownerIsBlocked: action.type === 'block-owner' } : g))
+        const isBlock = action.type === 'block-owner'
+        setGames(gs => gs.map(g => g.ownerId === action.row.ownerId
+          ? { ...g, ownerIsBlocked: isBlock, ...(isBlock ? { status: 'inactive' as const } : { status: 'active' as const }) }
+          : g
+        ))
       }
       closeBlockDialog()
     } catch (err) {

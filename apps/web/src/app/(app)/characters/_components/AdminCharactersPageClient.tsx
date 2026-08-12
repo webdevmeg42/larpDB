@@ -49,6 +49,7 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
     setBlockAction(null)
     setBlockInput('')
     setBlockError(null)
+    setBlocking(false)
   }
 
   async function handleDelete() {
@@ -101,7 +102,11 @@ export function AdminCharactersPageClient({ initialCharacters }: { initialCharac
           const body = await res.json().catch(() => ({})) as { error?: string }
           throw new Error(body.error ?? 'Failed to update user')
         }
-        setCharacters(cs => cs.map(c => c.userId === action.row.userId ? { ...c, userIsBlocked: action.type === 'block-user' } : c))
+        const isBlock = action.type === 'block-user'
+        setCharacters(cs => cs.map(c => c.userId === action.row.userId
+          ? { ...c, userIsBlocked: isBlock, ...(isBlock ? { isActive: false } : { isActive: true }) }
+          : c
+        ))
       }
       closeBlockDialog()
     } catch (err) {

@@ -326,6 +326,9 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         request.log.warn({ id, gameId }, "character not found")
         return reply.status(404).send({ error: 'Character not found' })
       }
+      if (existing.isBlocked) {
+        return reply.status(403).send({ error: 'Character not available' })
+      }
 
       const result = GmDataInput.safeParse(request.body)
       if (!result.success) return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
