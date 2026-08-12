@@ -71,6 +71,10 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.status(401).send({ error: 'Invalid credentials' })
     }
 
+    if (user.isBlocked) {
+      return reply.status(403).send({ error: 'Account not available' })
+    }
+
     request.log.info({ userId: user.id, email }, "user logged in")
     return reply.status(200).send(await issueAuthCookie(fastify, reply, user))
   })

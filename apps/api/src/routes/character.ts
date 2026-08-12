@@ -160,6 +160,9 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(404).send({ error: 'Character not found' })
       }
       if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
+      if (character.isBlocked) {
+        return reply.status(403).send({ error: 'Character not available' })
+      }
 
       return reply.send(character)
     },
@@ -175,6 +178,9 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       if (!character) {
         request.log.warn({ id, gameId }, "character not found")
         return reply.status(404).send({ error: 'Character not found' })
+      }
+      if (character.isBlocked) {
+        return reply.status(403).send({ error: 'Character not available' })
       }
       if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
       if (role === 'player' && gameStatus !== 'active') {

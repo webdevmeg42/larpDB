@@ -28,12 +28,15 @@ const gameContextPlugin: FastifyPluginAsync = async (fastify) => {
 
     if (request.user.isSysAdmin) {
       const [gameRow] = await db
-        .select({ status: game.status })
+        .select({ status: game.status, isBlocked: game.isBlocked })
         .from(game)
         .where(eq(game.id, gameId))
         .limit(1)
       if (!gameRow) {
         throw Object.assign(new Error('Game not found'), { statusCode: 404 })
+      }
+      if (gameRow.isBlocked) {
+        throw Object.assign(new Error('Adventure not available'), { statusCode: 403 })
       }
       // role: 'owner' is intentional — sys_admin has full write access across all Adventures
       request.gameContext = { userId, gameId, role: 'owner', gameStatus: gameRow.status }
@@ -50,7 +53,7 @@ const gameContextPlugin: FastifyPluginAsync = async (fastify) => {
     }
 
     const [row] = await db
-      .select({ role: gameMembers.role, gameStatus: game.status })
+      .select({ role: gameMembers.role, gameStatus: game.status, isBlocked: game.isBlocked })
       .from(gameMembers)
       .innerJoin(game, eq(game.id, gameMembers.gameId))
       .where(
@@ -64,6 +67,9 @@ const gameContextPlugin: FastifyPluginAsync = async (fastify) => {
 
     if (!row) {
       throw Object.assign(new Error('Not a member of this game'), { statusCode: 403 })
+    }
+    if (row.isBlocked) {
+      throw Object.assign(new Error('Adventure not available'), { statusCode: 403 })
     }
 
     setCachedMembership(userId, gameId, { role: row.role, gameStatus: row.gameStatus })
