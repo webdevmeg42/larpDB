@@ -341,6 +341,14 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         }
       })
 
+      const userMemberships = await db
+        .select({ gameId: gameMembers.gameId })
+        .from(gameMembers)
+        .where(and(eq(gameMembers.userId, id), eq(gameMembers.status, 'active')))
+      for (const m of userMemberships) {
+        invalidateMembership(id, m.gameId)
+      }
+
       request.log.info({ userId: request.user.sub, targetId: id }, "user unblocked")
       return reply.send({})
     },
