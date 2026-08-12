@@ -80,6 +80,7 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
     setBlockAction(null)
     setBlockInput('')
     setBlockError(null)
+    setBlocking(false)
   }
 
   async function handleBlock() {
