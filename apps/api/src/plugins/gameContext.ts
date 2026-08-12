@@ -16,12 +16,12 @@ const gameContextPlugin: FastifyPluginAsync = async (fastify) => {
     try {
       await request.jwtVerify()
     } catch {
-      reply.status(401).send({ error: 'Unauthorized' }); return
+      throw Object.assign(new Error('Unauthorized'), { statusCode: 401 })
     }
 
     const gameId = request.headers['x-game-id'] as string | undefined
     if (!gameId) {
-      reply.status(400).send({ error: 'X-Game-Id header required' }); return
+      throw Object.assign(new Error('X-Game-Id header required'), { statusCode: 400 })
     }
 
     const userId = request.user.sub
@@ -32,7 +32,9 @@ const gameContextPlugin: FastifyPluginAsync = async (fastify) => {
         .from(game)
         .where(eq(game.id, gameId))
         .limit(1)
-      if (!gameRow) { reply.status(404).send({ error: 'Game not found' }); return }
+      if (!gameRow) {
+        throw Object.assign(new Error('Game not found'), { statusCode: 404 })
+      }
       // role: 'owner' is intentional — sys_admin has full write access across all Adventures
       request.gameContext = { userId, gameId, role: 'owner', gameStatus: gameRow.status }
       return
@@ -61,7 +63,7 @@ const gameContextPlugin: FastifyPluginAsync = async (fastify) => {
       .limit(1)
 
     if (!row) {
-      reply.status(403).send({ error: 'Not a member of this game' }); return
+      throw Object.assign(new Error('Not a member of this game'), { statusCode: 403 })
     }
 
     setCachedMembership(userId, gameId, { role: row.role, gameStatus: row.gameStatus })
