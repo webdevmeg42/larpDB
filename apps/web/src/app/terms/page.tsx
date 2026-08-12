@@ -1,12 +1,15 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { tosHtml } from './content'
+import { readFile } from 'fs/promises'
+import path from 'path'
 
 export const metadata: Metadata = {
   title: 'Terms of Service — PlotRunner',
 }
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const tosHtml = await readFile(path.join(process.cwd(), 'public', 'legal', 'terms.html'), 'utf-8')
+
   return (
     <div className="min-h-screen bg-white text-black">
       <header className="border-b border-gray-200">
