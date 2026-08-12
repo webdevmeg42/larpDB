@@ -144,7 +144,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .leftJoin(ownerMember, and(eq(ownerMember.gameId, game.id), eq(ownerMember.role, 'owner')))
         .leftJoin(users, eq(users.id, ownerMember.userId))
         .where(ownerName ? ilike(users.displayName, `%${ownerName}%`) : undefined)
-        .groupBy(game.id, ownerMember.userId, users.displayName)
+        .groupBy(game.id, ownerMember.userId, users.displayName, users.isBlocked)
         .orderBy(desc(game.createdAt))
 
       return reply.send(rows)
