@@ -207,6 +207,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(characters.id, id))
         .returning({ id: characters.id })
       if (!updated) return reply.status(404).send({ error: 'Character not found' })
+      request.log.info({ userId: request.user.sub, targetId: id }, "character blocked")
       return reply.send({})
     },
   )
@@ -222,6 +223,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(characters.id, id))
         .returning({ id: characters.id })
       if (!updated) return reply.status(404).send({ error: 'Character not found' })
+      request.log.info({ userId: request.user.sub, targetId: id }, "character unblocked")
       return reply.send({})
     },
   )
@@ -246,6 +248,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         invalidateMembership(member.userId, id)
       }
 
+      request.log.info({ userId: request.user.sub, targetId: id }, "game blocked")
       return reply.send({})
     },
   )
@@ -261,6 +264,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(game.id, id))
         .returning({ id: game.id })
       if (!updated) return reply.status(404).send({ error: 'Adventure not found' })
+      request.log.info({ userId: request.user.sub, targetId: id }, "game unblocked")
       return reply.send({})
     },
   )
@@ -271,16 +275,21 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { id } = request.params as { id: string }
 
+      const requesterId = request.user.sub
+      if (id === requesterId) {
+        return reply.status(400).send({ error: 'Cannot self-block' })
+      }
+
       const [target] = await db.select({ id: users.id }).from(users).where(eq(users.id, id)).limit(1)
       if (!target) return reply.status(404).send({ error: 'User not found' })
 
-      const ownedGames = await db
-        .select({ gameId: gameMembers.gameId })
-        .from(gameMembers)
-        .where(and(eq(gameMembers.userId, id), eq(gameMembers.role, 'owner')))
-      const ownedGameIds = ownedGames.map(g => g.gameId)
-
       await db.transaction(async (tx) => {
+        const ownedGames = await tx
+          .select({ gameId: gameMembers.gameId })
+          .from(gameMembers)
+          .where(and(eq(gameMembers.userId, id), eq(gameMembers.role, 'owner')))
+        const ownedGameIds = ownedGames.map(g => g.gameId)
+
         await tx.update(users).set({ isBlocked: true }).where(eq(users.id, id))
         await tx.update(characters)
           .set({ isActive: false })
@@ -292,6 +301,15 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         }
       })
 
+      const userMemberships = await db
+        .select({ gameId: gameMembers.gameId })
+        .from(gameMembers)
+        .where(and(eq(gameMembers.userId, id), eq(gameMembers.status, 'active')))
+      for (const m of userMemberships) {
+        invalidateMembership(id, m.gameId)
+      }
+
+      request.log.info({ userId: request.user.sub, targetId: id }, "user blocked")
       return reply.send({})
     },
   )
@@ -305,13 +323,13 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
       const [target] = await db.select({ id: users.id }).from(users).where(eq(users.id, id)).limit(1)
       if (!target) return reply.status(404).send({ error: 'User not found' })
 
-      const ownedGames = await db
-        .select({ gameId: gameMembers.gameId })
-        .from(gameMembers)
-        .where(and(eq(gameMembers.userId, id), eq(gameMembers.role, 'owner')))
-      const ownedGameIds = ownedGames.map(g => g.gameId)
-
       await db.transaction(async (tx) => {
+        const ownedGames = await tx
+          .select({ gameId: gameMembers.gameId })
+          .from(gameMembers)
+          .where(and(eq(gameMembers.userId, id), eq(gameMembers.role, 'owner')))
+        const ownedGameIds = ownedGames.map(g => g.gameId)
+
         await tx.update(users).set({ isBlocked: false }).where(eq(users.id, id))
         await tx.update(characters)
           .set({ isActive: true })
@@ -323,6 +341,7 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         }
       })
 
+      request.log.info({ userId: request.user.sub, targetId: id }, "user unblocked")
       return reply.send({})
     },
   )
