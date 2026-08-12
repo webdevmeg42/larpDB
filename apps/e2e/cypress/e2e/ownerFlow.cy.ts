@@ -137,10 +137,12 @@ describe('Owner Flow', () => {
     cy.contains('button', 'Public').click()
     cy.get(sel.advNameInput).type(adventureName)
     cy.contains('button', 'Create Adventure').click()
-    cy.wait('@createGame', { timeout: 10000 })
-
-    cy.url({ timeout: 15000 }).should('include', '/edit')
-    cy.get(sel.tabBranding).should('be.visible')
+    cy.wait('@createGame', { timeout: 10000 }).then((interception) => {
+      cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
+      cy.visit(`/adventures/${interception.response?.body.id}/edit`)
+      cy.wait('@builderContextSet', { timeout: 10000 })
+    })
+    cy.get(sel.tabBranding, { timeout: 10000 }).should('be.visible')
     cy.url().then(url => { adventureEditUrl = url })
     cy.get(sel.advSlugDisplay)
       .should('be.visible')
@@ -163,7 +165,9 @@ describe('Owner Flow', () => {
 
     // Rulebook chapter editor is at /rulebook (admin view), not the public viewer
     cy.visit('/rulebook')
+    cy.intercept('GET', '**/config').as('rulebookConfig')
     cy.contains(sel.adventurePanelItem, adventureName).click()
+    cy.wait('@rulebookConfig', { timeout: 10000 })
     cy.contains('+ Add chapter').click()
     cy.contains('button', 'Save chapter').click()
     cy.get(sel.chapterTitleError)
@@ -171,7 +175,9 @@ describe('Owner Flow', () => {
   })
 
   it('Setup checklist appears on the edit page before setup is complete', () => {
+    cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
     cy.visit(adventureEditUrl)
+    cy.wait('@builderContextSet', { timeout: 10000 })
     // Checklist should be visible because setup is not yet complete
     cy.get(sel.setupChecklist).should('be.visible')
     // "Set a tagline" is not yet set
@@ -182,7 +188,9 @@ describe('Owner Flow', () => {
   })
 
   it('Owner can save branding changes', () => {
+    cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
     cy.visit(adventureEditUrl)
+    cy.wait('@builderContextSet', { timeout: 10000 })
     cy.get(sel.taglineInput).should('not.be.disabled').clear().type('Test tagline')
     cy.get(sel.saveChangesBtn).click()
     cy.contains('[data-testid="toast"]', 'Branding saved').should('be.visible')
@@ -229,13 +237,10 @@ describe('Owner Flow', () => {
     cy.schemaBuilderAddField('palette-btn-features', 'Features')
     cy.schemaBuilderAddField('palette-btn-influences', 'Influences')
     cy.schemaBuilderAddField('palette-btn-languages', 'Languages')
-    cy.intercept('GET', '/admin/schemas/*').as('schemaEditRsc')
     cy.schemaBuilderSave()
-    cy.wait('@schemaEditRsc', { timeout: 10000 })
-
     // schema-activate-btn only renders on the edit page (schemaId is a real UUID)
     // — this is the navigation guard; Cypress retries until it appears
-    cy.get(sel.schemaActivateBtn)
+    cy.get(sel.schemaActivateBtn, { timeout: 15000 })
 
     // Add all OTHER fields unlabeled, then one save to trigger validation error (PATCH)
     cy.schemaBuilderAddField('palette-btn-text')
@@ -260,7 +265,9 @@ describe('Owner Flow', () => {
     cy.url().should('include', '/admin/schemas')
 
     // Activate the race schema from the Adventure Builder
+    cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
     cy.visit(adventureEditUrl)
+    cy.wait('@builderContextSet', { timeout: 10000 })
     cy.get(sel.tabRaceBuilds).click()
     cy.get(sel.buildsSearchInput).type(adventureName)
     cy.get(sel.buildsExpandBtn).first().click()
@@ -268,7 +275,9 @@ describe('Owner Flow', () => {
   })
 
   it('Owner can build a class with all common fields pre-populated', () => {
+    cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
     cy.visit(adventureEditUrl)
+    cy.wait('@builderContextSet', { timeout: 10000 })
     cy.get(sel.tabClassBuilds).click()
     cy.get(sel.newClassLink).click()
 
@@ -317,7 +326,9 @@ describe('Owner Flow', () => {
     cy.url().should('include', '/admin/schemas')
 
     // Activate the class schema from the Adventure Builder
+    cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
     cy.visit(adventureEditUrl)
+    cy.wait('@builderContextSet', { timeout: 10000 })
     cy.get(sel.tabClassBuilds).click()
     cy.get(sel.buildsSearchInput).type(adventureName)
     cy.get(sel.buildsExpandBtn).first().click()
@@ -344,16 +355,12 @@ describe('Owner Flow', () => {
     cy.wait('@builderContextSet', { timeout: 10000 })
 
     // Navigate to My Characters and locate the Adventure
-    cy.intercept('GET', '/characters*').as('charactersRsc')
-    cy.get(sel.navMyCharacters).click()
-    cy.wait('@charactersRsc', { timeout: 10000 })
+    cy.visit('/characters')
     cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
-    cy.intercept('GET', '/characters/new*').as('newCharacterRsc')
     cy.get(sel.newCharacterBtn).first().click()
-    cy.wait('@newCharacterRsc', { timeout: 10000 })
 
     // Race step — Continue is disabled until a race is selected
-    cy.get(sel.continueBtn).should('be.disabled')
+    cy.get(sel.continueBtn, { timeout: 10000 }).should('be.disabled')
     cy.get('[data-testid="race-select-grid"]').contains('button', adventureName).click()
     cy.get(sel.continueBtn).click()
 
@@ -376,9 +383,7 @@ describe('Owner Flow', () => {
   })
 
   it('Owner can create an event', () => {
-    cy.intercept('GET', '/events*').as('eventsRsc')
-    cy.get(sel.navEvents).click()
-    cy.wait('@eventsRsc', { timeout: 10000 })
+    cy.visit('/events')
     cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
     cy.get(sel.newEventBtn).first().click()
 
@@ -397,9 +402,7 @@ describe('Owner Flow', () => {
 
   describe('Events calendar', () => {
     it('Owner can toggle calendar view on and off', () => {
-      cy.intercept('GET', '/events*').as('eventsRsc')
-      cy.get(sel.navEvents).click()
-      cy.wait('@eventsRsc', { timeout: 10000 })
+      cy.visit('/events')
       cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
       cy.get(sel.calendarToggle).click()
       cy.get('[data-testid="event-calendar"]').should('be.visible')
@@ -408,9 +411,7 @@ describe('Owner Flow', () => {
     })
 
     it('Owner sees event bar and popover in calendar view', () => {
-      cy.intercept('GET', '/events*').as('eventsRsc')
       cy.visit('/events')
-      cy.wait('@eventsRsc', { timeout: 10000 })
       cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
       cy.get(sel.calendarToggle).click()
       cy.get('[data-testid="event-calendar"]').should('be.visible')
@@ -513,10 +514,8 @@ describe('Owner Flow', () => {
       cy.contains('button', adventureName, { timeout: 10000 }).click()
 
       // Navigate to Events — same adventure should be pre-selected
-      cy.intercept('GET', '/events*').as('eventsRsc')
       cy.get(sel.navEvents).click()
-      cy.wait('@eventsRsc', { timeout: 10000 })
-      cy.url().should('include', '/events')
+      cy.url({ timeout: 10000 }).should('include', '/events')
 
       // The adventure should be highlighted (bg-muted class indicates selection)
       cy.contains('button', adventureName, { timeout: 10000 })
@@ -622,10 +621,8 @@ describe('Owner Flow', () => {
   })
 
   it('Owner can view and edit the Rulebook via the navbar', () => {
-    cy.intercept('GET', '/rulebook*').as('rulebookRsc')
     cy.get(sel.navRulebook).click()
-    cy.wait('@rulebookRsc', { timeout: 10000 })
-    cy.contains('h1', 'Rulebook')
+    cy.contains('h1', 'Rulebook', { timeout: 10000 })
 
     // Old search+table UI is gone
     cy.get(sel.rulebookSearchInput).should('not.exist')

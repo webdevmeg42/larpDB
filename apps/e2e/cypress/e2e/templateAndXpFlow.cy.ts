@@ -8,57 +8,75 @@ const ALL_CLASS_TEMPLATES = [
   {
     testid: 'warrior',
     fields: [
+      { label: 'Fighting Style', type: 'select' },
+      { label: 'Physical Stats', type: 'statblock' },
       { label: 'Hit Points', type: 'hitpoints' },
       { label: 'Attacks', type: 'attacks' },
       { label: 'Weapon Proficiencies', type: 'multiselect' },
+      { label: 'Equipment', type: 'equipment' },
+      { label: 'Class Features', type: 'features' },
     ],
   },
   {
     testid: 'berserker',
     fields: [
+      { label: 'Physical Stats', type: 'statblock' },
       { label: 'Hit Points', type: 'hitpoints' },
       { label: 'Attacks', type: 'attacks' },
       { label: 'Rage Charges', type: 'number' },
+      { label: 'Brutal Abilities', type: 'features' },
     ],
   },
   {
     testid: 'paladin',
     fields: [
+      { label: 'Sacred Oath', type: 'select' },
+      { label: 'Physical / Divine Stats', type: 'statblock' },
       { label: 'Hit Points', type: 'hitpoints' },
       { label: 'Attacks', type: 'attacks' },
       { label: 'Divine Spells', type: 'spells' },
+      { label: 'Divine Abilities', type: 'features' },
     ],
   },
   {
     testid: 'wizard',
     fields: [
-      { label: 'Hit Points', type: 'hitpoints' },
-      { label: 'Spells', type: 'spells' },
       { label: 'Arcane School', type: 'select' },
+      { label: 'Mental Stats', type: 'statblock' },
+      { label: 'Hit Points', type: 'hitpoints' },
+      { label: 'Arcane Spells', type: 'spells' },
+      { label: 'Arcane Features', type: 'features' },
     ],
   },
   {
     testid: 'druid',
     fields: [
-      { label: 'Hit Points', type: 'hitpoints' },
-      { label: 'Spells', type: 'spells' },
       { label: 'Circle', type: 'select' },
+      { label: 'Nature Stats', type: 'statblock' },
+      { label: 'Hit Points', type: 'hitpoints' },
+      { label: 'Nature Spells', type: 'spells' },
+      { label: 'Nature Abilities', type: 'features' },
     ],
   },
   {
     testid: 'sorcerer',
     fields: [
+      { label: 'Sorcerous Origin', type: 'select' },
+      { label: 'Innate Stats', type: 'statblock' },
       { label: 'Hit Points', type: 'hitpoints' },
-      { label: 'Spells', type: 'spells' },
+      { label: 'Innate Spells', type: 'spells' },
       { label: 'Sorcery Points', type: 'number' },
+      { label: 'Metamagic and Features', type: 'features' },
     ],
   },
   {
     testid: 'medic',
     fields: [
+      { label: 'Medical Specialty', type: 'select' },
+      { label: 'Support Stats', type: 'statblock' },
       { label: 'Hit Points', type: 'hitpoints' },
       { label: 'Equipment', type: 'equipment' },
-      { label: 'Medical Specialty', type: 'select' },
+      { label: 'Healing Abilities', type: 'features' },
     ],
   },
 ]
@@ -169,6 +187,7 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     cy.get(sel.startBuildingBtn).click()
 
     verifyBuilderFields([
+      { label: 'Subrace / Variant', type: 'select' },
       { label: 'Appearance', type: 'appearance' },
       { label: 'Languages', type: 'languages' },
       { label: 'Personality', type: 'personality' },
@@ -310,10 +329,13 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     cy.get(sel.enableAdvBtn, { timeout: 10000 }).first().click()
     cy.get(sel.enableAdvBtn).first().should('contain', 'Disable')
 
+    cy.intercept('GET', '/characters*').as('charactersRsc')
     cy.get(sel.navMyCharacters).click()
-    cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 15000 }).click()
+    cy.wait('@charactersRsc', { timeout: 10000 })
+    cy.get('[data-testid="adventure-list-panel"]', { timeout: 10000 }).contains('button', adventureName, { timeout: 15000 }).click()
+    cy.intercept('GET', '/characters/new*').as('newCharacterRsc')
     cy.get(sel.newCharacterBtn, { timeout: 10000 }).first().should('not.be.disabled').click()
-    cy.url({ timeout: 10000 }).should('include', '/characters/new')
+    cy.wait('@newCharacterRsc', { timeout: 10000 })
 
     // Race step
     cy.get('[data-testid="race-select-grid"]', { timeout: 10000 }).should('be.visible')
@@ -328,8 +350,10 @@ describe('Template and XP Flow', { testIsolation: false }, () => {
     cy.get(sel.continueBtn).click()
 
     // Name step
+    cy.intercept('POST', '**/characters').as('createCharacter')
     cy.get(sel.characterNameInput, { timeout: 10000 }).type('Talon Ashveil')
     cy.get(sel.createCharacterBtn).click()
+    cy.wait('@createCharacter', { timeout: 10000 })
 
     cy.url({ timeout: 15000 }).should('match', /\/characters\/[a-f0-9-]{36}/)
     cy.url().then(url => { characterUrl = url })
