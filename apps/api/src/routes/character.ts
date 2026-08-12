@@ -179,10 +179,10 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         request.log.warn({ id, gameId }, "character not found")
         return reply.status(404).send({ error: 'Character not found' })
       }
+      if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
       if (character.isBlocked) {
         return reply.status(403).send({ error: 'Character not available' })
       }
-      if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
       if (role === 'player' && gameStatus !== 'active') {
         return reply.status(403).send({ error: 'Character editing is disabled while this Adventure is inactive' })
       }
