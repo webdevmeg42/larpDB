@@ -70,12 +70,8 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
           .where(and(eq(adventureSubscriptions.gameId, gameId), eq(adventureSubscriptions.userId, userId)))
           .returning()
 
-        if (!deleted) {
-          await tx.rollback()
-          return
-        }
+        if (!deleted) return
 
-        // Remove player membership; leave GM/owner rows intact
         await tx
           .delete(gameMembers)
           .where(and(
@@ -85,12 +81,12 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
           ))
 
         found = true
-      }).catch(() => {})
+      })
 
       if (!found) {
-        request.log.warn({ gameId, userId }, "subscription not found")
+        request.log.warn({ gameId, userId }, 'subscription not found')
       } else {
-        request.log.info({ gameId, userId }, "user unsubscribed from adventure")
+        request.log.info({ gameId, userId }, 'user unsubscribed from adventure')
       }
       return reply.status(204).send()
     },
