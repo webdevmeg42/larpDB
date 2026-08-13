@@ -231,8 +231,6 @@ export const postRoutes: FastifyPluginAsync = async (fastify) => {
 
     const isPublicGame = postWithGame.gameIsPublic && postWithGame.gameStatus === 'active'
     if (!isPublicGame) {
-      const token = (request.headers['authorization'] ?? '').replace('Bearer ', '')
-      if (!token) return reply.status(403).send({ error: 'Access denied' })
       try {
         await request.jwtVerify()
       } catch {

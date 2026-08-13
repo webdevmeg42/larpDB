@@ -831,6 +831,57 @@ describe('PATCH /posts/:postId', () => {
   })
 })
 
+describe('GET /posts/:postId/comments — private game cookie auth', () => {
+  it('returns 200 for owner accessing comments via cookie auth (no Authorization header)', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    // Register owner
+    const ownerRegRes = await app.inject({
+      method: 'POST', url: '/auth/register',
+      payload: { email: 'priv-owner@test.com', password: 'password123', displayName: 'Priv Owner' },
+    })
+    const ownerCookieRaw = ownerRegRes.headers['set-cookie']
+    const ownerCookieHeader = Array.isArray(ownerCookieRaw)
+      ? ownerCookieRaw.join('; ')
+      : (ownerCookieRaw ?? '')
+    const ownerToken = ownerCookieHeader.match(/\btoken=([^;]+)/)?.[1] ?? ''
+
+    // Create a private (isPublic: false) game
+    const gameRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { name: 'Private Comments Game', isPublic: false },
+    })
+    const gameId = gameRes.json().id as string
+
+    // Activate the game
+    await app.inject({
+      method: 'PATCH', url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { status: 'active' },
+    })
+
+    // Create a post
+    const postRes = await app.inject({
+      method: 'POST', url: '/posts',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { title: 'Private Post', body: 'Only members see this.' },
+    })
+    const postId = postRes.json().id as string
+
+    // Fetch comments using ONLY the cookie — no Authorization header
+    const res = await app.inject({
+      method: 'GET',
+      url: `/posts/${postId}/comments`,
+      headers: { cookie: ownerCookieHeader },
+    })
+
+    expect(res.statusCode).toBe(200)
+    await app.close()
+  })
+})
+
 describe('POST /posts — media fields', () => {
   it('creates a post with no media', async () => {
     const { app, token, gameId } = await setupMediaTests()
