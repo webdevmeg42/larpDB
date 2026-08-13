@@ -280,16 +280,22 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Cannot self-block' })
       }
 
-      const [target] = await db.select({ id: users.id, isSysAdmin: users.isSysAdmin }).from(users).where(eq(users.id, id)).limit(1)
+      const [target] = await db
+        .select({ id: users.id, isSysAdmin: users.isSysAdmin, isBlocked: users.isBlocked })
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1)
       if (!target) return reply.status(404).send({ error: 'User not found' })
       if (target.isSysAdmin) return reply.status(400).send({ error: 'Cannot block a sys_admin' })
+      if (target.isBlocked) return reply.status(409).send({ error: 'User is already blocked' })
 
+      let ownedGameIds: string[] = []
       await db.transaction(async (tx) => {
         const ownedGames = await tx
           .select({ gameId: gameMembers.gameId })
           .from(gameMembers)
           .where(and(eq(gameMembers.userId, id), eq(gameMembers.role, 'owner')))
-        const ownedGameIds = ownedGames.map(g => g.gameId)
+        ownedGameIds = ownedGames.map(g => g.gameId)
 
         await tx.update(users).set({ isBlocked: true }).where(eq(users.id, id))
         await tx.update(characters)
@@ -310,18 +316,13 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         invalidateMembership(id, m.gameId)
       }
 
-      // Invalidate all members of the user's newly-inactive owned games
-      const ownedGamesForCache = await db
-        .select({ gameId: gameMembers.gameId })
-        .from(gameMembers)
-        .where(and(eq(gameMembers.userId, id), eq(gameMembers.role, 'owner')))
-      for (const { gameId } of ownedGamesForCache) {
+      for (const gId of ownedGameIds) {
         const members = await db
           .select({ userId: gameMembers.userId })
           .from(gameMembers)
-          .where(and(eq(gameMembers.gameId, gameId), eq(gameMembers.status, 'active')))
+          .where(and(eq(gameMembers.gameId, gId), eq(gameMembers.status, 'active')))
         for (const m of members) {
-          invalidateMembership(m.userId, gameId)
+          invalidateMembership(m.userId, gId)
         }
       }
 
@@ -336,15 +337,21 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { id } = request.params as { id: string }
 
-      const [target] = await db.select({ id: users.id }).from(users).where(eq(users.id, id)).limit(1)
+      const [target] = await db
+        .select({ id: users.id, isBlocked: users.isBlocked })
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1)
       if (!target) return reply.status(404).send({ error: 'User not found' })
+      if (!target.isBlocked) return reply.status(409).send({ error: 'User is not blocked' })
 
+      let ownedGameIds: string[] = []
       await db.transaction(async (tx) => {
         const ownedGames = await tx
           .select({ gameId: gameMembers.gameId })
           .from(gameMembers)
           .where(and(eq(gameMembers.userId, id), eq(gameMembers.role, 'owner')))
-        const ownedGameIds = ownedGames.map(g => g.gameId)
+        ownedGameIds = ownedGames.map(g => g.gameId)
 
         await tx.update(users).set({ isBlocked: false }).where(eq(users.id, id))
         await tx.update(characters)
@@ -363,6 +370,16 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .where(and(eq(gameMembers.userId, id), eq(gameMembers.status, 'active')))
       for (const m of userMemberships) {
         invalidateMembership(id, m.gameId)
+      }
+
+      for (const gId of ownedGameIds) {
+        const members = await db
+          .select({ userId: gameMembers.userId })
+          .from(gameMembers)
+          .where(and(eq(gameMembers.gameId, gId), eq(gameMembers.status, 'active')))
+        for (const m of members) {
+          invalidateMembership(m.userId, gId)
+        }
       }
 
       request.log.info({ userId: request.user.sub, targetId: id }, "user unblocked")

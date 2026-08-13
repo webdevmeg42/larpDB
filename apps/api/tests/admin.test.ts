@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
+import { randomUUID } from 'crypto'
 import { eq } from 'drizzle-orm'
 import { buildApp } from '../src/app.js'
 import { testDb } from './setup.js'
-import { users, requestLogs } from '../src/db/schema.js'
+import { users, requestLogs, characters, characterSchemas, game, gameMembers } from '../src/db/schema.js'
 
 function extractCookieToken(headers: Record<string, unknown>): string {
   const raw = headers['set-cookie']
@@ -568,6 +569,409 @@ describe('GET /admin/users', () => {
     })
 
     expect(res.statusCode).toBe(403)
+    await app.close()
+  })
+})
+
+describe('PATCH /admin/users/:id/block — guards', () => {
+  it('returns 409 when blocking an already-blocked user', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    const { userId: targetId } = await registerAndLogin(app, 'target@test.com')
+
+    // Block once
+    await app.inject({
+      method: 'PATCH', url: `/admin/users/${targetId}/block`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    // Try to block again
+    const res = await app.inject({
+      method: 'PATCH', url: `/admin/users/${targetId}/block`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(res.statusCode).toBe(409)
+    await app.close()
+  })
+
+  it('returns 400 when self-blocking', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken, userId: adminId } = await createSysAdmin(app)
+
+    const res = await app.inject({
+      method: 'PATCH', url: `/admin/users/${adminId}/block`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(res.statusCode).toBe(400)
+    await app.close()
+  })
+
+  it('returns 400 when blocking a sys_admin', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    const { userId: targetId } = await createSysAdmin(app, 'target-admin@test.com').then(r => ({ userId: r.userId }))
+
+    const res = await app.inject({
+      method: 'PATCH', url: `/admin/users/${targetId}/block`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(res.statusCode).toBe(400)
+    await app.close()
+  })
+
+  it('returns 404 when blocking a non-existent user', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app)
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/admin/users/00000000-0000-0000-0000-000000000000/block',
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(res.statusCode).toBe(404)
+    await app.close()
+  })
+})
+
+describe('PATCH /admin/users/:id/unblock — guards', () => {
+  it('returns 409 when unblocking a user who is not blocked', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    const { userId: targetId } = await registerAndLogin(app, 'target@test.com')
+
+    const res = await app.inject({
+      method: 'PATCH', url: `/admin/users/${targetId}/unblock`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(res.statusCode).toBe(409)
+    await app.close()
+  })
+
+  it('returns 404 when unblocking a non-existent user', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app)
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/admin/users/00000000-0000-0000-0000-000000000000/unblock',
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(res.statusCode).toBe(404)
+    await app.close()
+  })
+})
+
+describe('PATCH /admin/users/:id/block — cascade', () => {
+  it('blocks user, deactivates their characters, and inactivates their owned game', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    const { userId: targetId } = await registerAndLogin(app, 'target@test.com')
+
+    const targetLoginRes = await app.inject({
+      method: 'POST', url: '/auth/login',
+      payload: { email: 'target@test.com', password: 'password123' },
+    })
+    const targetToken = extractCookieToken(targetLoginRes.headers as Record<string, unknown>)
+
+    const gameRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${targetToken}` },
+      payload: { name: 'Target User Game' },
+    })
+    const gameId = gameRes.json().id as string
+
+    await app.inject({
+      method: 'PATCH', url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${targetToken}` },
+      payload: { status: 'active' },
+    })
+
+    const [schema] = await testDb.insert(characterSchemas).values({
+      id: randomUUID(),
+      gameId,
+      name: 'Test Schema',
+      version: 1,
+      fields: [],
+      isActive: true,
+      type: 'race',
+    }).returning()
+
+    await testDb.insert(characters).values({
+      id: randomUUID(),
+      gameId,
+      userId: targetId,
+      schemaId: schema.id,
+      name: 'Target Char',
+      data: {},
+    })
+
+    const blockRes = await app.inject({
+      method: 'PATCH', url: `/admin/users/${targetId}/block`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(blockRes.statusCode).toBe(200)
+
+    const [blockedUser] = await testDb.select({ isBlocked: users.isBlocked })
+      .from(users).where(eq(users.id, targetId)).limit(1)
+    expect(blockedUser.isBlocked).toBe(true)
+
+    const [updatedGame] = await testDb.select({ status: game.status })
+      .from(game).where(eq(game.id, gameId)).limit(1)
+    expect(updatedGame.status).toBe('inactive')
+
+    const [updatedChar] = await testDb.select({ isActive: characters.isActive })
+      .from(characters).where(eq(characters.userId, targetId)).limit(1)
+    expect(updatedChar.isActive).toBe(false)
+
+    await app.close()
+  })
+})
+
+describe('PATCH /admin/users/:id/unblock — cascade', () => {
+  it('unblocks user, reactivates their characters, and reactivates their owned game', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    const { userId: targetId } = await registerAndLogin(app, 'target@test.com')
+
+    const targetLoginRes = await app.inject({
+      method: 'POST', url: '/auth/login',
+      payload: { email: 'target@test.com', password: 'password123' },
+    })
+    const targetToken = extractCookieToken(targetLoginRes.headers as Record<string, unknown>)
+
+    const gameRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${targetToken}` },
+      payload: { name: 'Unblock Test Game' },
+    })
+    const gameId = gameRes.json().id as string
+
+    await app.inject({
+      method: 'PATCH', url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${targetToken}` },
+      payload: { status: 'active' },
+    })
+
+    const [schema] = await testDb.insert(characterSchemas).values({
+      id: randomUUID(),
+      gameId,
+      name: 'Test Schema',
+      version: 1,
+      fields: [],
+      isActive: true,
+      type: 'race',
+    }).returning()
+
+    await testDb.insert(characters).values({
+      id: randomUUID(),
+      gameId,
+      userId: targetId,
+      schemaId: schema.id,
+      name: 'Target Char',
+      data: {},
+    })
+
+    // Block first
+    await app.inject({
+      method: 'PATCH', url: `/admin/users/${targetId}/block`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+
+    // Then unblock
+    const unblockRes = await app.inject({
+      method: 'PATCH', url: `/admin/users/${targetId}/unblock`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(unblockRes.statusCode).toBe(200)
+
+    const [unblockedUser] = await testDb.select({ isBlocked: users.isBlocked })
+      .from(users).where(eq(users.id, targetId)).limit(1)
+    expect(unblockedUser.isBlocked).toBe(false)
+
+    const [updatedGame] = await testDb.select({ status: game.status })
+      .from(game).where(eq(game.id, gameId)).limit(1)
+    expect(updatedGame.status).toBe('active')
+
+    const [updatedChar] = await testDb.select({ isActive: characters.isActive })
+      .from(characters).where(eq(characters.userId, targetId)).limit(1)
+    expect(updatedChar.isActive).toBe(true)
+
+    await app.close()
+  })
+})
+
+describe('PATCH /admin/characters/:id/block and /unblock', () => {
+  it('blocks a character and marks it blocked in the DB', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    const { userId: ownerId } = await registerAndLogin(app, 'owner@test.com')
+
+    const ownerLoginRes = await app.inject({
+      method: 'POST', url: '/auth/login',
+      payload: { email: 'owner@test.com', password: 'password123' },
+    })
+    const ownerToken = extractCookieToken(ownerLoginRes.headers as Record<string, unknown>)
+
+    const gameRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { name: 'Char Block Game' },
+    })
+    const gameId = gameRes.json().id as string
+
+    const [schema] = await testDb.insert(characterSchemas).values({
+      id: randomUUID(),
+      gameId,
+      name: 'Schema',
+      version: 1,
+      fields: [],
+      isActive: true,
+      type: 'race',
+    }).returning()
+
+    const [character] = await testDb.insert(characters).values({
+      id: randomUUID(),
+      gameId,
+      userId: ownerId,
+      schemaId: schema.id,
+      name: 'Block Me',
+      data: {},
+    }).returning()
+
+    const blockRes = await app.inject({
+      method: 'PATCH', url: `/admin/characters/${character.id}/block`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(blockRes.statusCode).toBe(200)
+
+    const [blocked] = await testDb.select({ isBlocked: characters.isBlocked })
+      .from(characters).where(eq(characters.id, character.id)).limit(1)
+    expect(blocked.isBlocked).toBe(true)
+
+    const unblockRes = await app.inject({
+      method: 'PATCH', url: `/admin/characters/${character.id}/unblock`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(unblockRes.statusCode).toBe(200)
+
+    const [unblocked] = await testDb.select({ isBlocked: characters.isBlocked })
+      .from(characters).where(eq(characters.id, character.id)).limit(1)
+    expect(unblocked.isBlocked).toBe(false)
+
+    await app.close()
+  })
+
+  it('returns 404 for non-existent character', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app)
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/admin/characters/00000000-0000-0000-0000-000000000000/block',
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(res.statusCode).toBe(404)
+    await app.close()
+  })
+
+  it('returns 403 for non-sys_admin', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token } = await registerAndLogin(app)
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/admin/characters/00000000-0000-0000-0000-000000000000/block',
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(res.statusCode).toBe(403)
+    await app.close()
+  })
+})
+
+describe('PATCH /admin/games/:id/block and /unblock', () => {
+  it('blocks a game and makes it inaccessible to members', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app, 'admin@test.com')
+    await registerAndLogin(app, 'gameowner@test.com')
+
+    const ownerLoginRes = await app.inject({
+      method: 'POST', url: '/auth/login',
+      payload: { email: 'gameowner@test.com', password: 'password123' },
+    })
+    const ownerToken = extractCookieToken(ownerLoginRes.headers as Record<string, unknown>)
+
+    const gameRes = await app.inject({
+      method: 'POST', url: '/games',
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { name: 'Game To Block' },
+    })
+    const gameId = gameRes.json().id as string
+
+    // Activate game first so members can be in it
+    await app.inject({
+      method: 'PATCH', url: `/games/${gameId}/status`,
+      headers: { authorization: `Bearer ${ownerToken}` },
+      payload: { status: 'active' },
+    })
+
+    const blockRes = await app.inject({
+      method: 'PATCH', url: `/admin/games/${gameId}/block`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(blockRes.statusCode).toBe(200)
+
+    // Owner can no longer access the game via game context routes
+    const accessRes = await app.inject({
+      method: 'GET', url: '/events',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+    })
+    expect(accessRes.statusCode).toBe(403)
+
+    const unblockRes = await app.inject({
+      method: 'PATCH', url: `/admin/games/${gameId}/unblock`,
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(unblockRes.statusCode).toBe(200)
+
+    await app.close()
+  })
+
+  it('returns 404 for non-existent game', async () => {
+    const app = buildApp()
+    await app.ready()
+
+    const { token: adminToken } = await createSysAdmin(app)
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/admin/games/00000000-0000-0000-0000-000000000000/block',
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(res.statusCode).toBe(404)
     await app.close()
   })
 })
