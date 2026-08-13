@@ -22,7 +22,7 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
         .where(eq(game.id, gameId))
         .limit(1)
       if (!targetGame) {
-        request.log.warn({ gameId, userId }, "subscription rejected — game not found")
+        request.log.warn({ gameId, userId }, 'subscription rejected — game not found')
         return reply.status(404).send({ error: 'Game not found' })
       }
 
@@ -51,7 +51,7 @@ export const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
         }
       })
 
-      request.log.info({ gameId, userId, joinMode: targetGame.joinMode }, "user subscribed to adventure")
+      request.log.info({ gameId, userId, joinMode: targetGame.joinMode }, 'user subscribed to adventure')
       return reply.status(201).send({})
     },
   )
