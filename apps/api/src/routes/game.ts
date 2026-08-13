@@ -188,7 +188,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
 
       let newGame: typeof game.$inferSelect | undefined
       for (let attempt = 0; attempt < 5 && !newGame; attempt++) {
-        const slug = attempt === 0 ? await uniqueSlug(baseSlug) : `${baseSlug}-${attempt}`
+        const slug = await uniqueSlug(baseSlug)
         try {
           newGame = await db.transaction(async (tx) => {
             const [created] = await tx.insert(game).values({

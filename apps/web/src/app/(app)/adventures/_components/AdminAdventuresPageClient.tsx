@@ -208,7 +208,7 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
                       </Link>
                       <span aria-hidden="true" className="text-muted-foreground">|</span>
                       <button
-                        data-testid="enable-adv-btn"
+                        data-testid={`enable-adv-btn-${g.id}`}
                         onClick={() => void handleStatusToggle(g)}
                         aria-label={!g.isBlocked && g.status === 'active' ? `Disable ${g.name}` : `Enable ${g.name}`}
                         className="text-xs text-muted-foreground hover:text-foreground"
@@ -217,7 +217,7 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
                       </button>
                       <span aria-hidden="true" className="text-muted-foreground">|</span>
                       <button
-                        data-testid="delete-adv-btn"
+                        data-testid={`delete-adv-btn-${g.id}`}
                         onClick={() => setDeleteTarget(g)}
                         aria-label={`Delete ${g.name}`}
                         className="text-xs text-muted-foreground hover:text-destructive hover:underline"
