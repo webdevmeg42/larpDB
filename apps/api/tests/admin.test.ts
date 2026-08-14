@@ -4,22 +4,7 @@ import { eq } from 'drizzle-orm'
 import { buildApp } from '../src/app.js'
 import { testDb } from './setup.js'
 import { users, requestLogs, characters, characterSchemas, game, gameMembers } from '../src/db/schema.js'
-
-function extractCookieToken(headers: Record<string, unknown>): string {
-  const raw = headers['set-cookie']
-  const cookieStr = Array.isArray(raw) ? raw[0] : (raw as string | undefined) ?? ''
-  return cookieStr.match(/\btoken=([^;]+)/)?.[1] ?? ''
-}
-
-async function registerAndLogin(app: ReturnType<typeof buildApp>, email = 'user@test.com') {
-  const regRes = await app.inject({
-    method: 'POST', url: '/auth/register',
-    payload: { email, password: 'password123', displayName: 'Test User' },
-  })
-  const user = regRes.json().user
-  const token = extractCookieToken(regRes.headers as Record<string, unknown>)
-  return { token, userId: user.id as string }
-}
+import { extractToken, registerAndLogin } from './utils.js'
 
 async function createSysAdmin(app: ReturnType<typeof buildApp>, email = 'admin@test.com') {
   const { userId } = await registerAndLogin(app, email)
@@ -29,7 +14,7 @@ async function createSysAdmin(app: ReturnType<typeof buildApp>, email = 'admin@t
     method: 'POST', url: '/auth/login',
     payload: { email, password: 'password123' },
   })
-  const token = extractCookieToken(loginRes.headers as Record<string, unknown>)
+  const token = extractToken(loginRes.headers as Record<string, unknown>)
   return { token, userId }
 }
 
@@ -524,7 +509,7 @@ describe('GET /admin/logs — enriched with user info', () => {
     const body = res.json()
     const entry = body.items.find((l: { userEmail: string }) => l.userEmail === 'user@test.com')
     expect(entry).toBeDefined()
-    expect(entry.userDisplayName).toBe('Test User')
+    expect(entry.userDisplayName).toBe('user')
     expect(entry.userEmail).toBe('user@test.com')
 
     await app.close()
@@ -550,7 +535,7 @@ describe('GET /admin/users', () => {
     expect(body.length).toBeGreaterThanOrEqual(2)
     const u = body.find((u: { email: string }) => u.email === 'user@test.com')
     expect(u).toBeDefined()
-    expect(u.displayName).toBe('Test User')
+    expect(u.displayName).toBe('user')
     expect(u.isSysAdmin).toBe(false)
     expect(typeof u.createdAt).toBe('string')
 
@@ -685,7 +670,7 @@ describe('PATCH /admin/users/:id/block — cascade', () => {
       method: 'POST', url: '/auth/login',
       payload: { email: 'target@test.com', password: 'password123' },
     })
-    const targetToken = extractCookieToken(targetLoginRes.headers as Record<string, unknown>)
+    const targetToken = extractToken(targetLoginRes.headers as Record<string, unknown>)
 
     const gameRes = await app.inject({
       method: 'POST', url: '/games',
@@ -753,7 +738,7 @@ describe('PATCH /admin/users/:id/unblock — cascade', () => {
       method: 'POST', url: '/auth/login',
       payload: { email: 'target@test.com', password: 'password123' },
     })
-    const targetToken = extractCookieToken(targetLoginRes.headers as Record<string, unknown>)
+    const targetToken = extractToken(targetLoginRes.headers as Record<string, unknown>)
 
     const gameRes = await app.inject({
       method: 'POST', url: '/games',
@@ -828,7 +813,7 @@ describe('PATCH /admin/characters/:id/block and /unblock', () => {
       method: 'POST', url: '/auth/login',
       payload: { email: 'owner@test.com', password: 'password123' },
     })
-    const ownerToken = extractCookieToken(ownerLoginRes.headers as Record<string, unknown>)
+    const ownerToken = extractToken(ownerLoginRes.headers as Record<string, unknown>)
 
     const gameRes = await app.inject({
       method: 'POST', url: '/games',
@@ -922,7 +907,7 @@ describe('PATCH /admin/games/:id/block and /unblock', () => {
       method: 'POST', url: '/auth/login',
       payload: { email: 'gameowner@test.com', password: 'password123' },
     })
-    const ownerToken = extractCookieToken(ownerLoginRes.headers as Record<string, unknown>)
+    const ownerToken = extractToken(ownerLoginRes.headers as Record<string, unknown>)
 
     const gameRes = await app.inject({
       method: 'POST', url: '/games',
