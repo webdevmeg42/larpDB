@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildApp } from '../src/app.js'
+import { registerAndLogin } from './utils.js'
 
 const FUTURE_DATE = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
@@ -7,12 +8,7 @@ async function createAndLogin(email = 'owner@test.com') {
   const app = buildApp()
   await app.ready()
 
-  const regRes = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: { email, password: 'password123', displayName: 'Owner' },
-  })
-  const { token } = regRes.json()
+  const { token } = await registerAndLogin(app, email)
 
   const gameRes = await app.inject({
     method: 'POST',
@@ -20,7 +16,7 @@ async function createAndLogin(email = 'owner@test.com') {
     headers: { authorization: `Bearer ${token}` },
     payload: { name: 'Test Game' },
   })
-  const { id: gameId } = gameRes.json()
+  const { id: gameId } = gameRes.json() as { id: string }
 
   return { app, token, gameId }
 }
@@ -42,12 +38,7 @@ async function setupWithPublishedEvent() {
     headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
   })
 
-  const playerRegRes = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: { email: 'player@test.com', password: 'password123', displayName: 'Player One' },
-  })
-  const { token: playerToken } = playerRegRes.json()
+  const { token: playerToken } = await registerAndLogin(app, 'player@test.com')
 
   await app.inject({
     method: 'POST',
@@ -103,12 +94,7 @@ describe('POST /events/:id/register', () => {
 
     // Fill capacity with confirmed registrations using 2 other players
     for (const email of ['p2@test.com', 'p3@test.com']) {
-      const regRes = await app.inject({
-        method: 'POST',
-        url: '/auth/register',
-        payload: { email, password: 'password123', displayName: email },
-      })
-      const { token } = regRes.json()
+      const { token } = await registerAndLogin(app, email)
 
       await app.inject({
         method: 'POST',
@@ -155,12 +141,7 @@ describe('POST /events/:id/register', () => {
       payload: { title: 'Draft Event', startAt: FUTURE_DATE },
     })).json()
 
-    const playerRegRes = await app.inject({
-      method: 'POST',
-      url: '/auth/register',
-      payload: { email: 'player2@test.com', password: 'password123', displayName: 'Player' },
-    })
-    const { token: playerToken } = playerRegRes.json()
+    const { token: playerToken } = await registerAndLogin(app, 'player2@test.com')
 
     await app.inject({
       method: 'POST',
