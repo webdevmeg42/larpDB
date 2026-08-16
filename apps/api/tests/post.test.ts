@@ -1,15 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { buildApp } from '../src/app.js'
+import { registerAndLogin } from './utils.js'
 
 async function createAndLogin(email = 'owner@test.com') {
   const app = buildApp()
   await app.ready()
-
-  const regRes = await app.inject({
-    method: 'POST', url: '/auth/register',
-    payload: { email, password: 'password123', displayName: 'Owner' },
-  })
-  const { token } = regRes.json()
+  const { token } = await registerAndLogin(app, email, 'password123', 'Owner')
 
   const gameRes = await app.inject({
     method: 'POST', url: '/games',
@@ -107,11 +103,7 @@ describe('POST /posts', () => {
   it('returns 403 for player role', async () => {
     const { app, gameId } = await createAndLogin()
 
-    const playerRes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: 'player@test.com', password: 'password123', displayName: 'Player' },
-    })
-    const { token: playerToken } = playerRes.json()
+    const { token: playerToken } = await registerAndLogin(app, 'player@test.com')
     await app.inject({
       method: 'POST', url: '/subscriptions',
       headers: { authorization: `Bearer ${playerToken}` },
@@ -197,11 +189,7 @@ describe('DELETE /posts/:postId', () => {
     })
     const { id: postId } = createRes.json()
 
-    const playerRes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: 'player@test.com', password: 'password123', displayName: 'Player' },
-    })
-    const { token: playerToken } = playerRes.json()
+    const { token: playerToken } = await registerAndLogin(app, 'player@test.com')
     await app.inject({
       method: 'POST', url: '/subscriptions',
       headers: { authorization: `Bearer ${playerToken}` },
@@ -232,11 +220,7 @@ async function createGameWithPost(email = 'owner2@test.com') {
   const app = buildApp()
   await app.ready()
 
-  const regRes = await app.inject({
-    method: 'POST', url: '/auth/register',
-    payload: { email, password: 'password123', displayName: 'Owner2' },
-  })
-  const { token } = regRes.json()
+  const { token } = await registerAndLogin(app, email, 'password123', 'Owner2')
 
   const gameRes = await app.inject({
     method: 'POST', url: '/games',
@@ -355,11 +339,7 @@ describe('DELETE /posts/:postId/comments/:commentId', () => {
     })
     const { id: commentId } = commentRes.json()
 
-    const playerRes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: 'player99@test.com', password: 'password123', displayName: 'Player99' },
-    })
-    const { token: playerToken } = playerRes.json()
+    const { token: playerToken } = await registerAndLogin(app, 'player99@test.com')
     await app.inject({
       method: 'POST', url: '/subscriptions',
       headers: { authorization: `Bearer ${playerToken}` },
@@ -432,11 +412,7 @@ describe('GET /feed', () => {
     await app.ready()
 
     // Owner A creates game A with a post
-    const ownerARes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: 'ownerA@test.com', password: 'password123', displayName: 'OwnerA' },
-    })
-    const { token: tokenA } = ownerARes.json()
+    const { token: tokenA } = await registerAndLogin(app, 'ownerA@test.com')
     const gameARes = await app.inject({
       method: 'POST', url: '/games',
       headers: { authorization: `Bearer ${tokenA}` },
@@ -455,11 +431,7 @@ describe('GET /feed', () => {
     })
 
     // Owner B creates game B with a post
-    const ownerBRes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: 'ownerB@test.com', password: 'password123', displayName: 'OwnerB' },
-    })
-    const { token: tokenB } = ownerBRes.json()
+    const { token: tokenB } = await registerAndLogin(app, 'ownerB@test.com')
     const gameBRes = await app.inject({
       method: 'POST', url: '/games',
       headers: { authorization: `Bearer ${tokenB}` },
@@ -478,11 +450,7 @@ describe('GET /feed', () => {
     })
 
     // Subscriber subscribes to game A only
-    const subRes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: 'subscriber@test.com', password: 'password123', displayName: 'Subscriber' },
-    })
-    const { token: subToken } = subRes.json()
+    const { token: subToken } = await registerAndLogin(app, 'subscriber@test.com')
     await app.inject({
       method: 'POST', url: '/subscriptions',
       headers: { authorization: `Bearer ${subToken}` },
@@ -506,11 +474,7 @@ describe('GET /feed', () => {
     const app = buildApp()
     await app.ready()
 
-    const userRes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: 'lonely@test.com', password: 'password123', displayName: 'Lonely' },
-    })
-    const { token } = userRes.json()
+    const { token } = await registerAndLogin(app, 'lonely@test.com')
 
     const res = await app.inject({
       method: 'GET', url: '/feed',
@@ -535,12 +499,7 @@ async function setupMediaTests() {
   const app = buildApp()
   await app.ready()
 
-  const regRes = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: { email: 'owner@posttest.com', password: 'password123', displayName: 'Owner' },
-  })
-  const { token } = regRes.json()
+  const { token } = await registerAndLogin(app, 'owner@posttest.com', 'password123', 'Owner')
 
   const gameRes = await app.inject({
     method: 'POST',
@@ -578,11 +537,7 @@ describe('POST /posts with status:draft', () => {
     const app = buildApp()
     await app.ready()
 
-    const ownerRes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: 'draft-feed-owner@test.com', password: 'password123', displayName: 'DraftOwner' },
-    })
-    const { token: ownerToken } = ownerRes.json()
+    const { token: ownerToken } = await registerAndLogin(app, 'draft-feed-owner@test.com')
     const gameRes = await app.inject({
       method: 'POST', url: '/games',
       headers: { authorization: `Bearer ${ownerToken}` },
@@ -600,11 +555,7 @@ describe('POST /posts with status:draft', () => {
       payload: { title: 'Draft Post', body: 'Not visible', status: 'draft' },
     })
 
-    const subRes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: 'draft-feed-sub@test.com', password: 'password123', displayName: 'Sub' },
-    })
-    const { token: subToken } = subRes.json()
+    const { token: subToken } = await registerAndLogin(app, 'draft-feed-sub@test.com')
     await app.inject({
       method: 'POST', url: '/subscriptions',
       headers: { authorization: `Bearer ${subToken}` },
@@ -661,11 +612,7 @@ describe('GET /posts/drafts', () => {
     })
 
     // User B registers, creates their own game, and creates a draft there
-    const userBRes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: 'drafts-isolation-b@test.com', password: 'password123', displayName: 'UserB' },
-    })
-    const { token: tokenB } = userBRes.json()
+    const { token: tokenB } = await registerAndLogin(app, 'drafts-isolation-b@test.com')
 
     const gameBRes = await app.inject({
       method: 'POST', url: '/games',
@@ -722,11 +669,7 @@ describe('PATCH /posts/:postId', () => {
     const app = buildApp()
     await app.ready()
 
-    const ownerRes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: 'publish-draft@test.com', password: 'password123', displayName: 'Owner' },
-    })
-    const { token } = ownerRes.json()
+    const { token } = await registerAndLogin(app, 'publish-draft@test.com')
     const gameRes = await app.inject({
       method: 'POST', url: '/games',
       headers: { authorization: `Bearer ${token}` },

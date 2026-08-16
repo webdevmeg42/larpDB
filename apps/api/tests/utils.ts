@@ -14,12 +14,13 @@ export async function registerAndLogin(
   app: InjectApp,
   email = 'user@test.com',
   password = 'password123',
+  displayName?: string,
 ): Promise<{ token: string; userId: string; user: { id: string; email: string; displayName: string; role: string; isSysAdmin: boolean } }> {
-  const displayName = email.split('@')[0]
+  const finalDisplayName = displayName ?? email.split('@')[0]
   const res = await app.inject({
     method: 'POST',
     url: '/auth/register',
-    payload: { email, password, displayName },
+    payload: { email, password, displayName: finalDisplayName },
   })
   if (res.statusCode !== 201) throw new Error(`registerAndLogin failed ${res.statusCode}: ${res.body}`)
   const token = extractToken(res.headers)
