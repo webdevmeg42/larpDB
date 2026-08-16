@@ -2,26 +2,19 @@ import { describe, it, expect } from 'vitest'
 import { buildApp } from '../src/app.js'
 import { testDb } from './setup.js'
 import { schemaTemplates } from '../src/db/schema.js'
+import { registerAndLogin } from './utils.js'
 
 async function createAndLogin(email = 'owner@test.com') {
   const app = buildApp()
   await app.ready()
-
-  const regRes = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: { email, password: 'password123', displayName: 'Owner' },
-  })
-  const { token } = regRes.json()
-
+  const { token } = await registerAndLogin(app, email)
   const gameRes = await app.inject({
     method: 'POST',
     url: '/games',
     headers: { authorization: `Bearer ${token}` },
     payload: { name: 'Test Game' },
   })
-  const { id: gameId } = gameRes.json()
-
+  const { id: gameId } = gameRes.json() as { id: string }
   return { app, token, gameId }
 }
 
