@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { buildApp } from '../src/app.js'
+import { registerAndLogin, extractToken } from './utils.js'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -17,12 +18,8 @@ function buildMultipartBody(boundary: string, filename: string, mimetype: string
 async function createUser(email = `profile-test-${randomUUID()}@example.com`) {
   const app = buildApp()
   await app.ready()
-  const res = await app.inject({
-    method: 'POST', url: '/auth/register',
-    payload: { email, password: 'password123', displayName: 'Test User' },
-  })
-  const { token, user } = res.json()
-  return { app, token, userId: user.id }
+  const { token, userId } = await registerAndLogin(app, email, 'password123', 'Test User')
+  return { app, token, userId }
 }
 
 afterEach(() => {
@@ -69,8 +66,9 @@ describe('PATCH /profile', () => {
     expect(res.statusCode).toBe(200)
     const body = res.json()
     expect(body.user.displayName).toBe('New Name')
-    expect(body.token).toBeTypeOf('string')
-    expect(body.token).not.toBe(token)
+    const newToken = extractToken(res.headers as Record<string, unknown>)
+    expect(newToken).toBeTypeOf('string')
+    expect(newToken).not.toBe(token)
     await app.close()
   })
 
