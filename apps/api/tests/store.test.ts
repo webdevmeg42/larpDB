@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildApp } from '../src/app.js'
+import { registerAndLogin, createActiveGame } from './utils.js'
 
 const FUTURE_DATE = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
@@ -10,29 +11,8 @@ const SIMPLE_FIELDS = [
 async function createAndLogin(email = 'owner@test.com') {
   const app = buildApp()
   await app.ready()
-
-  const regRes = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: { email, password: 'password123', displayName: 'Owner' },
-  })
-  const { token } = regRes.json()
-
-  const gameRes = await app.inject({
-    method: 'POST',
-    url: '/games',
-    headers: { authorization: `Bearer ${token}` },
-    payload: { name: 'Test Game' },
-  })
-  const { id: gameId } = gameRes.json()
-
-  await app.inject({
-    method: 'PATCH',
-    url: `/games/${gameId}/status`,
-    headers: { authorization: `Bearer ${token}` },
-    payload: { status: 'active' },
-  })
-
+  const { token } = await registerAndLogin(app, email)
+  const { gameId } = await createActiveGame(app, token)
   return { app, token, gameId }
 }
 
@@ -54,12 +34,7 @@ async function setupForStore() {
   })
 
   // Register player and join game
-  const playerRegRes = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: { email: 'player@test.com', password: 'password123', displayName: 'Player One' },
-  })
-  const { token: playerToken } = playerRegRes.json()
+  const { token: playerToken } = await registerAndLogin(app, 'player@test.com', 'password123', 'Player One')
 
   await app.inject({
     method: 'POST',
@@ -317,12 +292,7 @@ describe('POST /store/purchases', () => {
     const { app, ownerToken, event, gameId } = await setupForStore()
 
     // Create a second user, join game, create character (NOT registered for the event)
-    const otherRegRes = await app.inject({
-      method: 'POST',
-      url: '/auth/register',
-      payload: { email: 'other@test.com', password: 'password123', displayName: 'Other' },
-    })
-    const { token: otherToken } = otherRegRes.json()
+    const { token: otherToken } = await registerAndLogin(app, 'other@test.com', 'password123', 'Other')
 
     await app.inject({
       method: 'POST',
