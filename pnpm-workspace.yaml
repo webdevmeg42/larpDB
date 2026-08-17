@@ -7,3 +7,4 @@ allowBuilds:
   cypress: true
   es5-ext: false
   esbuild: true
+  unrs-resolver: true
