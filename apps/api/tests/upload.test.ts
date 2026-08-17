@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { buildApp } from '../src/app.js'
+import { registerAndLogin } from './utils.js'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -16,20 +17,13 @@ function buildMultipartBody(boundary: string, filename: string, mimetype: string
 async function createOwnerWithGame() {
   const app = buildApp()
   await app.ready()
-
-  const regRes = await app.inject({
-    method: 'POST', url: '/auth/register',
-    payload: { email: `upload-test-${Date.now()}@example.com`, password: 'password123', displayName: 'GM' },
-  })
-  const { token } = regRes.json()
-
+  const { token } = await registerAndLogin(app, `upload-test-${Date.now()}@example.com`)
   const gameRes = await app.inject({
     method: 'POST', url: '/games',
     headers: { authorization: `Bearer ${token}` },
     payload: { name: 'Upload Test Game' },
   })
-  const { id: gameId } = gameRes.json()
-
+  const { id: gameId } = gameRes.json() as { id: string }
   return { app, token, gameId }
 }
 
@@ -114,16 +108,12 @@ describe('POST /upload', () => {
   it('returns 403 for non-owner member', async () => {
     const { app, token: ownerToken, gameId } = await createOwnerWithGame()
 
-    const regRes = await app.inject({
-      method: 'POST', url: '/auth/register',
-      payload: { email: `player-${Date.now()}@example.com`, password: 'password123', displayName: 'Player' },
-    })
-    const { token: playerToken, user } = regRes.json()
+    const { token: playerToken, userId: playerId } = await registerAndLogin(app, `player-${Date.now()}@example.com`)
 
     await app.inject({
       method: 'POST', url: '/game-members',
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { userId: user.id, role: 'player' },
+      payload: { userId: playerId, role: 'player' },
     })
 
     const boundary = 'testboundary'
