@@ -224,7 +224,7 @@ export function NewAdventureClient({ hasAdventures }: Props) {
                 </label>
               </div>
               <p className="text-xs text-muted-foreground">
-                When on, visitors who haven't joined can see links to the Codex, Rulebook, Store, and Builds pages. When off, only members see the directory.
+                When on, visitors who haven&apos;t joined can see links to the Codex, Rulebook, Store, and Builds pages. When off, only members see the directory.
               </p>
             </div>
           </CardContent>
