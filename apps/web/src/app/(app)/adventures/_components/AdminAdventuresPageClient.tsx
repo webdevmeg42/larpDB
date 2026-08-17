@@ -6,9 +6,24 @@ import Link from 'next/link'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
 import type { AdminGame } from '@plotrunner/shared'
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL!
+
+type BlockAction =
+  | { type: 'block-adv'; row: AdminGame }
+  | { type: 'unblock-adv'; row: AdminGame }
+  | { type: 'block-owner'; row: AdminGame }
+  | { type: 'unblock-owner'; row: AdminGame }
 
 export function AdminAdventuresPageClient({ initialGames }: { initialGames: AdminGame[] }) {
   const router = useRouter()
@@ -18,6 +33,10 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
   const [deleting, setDeleting] = useState(false)
   const [query, setQuery] = useState('')
   const [ownerFilter, setOwnerFilter] = useState('')
+  const [blockAction, setBlockAction] = useState<BlockAction | null>(null)
+  const [blockInput, setBlockInput] = useState('')
+  const [blocking, setBlocking] = useState(false)
+  const [blockError, setBlockError] = useState<string | null>(null)
 
   const ownerOptions = [...new Set(
     games.map(g => g.ownerDisplayName).filter((n): n is string => n !== null)
@@ -56,6 +75,58 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
       setDeleting(false)
     }
   }
+
+  function closeBlockDialog() {
+    setBlockAction(null)
+    setBlockInput('')
+    setBlockError(null)
+    setBlocking(false)
+  }
+
+  async function handleBlock() {
+    if (!blockAction) return
+    const action = blockAction   // capture before async gaps
+    setBlocking(true)
+    setBlockError(null)
+    try {
+      if (action.type === 'block-adv' || action.type === 'unblock-adv') {
+        const suffix = action.type === 'block-adv' ? 'block' : 'unblock'
+        const res = await fetch(`${API_URL}/admin/games/${action.row.id}/${suffix}`, {
+          method: 'PATCH',
+          credentials: 'include',
+        })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as { error?: string }
+          throw new Error(body.error ?? 'Failed to update adventure')
+        }
+        setGames(gs => gs.map(g => g.id === action.row.id ? { ...g, isBlocked: action.type === 'block-adv' } : g))
+      } else {
+        if (!action.row.ownerId) throw new Error('Adventure has no owner')
+        const suffix = action.type === 'block-owner' ? 'block' : 'unblock'
+        const res = await fetch(`${API_URL}/admin/users/${action.row.ownerId}/${suffix}`, {
+          method: 'PATCH',
+          credentials: 'include',
+        })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as { error?: string }
+          throw new Error(body.error ?? 'Failed to update owner')
+        }
+        const isBlock = action.type === 'block-owner'
+        setGames(gs => gs.map(g => g.ownerId === action.row.ownerId
+          ? { ...g, ownerIsBlocked: isBlock, ...(isBlock ? { status: 'inactive' as const } : { status: 'active' as const }) }
+          : g
+        ))
+      }
+      closeBlockDialog()
+    } catch (err) {
+      setBlockError(getErrorMessage(err, 'Operation failed'))
+    } finally {
+      setBlocking(false)
+    }
+  }
+
+  const isBlockDialog = !!blockAction && blockAction.type.startsWith('block-')
+  const isUnblockDialog = !!blockAction && blockAction.type.startsWith('unblock-')
 
   return (
     <div className="p-6 max-w-4xl">
@@ -114,10 +185,15 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
                       <div className="text-xs text-muted-foreground">{g.description}</div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{g.ownerDisplayName ?? '—'}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {g.ownerDisplayName ?? '—'}
+                    {g.ownerIsBlocked && (
+                      <span className="ml-1 text-xs text-destructive">(blocked)</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
-                    <Badge variant={g.status === 'active' ? 'default' : 'secondary'}>
-                      {g.status}
+                    <Badge variant={g.isBlocked ? 'destructive' : g.status === 'active' ? 'default' : 'secondary'}>
+                      {g.isBlocked ? 'Blocked' : g.status}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{g.memberCount}</td>
@@ -132,22 +208,56 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
                       </Link>
                       <span aria-hidden="true" className="text-muted-foreground">|</span>
                       <button
-                        data-testid="enable-adv-btn"
+                        data-testid={`enable-adv-btn-${g.id}`}
                         onClick={() => void handleStatusToggle(g)}
-                        aria-label={g.status === 'active' ? `Disable ${g.name}` : `Enable ${g.name}`}
+                        aria-label={!g.isBlocked && g.status === 'active' ? `Disable ${g.name}` : `Enable ${g.name}`}
                         className="text-xs text-muted-foreground hover:text-foreground"
                       >
                         {g.status === 'active' ? 'Disable' : 'Enable'}
                       </button>
                       <span aria-hidden="true" className="text-muted-foreground">|</span>
                       <button
-                        data-testid="delete-adv-btn"
+                        data-testid={`delete-adv-btn-${g.id}`}
                         onClick={() => setDeleteTarget(g)}
                         aria-label={`Delete ${g.name}`}
                         className="text-xs text-muted-foreground hover:text-destructive hover:underline"
                       >
                         Delete
                       </button>
+                      <span aria-hidden="true" className="text-muted-foreground">|</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={`More actions for ${g.name}`}
+                            className="text-xs text-muted-foreground hover:text-foreground px-1 leading-none"
+                          >
+                            •••
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {g.isBlocked ? (
+                            <DropdownMenuItem onClick={() => setBlockAction({ type: 'unblock-adv', row: g })}>
+                              Unblock adventure
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem destructive onClick={() => setBlockAction({ type: 'block-adv', row: g })}>
+                              Block adventure
+                            </DropdownMenuItem>
+                          )}
+                          {g.ownerId && (
+                            g.ownerIsBlocked ? (
+                              <DropdownMenuItem onClick={() => setBlockAction({ type: 'unblock-owner', row: g })}>
+                                Unblock owner
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem destructive onClick={() => setBlockAction({ type: 'block-owner', row: g })}>
+                                Block owner
+                              </DropdownMenuItem>
+                            )
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </td>
                 </tr>
@@ -174,6 +284,57 @@ export function AdminAdventuresPageClient({ initialGames }: { initialGames: Admi
             disabled={deleting}
           >
             {deleting ? 'Deleting…' : 'Delete'}
+          </Button>
+        </div>
+      </Dialog>
+
+      {/* Block dialog (type to confirm) */}
+      <Dialog open={isBlockDialog} onClose={closeBlockDialog}>
+        <DialogTitle>
+          {blockAction?.type === 'block-adv' && `Block ${blockAction.row.name}?`}
+          {blockAction?.type === 'block-owner' && `Block ${blockAction.row.ownerDisplayName ?? 'owner'}?`}
+        </DialogTitle>
+        <DialogDescription>
+          {blockAction?.type === 'block-adv' && 'This will make this adventure not available to its members. '}
+          {blockAction?.type === 'block-owner' && "This will make this user's account not available and deactivate all their characters and owned adventures. "}
+          You can reverse this at any time.
+        </DialogDescription>
+        {blockError && <p role="alert" className="text-sm text-destructive mt-2">{blockError}</p>}
+        <Input
+          aria-label="Type BLOCK to confirm"
+          placeholder="Type BLOCK to confirm"
+          value={blockInput}
+          onChange={e => setBlockInput(e.target.value)}
+          className="mt-3"
+        />
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="outline" onClick={closeBlockDialog} disabled={blocking}>Cancel</Button>
+          <Button
+            variant="destructive"
+            onClick={() => void handleBlock()}
+            disabled={blocking || blockInput !== 'BLOCK'}
+          >
+            {blocking ? 'Blocking…' : 'Block'}
+          </Button>
+        </div>
+      </Dialog>
+
+      {/* Unblock dialog (plain confirm) */}
+      <Dialog open={isUnblockDialog} onClose={closeBlockDialog}>
+        <DialogTitle>
+          {blockAction?.type === 'unblock-adv' && `Unblock ${blockAction.row.name}?`}
+          {blockAction?.type === 'unblock-owner' && `Unblock ${blockAction.row.ownerDisplayName ?? 'owner'}?`}
+        </DialogTitle>
+        <DialogDescription>
+          {blockAction?.type === 'unblock-owner' && "This will restore the user's access and set all their characters and owned adventures to active. "}
+          {blockAction?.type === 'unblock-adv' && 'This will restore access to this adventure for its members. '}
+          You can block again at any time.
+        </DialogDescription>
+        {blockError && <p role="alert" className="text-sm text-destructive mt-2">{blockError}</p>}
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="outline" onClick={closeBlockDialog} disabled={blocking}>Cancel</Button>
+          <Button onClick={() => void handleBlock()} disabled={blocking}>
+            {blocking ? 'Unblocking…' : 'Unblock'}
           </Button>
         </div>
       </Dialog>

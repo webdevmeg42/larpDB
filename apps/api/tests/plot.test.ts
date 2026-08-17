@@ -1,39 +1,27 @@
 import { describe, it, expect } from 'vitest'
 import { buildApp } from '../src/app.js'
+import { registerAndLogin } from './utils.js'
 
 const FUTURE_DATE = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
 async function createAndLogin(email = 'owner@test.com') {
   const app = buildApp()
   await app.ready()
-
-  const regRes = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: { email, password: 'password123', displayName: 'Owner' },
-  })
-  const { token } = regRes.json()
-
+  const { token } = await registerAndLogin(app, email)
   const gameRes = await app.inject({
     method: 'POST',
     url: '/games',
     headers: { authorization: `Bearer ${token}` },
     payload: { name: 'Test Game' },
   })
-  const { id: gameId } = gameRes.json()
-
+  const { id: gameId } = gameRes.json() as { id: string }
   return { app, token, gameId }
 }
 
 async function setupOwnerAndGm() {
   const { app, token: ownerToken, gameId } = await createAndLogin()
 
-  const gmRegRes = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: { email: 'gm@test.com', password: 'password123', displayName: 'GM User' },
-  })
-  const { token: gmToken, user: gmUser } = gmRegRes.json()
+  const { token: gmToken, user: gmUser } = await registerAndLogin(app, 'gm@test.com')
 
   await app.inject({
     method: 'POST',
@@ -49,12 +37,7 @@ async function setupOwnerAndGm() {
     payload: { role: 'gm' },
   })
 
-  const playerRegRes = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: { email: 'player@test.com', password: 'password123', displayName: 'Player' },
-  })
-  const { token: playerToken } = playerRegRes.json()
+  const { token: playerToken } = await registerAndLogin(app, 'player@test.com')
 
   await app.inject({
     method: 'POST',

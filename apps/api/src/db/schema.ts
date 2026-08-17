@@ -21,6 +21,7 @@ export const users = pgTable('users', {
   avatarUrl: text('avatar_url'),
   phone: text('phone'),
   isSysAdmin: boolean('is_sys_admin').notNull().default(false),
+  isBlocked: boolean('is_blocked').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
@@ -32,6 +33,7 @@ export const game = pgTable('game', {
   isPublic: boolean('is_public').notNull().default(true),
   joinMode: text('join_mode', { enum: ['open', 'approval'] }).notNull().default('open'),
   status: text('status', { enum: ['active', 'inactive'] }).notNull().default('inactive'),
+  isBlocked: boolean('is_blocked').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -119,6 +121,7 @@ export const characters = pgTable('characters', {
   gmData: jsonb('gm_data').default({}),
   totalXp: integer('total_xp').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
+  isBlocked: boolean('is_blocked').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 }, (t) => ({

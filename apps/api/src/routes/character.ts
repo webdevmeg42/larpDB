@@ -160,6 +160,9 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(404).send({ error: 'Character not found' })
       }
       if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
+      if (character.isBlocked) {
+        return reply.status(403).send({ error: 'Character not available' })
+      }
 
       return reply.send(character)
     },
@@ -177,6 +180,9 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(404).send({ error: 'Character not found' })
       }
       if (role === 'player' && character.userId !== userId) return reply.status(403).send({ error: 'Forbidden' })
+      if (character.isBlocked) {
+        return reply.status(403).send({ error: 'Character not available' })
+      }
       if (role === 'player' && gameStatus !== 'active') {
         return reply.status(403).send({ error: 'Character editing is disabled while this Adventure is inactive' })
       }
@@ -319,6 +325,9 @@ export const characterRoutes: FastifyPluginAsync = async (fastify) => {
       if (!existing) {
         request.log.warn({ id, gameId }, "character not found")
         return reply.status(404).send({ error: 'Character not found' })
+      }
+      if (existing.isBlocked) {
+        return reply.status(403).send({ error: 'Character not available' })
       }
 
       const result = GmDataInput.safeParse(request.body)

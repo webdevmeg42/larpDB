@@ -33,6 +33,7 @@ function LockedFieldItem({
 }) {
   return (
     <div
+      data-testid="locked-field-item"
       className={cn(
         'flex items-center gap-2 rounded-md border bg-muted/40 p-2 cursor-pointer transition-colors',
         isSelected ? 'ring-2 ring-primary border-primary' : 'hover:bg-muted/60',
@@ -77,6 +78,7 @@ function SortableFieldItem({
 
   return (
     <div
+      data-testid="field-item"
       ref={setNodeRef}
       style={style}
       className={cn(

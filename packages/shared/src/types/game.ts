@@ -23,6 +23,8 @@ export interface AdminGame extends Game {
   memberCount: number
   ownerId: string | null
   ownerDisplayName: string | null
+  ownerIsBlocked: boolean | null
+  isBlocked: boolean
 }
 
 export interface GameMember {

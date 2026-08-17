@@ -44,11 +44,12 @@ describe('WCAG 2.1 AA — public routes', () => {
     cy.checkA11y(A11Y_CONTEXT, A11Y_OPTIONS)
   })
 
-  it('Public adventure page has no WCAG AA violations', () => {
+  it('Public adventure page has no WCAG AA violations', function() {
+    const ctx = this
     cy.request({ url: `${Cypress.env('API_URL')}/games?public=true&limit=1`, failOnStatusCode: false })
       .then(res => {
         const slug = res.body?.items?.[0]?.slug
-        if (!slug) return cy.log('No public adventures seeded — skipping')
+        if (!slug) { ctx.skip(); return }
         cy.visit(`/adventures/${slug}`)
         cy.injectAxe()
         cy.checkA11y(A11Y_CONTEXT, A11Y_OPTIONS)

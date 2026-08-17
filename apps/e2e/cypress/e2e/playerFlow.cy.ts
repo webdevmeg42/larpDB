@@ -29,13 +29,16 @@ describe('Player role — restricted UI not accessible', () => {
   })
 
   context('Events page — Create Event button is hidden', () => {
+    before(() => cy.loginPlayer())
     it('does not show the New Event button', () => {
       cy.visit('/events')
+      cy.url().should('include', '/events')
       cy.get(sel.newEventBtn).should('not.exist')
     })
   })
 
   context('Rulebook page — editor controls are hidden for players', () => {
+    before(() => cy.loginPlayer())
     it('shows the rulebook in read-only mode', () => {
       cy.visit('/rulebook')
       cy.url().should('include', '/rulebook')
@@ -45,6 +48,7 @@ describe('Player role — restricted UI not accessible', () => {
   })
 
   context('Direct URL access — restricted pages are blocked', () => {
+    before(() => cy.loginPlayer())
     it('blocks direct navigation to /admin/community', () => {
       cy.visit('/admin/community')
       cy.contains("This page doesn't exist.").should('be.visible')
@@ -53,7 +57,7 @@ describe('Player role — restricted UI not accessible', () => {
     it('allows direct navigation to /adventures', () => {
       cy.visit('/adventures')
       cy.url().should('include', '/adventures')
-      cy.contains("This page doesn't exist.").should('not.exist')
+      cy.contains('h1', 'Adventure Builder').should('be.visible')
     })
   })
 })

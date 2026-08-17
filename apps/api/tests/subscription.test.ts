@@ -1,30 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { buildApp } from '../src/app.js'
+import { extractToken, registerAndLogin, createActiveGame } from './utils.js'
 
 async function createAndLogin(email = 'owner@test.com') {
   const app = buildApp()
   await app.ready()
-
-  const regRes = await app.inject({
-    method: 'POST', url: '/auth/register',
-    payload: { email, password: 'password123', displayName: 'Owner' },
-  })
-  const { token } = regRes.json()
-
-  const gameRes = await app.inject({
-    method: 'POST', url: '/games',
-    headers: { authorization: `Bearer ${token}` },
-    payload: { name: 'Test Game' },
-  })
-  const gameBody = gameRes.json()
-
-  await app.inject({
-    method: 'PATCH', url: `/games/${gameBody.id}/status`,
-    headers: { authorization: `Bearer ${token}` },
-    payload: { status: 'active' },
-  })
-
-  return { app, token, gameId: gameBody.id }
+  const { token } = await registerAndLogin(app, email)
+  const { gameId } = await createActiveGame(app, token)
+  return { app, token, gameId }
 }
 
 describe('POST /subscriptions', () => {
@@ -35,7 +18,7 @@ describe('POST /subscriptions', () => {
       method: 'POST', url: '/auth/register',
       payload: { email: 'user@test.com', password: 'password123', displayName: 'User' },
     })
-    const { token: userToken } = userRes.json()
+    const userToken = extractToken(userRes.headers as Record<string, unknown>)
 
     const res = await app.inject({
       method: 'POST', url: '/subscriptions',

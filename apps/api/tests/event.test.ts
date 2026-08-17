@@ -1,16 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { buildApp } from '../src/app.js'
+import { registerAndLogin } from './utils.js'
 
 async function createAndLogin(email = 'owner@test.com') {
   const app = buildApp()
   await app.ready()
-
-  const regRes = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: { email, password: 'password123', displayName: 'Owner' },
-  })
-  const { token } = regRes.json()
+  const { token } = await registerAndLogin(app, email)
 
   const gameRes = await app.inject({
     method: 'POST',
@@ -18,7 +13,7 @@ async function createAndLogin(email = 'owner@test.com') {
     headers: { authorization: `Bearer ${token}` },
     payload: { name: 'Test Game' },
   })
-  const { id: gameId } = gameRes.json()
+  const { id: gameId } = gameRes.json() as { id: string }
 
   return { app, token, gameId }
 }
@@ -26,12 +21,7 @@ async function createAndLogin(email = 'owner@test.com') {
 async function setupOwnerAndGm() {
   const { app, token: ownerToken, gameId } = await createAndLogin()
 
-  const gmRegRes = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: { email: 'gm@test.com', password: 'password123', displayName: 'GM User' },
-  })
-  const { token: gmToken, user: gmUser } = gmRegRes.json()
+  const { token: gmToken, user: gmUser } = await registerAndLogin(app, 'gm@test.com')
 
   await app.inject({
     method: 'POST',
@@ -47,12 +37,7 @@ async function setupOwnerAndGm() {
     payload: { role: 'gm' },
   })
 
-  const playerRegRes = await app.inject({
-    method: 'POST',
-    url: '/auth/register',
-    payload: { email: 'player@test.com', password: 'password123', displayName: 'Player One' },
-  })
-  const { token: playerToken } = playerRegRes.json()
+  const { token: playerToken } = await registerAndLogin(app, 'player@test.com')
 
   await app.inject({
     method: 'POST',
@@ -377,12 +362,7 @@ describe('GET /admin-events', () => {
     const app = buildApp()
     await app.ready()
 
-    const regRes = await app.inject({
-      method: 'POST',
-      url: '/auth/register',
-      payload: { email: 'owner@admin-events-test.com', password: 'password123', displayName: 'Owner' },
-    })
-    const { token } = regRes.json()
+    const { token } = await registerAndLogin(app, 'owner@admin-events-test.com')
 
     const gameRes = await app.inject({
       method: 'POST',
@@ -425,12 +405,7 @@ describe('GET /admin-events', () => {
     const app = buildApp()
     await app.ready()
 
-    const ownerRegRes = await app.inject({
-      method: 'POST',
-      url: '/auth/register',
-      payload: { email: 'owner2@admin-events-test.com', password: 'password123', displayName: 'Owner2' },
-    })
-    const { token: ownerToken } = ownerRegRes.json()
+    const { token: ownerToken } = await registerAndLogin(app, 'owner2@admin-events-test.com')
 
     const gameRes = await app.inject({
       method: 'POST',
@@ -440,12 +415,7 @@ describe('GET /admin-events', () => {
     })
     const { id: gameId } = gameRes.json()
 
-    const gmRegRes = await app.inject({
-      method: 'POST',
-      url: '/auth/register',
-      payload: { email: 'gm@admin-events-test.com', password: 'password123', displayName: 'GM User' },
-    })
-    const { token: gmToken, user: gmUser } = gmRegRes.json()
+    const { token: gmToken, user: gmUser } = await registerAndLogin(app, 'gm@admin-events-test.com')
 
     await app.inject({
       method: 'POST',
@@ -485,12 +455,7 @@ describe('GET /admin-events', () => {
     const app = buildApp()
     await app.ready()
 
-    const ownerRegRes = await app.inject({
-      method: 'POST',
-      url: '/auth/register',
-      payload: { email: 'owner3@admin-events-test.com', password: 'password123', displayName: 'Owner3' },
-    })
-    const { token: ownerToken } = ownerRegRes.json()
+    const { token: ownerToken } = await registerAndLogin(app, 'owner3@admin-events-test.com')
 
     const gameRes = await app.inject({
       method: 'POST',
@@ -500,12 +465,7 @@ describe('GET /admin-events', () => {
     })
     const { id: gameId } = gameRes.json()
 
-    const playerRegRes = await app.inject({
-      method: 'POST',
-      url: '/auth/register',
-      payload: { email: 'player@admin-events-test.com', password: 'password123', displayName: 'Player' },
-    })
-    const { token: playerToken } = playerRegRes.json()
+    const { token: playerToken } = await registerAndLogin(app, 'player@admin-events-test.com')
 
     await app.inject({
       method: 'POST',
@@ -538,12 +498,7 @@ describe('GET /admin-events', () => {
     const app = buildApp()
     await app.ready()
 
-    const regRes = await app.inject({
-      method: 'POST',
-      url: '/auth/register',
-      payload: { email: 'owner4@admin-events-test.com', password: 'password123', displayName: 'Owner4' },
-    })
-    const { token } = regRes.json()
+    const { token } = await registerAndLogin(app, 'owner4@admin-events-test.com')
 
     await app.inject({
       method: 'POST',

@@ -1,12 +1,15 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { privacyHtml } from './content'
+import { readFile } from 'fs/promises'
+import path from 'path'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — PlotRunner',
 }
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const privacyHtml = await readFile(path.join(process.cwd(), 'public', 'legal', 'privacy.html'), 'utf-8')
+
   return (
     <div className="min-h-screen bg-white text-black">
       <header className="border-b border-gray-200">

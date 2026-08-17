@@ -1,10 +1,11 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq, and, gte, lte, desc, count, ilike } from 'drizzle-orm'
+import { eq, and, gte, lte, desc, count, ilike, inArray } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../db/index.js'
-import { users, requestLogs, game, gameMembers } from '../db/schema.js'
+import { users, requestLogs, game, gameMembers, characters } from '../db/schema.js'
 import { parsePagination } from '../lib/pagination.js'
 import { stripPassword } from '../lib/user.js'
+import { invalidateMembership } from '../lib/membershipCache.js'
 
 export const adminRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post(
@@ -135,13 +136,15 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
           memberCount: count(gameMembers.id),
           ownerId: ownerMember.userId,
           ownerDisplayName: users.displayName,
+          isBlocked: game.isBlocked,
+          ownerIsBlocked: users.isBlocked,
         })
         .from(game)
         .leftJoin(gameMembers, and(eq(gameMembers.gameId, game.id), eq(gameMembers.status, 'active')))
         .leftJoin(ownerMember, and(eq(ownerMember.gameId, game.id), eq(ownerMember.role, 'owner')))
         .leftJoin(users, eq(users.id, ownerMember.userId))
         .where(ownerName ? ilike(users.displayName, `%${ownerName}%`) : undefined)
-        .groupBy(game.id, ownerMember.userId, users.displayName)
+        .groupBy(game.id, ownerMember.userId, users.displayName, users.isBlocked)
         .orderBy(desc(game.createdAt))
 
       return reply.send(rows)
@@ -163,6 +166,224 @@ export const adminRoutes: FastifyPluginAsync = async (fastify) => {
         .from(users)
         .orderBy(users.displayName)
       return reply.send(allUsers)
+    },
+  )
+
+  fastify.get(
+    '/admin/characters',
+    { preHandler: [fastify.requireSysAdmin] },
+    async (_request, reply) => {
+      const rows = await db
+        .select({
+          id: characters.id,
+          name: characters.name,
+          gameId: characters.gameId,
+          gameName: game.name,
+          userId: characters.userId,
+          playerDisplayName: users.displayName,
+          totalXp: characters.totalXp,
+          isActive: characters.isActive,
+          isBlocked: characters.isBlocked,
+          userIsBlocked: users.isBlocked,
+          createdAt: characters.createdAt,
+        })
+        .from(characters)
+        .innerJoin(game, eq(characters.gameId, game.id))
+        .innerJoin(users, eq(characters.userId, users.id))
+        .orderBy(desc(characters.createdAt))
+
+      return reply.send(rows)
+    },
+  )
+
+  fastify.patch(
+    '/admin/characters/:id/block',
+    { preHandler: [fastify.requireSysAdmin] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+      const [updated] = await db
+        .update(characters)
+        .set({ isBlocked: true })
+        .where(eq(characters.id, id))
+        .returning({ id: characters.id })
+      if (!updated) return reply.status(404).send({ error: 'Character not found' })
+      request.log.info({ userId: request.user.sub, targetId: id }, "character blocked")
+      return reply.send({})
+    },
+  )
+
+  fastify.patch(
+    '/admin/characters/:id/unblock',
+    { preHandler: [fastify.requireSysAdmin] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+      const [updated] = await db
+        .update(characters)
+        .set({ isBlocked: false })
+        .where(eq(characters.id, id))
+        .returning({ id: characters.id })
+      if (!updated) return reply.status(404).send({ error: 'Character not found' })
+      request.log.info({ userId: request.user.sub, targetId: id }, "character unblocked")
+      return reply.send({})
+    },
+  )
+
+  fastify.patch(
+    '/admin/games/:id/block',
+    { preHandler: [fastify.requireSysAdmin] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+      const [updated] = await db
+        .update(game)
+        .set({ isBlocked: true })
+        .where(eq(game.id, id))
+        .returning({ id: game.id })
+      if (!updated) return reply.status(404).send({ error: 'Adventure not found' })
+
+      const activeMembers = await db
+        .select({ userId: gameMembers.userId })
+        .from(gameMembers)
+        .where(and(eq(gameMembers.gameId, id), eq(gameMembers.status, 'active')))
+      for (const member of activeMembers) {
+        invalidateMembership(member.userId, id)
+      }
+
+      request.log.info({ userId: request.user.sub, targetId: id }, "game blocked")
+      return reply.send({})
+    },
+  )
+
+  fastify.patch(
+    '/admin/games/:id/unblock',
+    { preHandler: [fastify.requireSysAdmin] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+      const [updated] = await db
+        .update(game)
+        .set({ isBlocked: false })
+        .where(eq(game.id, id))
+        .returning({ id: game.id })
+      if (!updated) return reply.status(404).send({ error: 'Adventure not found' })
+      request.log.info({ userId: request.user.sub, targetId: id }, "game unblocked")
+      return reply.send({})
+    },
+  )
+
+  fastify.patch(
+    '/admin/users/:id/block',
+    { preHandler: [fastify.requireSysAdmin] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+
+      const requesterId = request.user.sub
+      if (id === requesterId) {
+        return reply.status(400).send({ error: 'Cannot self-block' })
+      }
+
+      const [target] = await db
+        .select({ id: users.id, isSysAdmin: users.isSysAdmin, isBlocked: users.isBlocked })
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1)
+      if (!target) return reply.status(404).send({ error: 'User not found' })
+      if (target.isSysAdmin) return reply.status(400).send({ error: 'Cannot block a sys_admin' })
+      if (target.isBlocked) return reply.status(409).send({ error: 'User is already blocked' })
+
+      let ownedGameIds: string[] = []
+      await db.transaction(async (tx) => {
+        const ownedGames = await tx
+          .select({ gameId: gameMembers.gameId })
+          .from(gameMembers)
+          .where(and(eq(gameMembers.userId, id), eq(gameMembers.role, 'owner')))
+        ownedGameIds = ownedGames.map(g => g.gameId)
+
+        await tx.update(users).set({ isBlocked: true }).where(eq(users.id, id))
+        await tx.update(characters)
+          .set({ isActive: false })
+          .where(and(eq(characters.userId, id), eq(characters.isBlocked, false)))
+        if (ownedGameIds.length > 0) {
+          await tx.update(game)
+            .set({ status: 'inactive' })
+            .where(and(inArray(game.id, ownedGameIds), eq(game.isBlocked, false)))
+        }
+      })
+
+      const userMemberships = await db
+        .select({ gameId: gameMembers.gameId })
+        .from(gameMembers)
+        .where(and(eq(gameMembers.userId, id), eq(gameMembers.status, 'active')))
+      for (const m of userMemberships) {
+        invalidateMembership(id, m.gameId)
+      }
+
+      for (const gId of ownedGameIds) {
+        const members = await db
+          .select({ userId: gameMembers.userId })
+          .from(gameMembers)
+          .where(and(eq(gameMembers.gameId, gId), eq(gameMembers.status, 'active')))
+        for (const m of members) {
+          invalidateMembership(m.userId, gId)
+        }
+      }
+
+      request.log.info({ userId: request.user.sub, targetId: id }, "user blocked")
+      return reply.send({})
+    },
+  )
+
+  fastify.patch(
+    '/admin/users/:id/unblock',
+    { preHandler: [fastify.requireSysAdmin] },
+    async (request, reply) => {
+      const { id } = request.params as { id: string }
+
+      const [target] = await db
+        .select({ id: users.id, isBlocked: users.isBlocked })
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1)
+      if (!target) return reply.status(404).send({ error: 'User not found' })
+      if (!target.isBlocked) return reply.status(409).send({ error: 'User is not blocked' })
+
+      let ownedGameIds: string[] = []
+      await db.transaction(async (tx) => {
+        const ownedGames = await tx
+          .select({ gameId: gameMembers.gameId })
+          .from(gameMembers)
+          .where(and(eq(gameMembers.userId, id), eq(gameMembers.role, 'owner')))
+        ownedGameIds = ownedGames.map(g => g.gameId)
+
+        await tx.update(users).set({ isBlocked: false }).where(eq(users.id, id))
+        await tx.update(characters)
+          .set({ isActive: true })
+          .where(and(eq(characters.userId, id), eq(characters.isBlocked, false)))
+        if (ownedGameIds.length > 0) {
+          await tx.update(game)
+            .set({ status: 'active' })
+            .where(and(inArray(game.id, ownedGameIds), eq(game.isBlocked, false)))
+        }
+      })
+
+      const userMemberships = await db
+        .select({ gameId: gameMembers.gameId })
+        .from(gameMembers)
+        .where(and(eq(gameMembers.userId, id), eq(gameMembers.status, 'active')))
+      for (const m of userMemberships) {
+        invalidateMembership(id, m.gameId)
+      }
+
+      for (const gId of ownedGameIds) {
+        const members = await db
+          .select({ userId: gameMembers.userId })
+          .from(gameMembers)
+          .where(and(eq(gameMembers.gameId, gId), eq(gameMembers.status, 'active')))
+        for (const m of members) {
+          invalidateMembership(m.userId, gId)
+        }
+      }
+
+      request.log.info({ userId: request.user.sub, targetId: id }, "user unblocked")
+      return reply.send({})
     },
   )
 }

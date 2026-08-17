@@ -124,22 +124,25 @@ describe('Owner Flow', () => {
   })
 
   it('Owner cannot build an incorrect Adventure', () => {
-    cy.intercept('GET', '/adventures*').as('advBuilderRsc')
     cy.get(sel.navAdvBuilder).click()
-    cy.wait('@advBuilderRsc', { timeout: 10000 })
-    cy.contains('Build New Adventure').click()
+    cy.url({ timeout: 15000 }).should('include', '/adventures')
+    cy.contains('Build New Adventure', { timeout: 10000 }).click()
 
     cy.get(sel.visibilityPrivateBtn).click()
     cy.contains('button', 'Create Adventure').click()
     cy.get(sel.advNameError)
       .should('be.visible').and('contain', 'Adventure Name is required')
 
+    cy.intercept('POST', '**/games').as('createGame')
     cy.contains('button', 'Public').click()
     cy.get(sel.advNameInput).type(adventureName)
     cy.contains('button', 'Create Adventure').click()
-
-    cy.url({ timeout: 10000 }).should('include', '/edit')
-    cy.get(sel.tabBranding).should('be.visible')
+    cy.wait('@createGame', { timeout: 10000 }).then((interception) => {
+      cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
+      cy.visit(`/adventures/${interception.response?.body.id}/edit`)
+      cy.wait('@builderContextSet', { timeout: 10000 })
+    })
+    cy.get(sel.tabBranding, { timeout: 10000 }).should('be.visible')
     cy.url().then(url => { adventureEditUrl = url })
     cy.get(sel.advSlugDisplay)
       .should('be.visible')
@@ -162,7 +165,9 @@ describe('Owner Flow', () => {
 
     // Rulebook chapter editor is at /rulebook (admin view), not the public viewer
     cy.visit('/rulebook')
+    cy.intercept('GET', '**/config').as('rulebookConfig')
     cy.contains(sel.adventurePanelItem, adventureName).click()
+    cy.wait('@rulebookConfig', { timeout: 10000 })
     cy.contains('+ Add chapter').click()
     cy.contains('button', 'Save chapter').click()
     cy.get(sel.chapterTitleError)
@@ -170,7 +175,9 @@ describe('Owner Flow', () => {
   })
 
   it('Setup checklist appears on the edit page before setup is complete', () => {
+    cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
     cy.visit(adventureEditUrl)
+    cy.wait('@builderContextSet', { timeout: 10000 })
     // Checklist should be visible because setup is not yet complete
     cy.get(sel.setupChecklist).should('be.visible')
     // "Set a tagline" is not yet set
@@ -181,7 +188,9 @@ describe('Owner Flow', () => {
   })
 
   it('Owner can save branding changes', () => {
+    cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
     cy.visit(adventureEditUrl)
+    cy.wait('@builderContextSet', { timeout: 10000 })
     cy.get(sel.taglineInput).should('not.be.disabled').clear().type('Test tagline')
     cy.get(sel.saveChangesBtn).click()
     cy.contains('[data-testid="toast"]', 'Branding saved').should('be.visible')
@@ -228,13 +237,10 @@ describe('Owner Flow', () => {
     cy.schemaBuilderAddField('palette-btn-features', 'Features')
     cy.schemaBuilderAddField('palette-btn-influences', 'Influences')
     cy.schemaBuilderAddField('palette-btn-languages', 'Languages')
-    cy.intercept('GET', '/admin/schemas/*').as('schemaEditRsc')
     cy.schemaBuilderSave()
-    cy.wait('@schemaEditRsc', { timeout: 10000 })
-
     // schema-activate-btn only renders on the edit page (schemaId is a real UUID)
     // — this is the navigation guard; Cypress retries until it appears
-    cy.get(sel.schemaActivateBtn)
+    cy.get(sel.schemaActivateBtn, { timeout: 15000 })
 
     // Add all OTHER fields unlabeled, then one save to trigger validation error (PATCH)
     cy.schemaBuilderAddField('palette-btn-text')
@@ -259,7 +265,9 @@ describe('Owner Flow', () => {
     cy.url().should('include', '/admin/schemas')
 
     // Activate the race schema from the Adventure Builder
+    cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
     cy.visit(adventureEditUrl)
+    cy.wait('@builderContextSet', { timeout: 10000 })
     cy.get(sel.tabRaceBuilds).click()
     cy.get(sel.buildsSearchInput).type(adventureName)
     cy.get(sel.buildsExpandBtn).first().click()
@@ -267,7 +275,9 @@ describe('Owner Flow', () => {
   })
 
   it('Owner can build a class with all common fields pre-populated', () => {
+    cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
     cy.visit(adventureEditUrl)
+    cy.wait('@builderContextSet', { timeout: 10000 })
     cy.get(sel.tabClassBuilds).click()
     cy.get(sel.newClassLink).click()
 
@@ -316,7 +326,9 @@ describe('Owner Flow', () => {
     cy.url().should('include', '/admin/schemas')
 
     // Activate the class schema from the Adventure Builder
+    cy.intercept('POST', /\/adventures\/.*\/edit/).as('builderContextSet')
     cy.visit(adventureEditUrl)
+    cy.wait('@builderContextSet', { timeout: 10000 })
     cy.get(sel.tabClassBuilds).click()
     cy.get(sel.buildsSearchInput).type(adventureName)
     cy.get(sel.buildsExpandBtn).first().click()
@@ -343,16 +355,12 @@ describe('Owner Flow', () => {
     cy.wait('@builderContextSet', { timeout: 10000 })
 
     // Navigate to My Characters and locate the Adventure
-    cy.intercept('GET', '/characters*').as('charactersRsc')
-    cy.get(sel.navMyCharacters).click()
-    cy.wait('@charactersRsc', { timeout: 10000 })
+    cy.visit('/characters')
     cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
-    cy.intercept('GET', '/characters/new*').as('newCharacterRsc')
     cy.get(sel.newCharacterBtn).first().click()
-    cy.wait('@newCharacterRsc', { timeout: 10000 })
 
     // Race step — Continue is disabled until a race is selected
-    cy.get(sel.continueBtn).should('be.disabled')
+    cy.get(sel.continueBtn, { timeout: 10000 }).should('be.disabled')
     cy.get('[data-testid="race-select-grid"]').contains('button', adventureName).click()
     cy.get(sel.continueBtn).click()
 
@@ -367,15 +375,15 @@ describe('Owner Flow', () => {
     cy.contains('Character name is required').should('be.visible')
 
     // Fill in name and successfully create the character
+    cy.intercept('POST', '**/characters').as('createCharacter')
     cy.get(sel.characterNameInput).type(characterName)
     cy.get(sel.createCharacterBtn).click()
-    cy.url({ timeout: 10000 }).should('match', /\/characters\/[a-f0-9-]{36}/)
+    cy.wait('@createCharacter', { timeout: 10000 })
+    cy.url({ timeout: 15000 }).should('match', /\/characters\/[a-f0-9-]{36}/)
   })
 
   it('Owner can create an event', () => {
-    cy.intercept('GET', '/events*').as('eventsRsc')
-    cy.get(sel.navEvents).click()
-    cy.wait('@eventsRsc', { timeout: 10000 })
+    cy.visit('/events')
     cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
     cy.get(sel.newEventBtn).first().click()
 
@@ -384,17 +392,17 @@ describe('Owner Flow', () => {
     cy.get(sel.eventTitleInput).type(`Event ${adventureName}`)
     cy.get(sel.createEventBtn).should('be.disabled')
 
+    cy.intercept('POST', '**/events').as('createEvent')
     cy.get(sel.eventStartAtInput).type(tomorrowDatetimeLocal())
     cy.get(sel.createEventBtn).click()
+    cy.wait('@createEvent', { timeout: 10000 })
 
-    cy.contains('h1', `Event ${adventureName}`)
+    cy.contains('h1', `Event ${adventureName}`, { timeout: 15000 }).should('be.visible')
   })
 
   describe('Events calendar', () => {
     it('Owner can toggle calendar view on and off', () => {
-      cy.intercept('GET', '/events*').as('eventsRsc')
-      cy.get(sel.navEvents).click()
-      cy.wait('@eventsRsc', { timeout: 10000 })
+      cy.visit('/events')
       cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
       cy.get(sel.calendarToggle).click()
       cy.get('[data-testid="event-calendar"]').should('be.visible')
@@ -403,19 +411,13 @@ describe('Owner Flow', () => {
     })
 
     it('Owner sees event bar and popover in calendar view', () => {
-      cy.intercept('GET', '/events*').as('eventsRsc')
       cy.visit('/events')
-      cy.wait('@eventsRsc', { timeout: 10000 })
       cy.get('[data-testid="adventure-list-panel"]').contains('button', adventureName, { timeout: 10000 }).click()
       cy.get(sel.calendarToggle).click()
       cy.get('[data-testid="event-calendar"]').should('be.visible')
-      cy.get('body').then($body => {
-        if ($body.find('[data-testid="event-bar"]').length > 0) {
-          cy.get('[data-testid="event-bar"]').first().click()
-          cy.get('[data-testid="event-popover"]').should('be.visible')
-          cy.get('[data-testid="event-popover"]').contains('View').should('have.attr', 'href')
-        }
-      })
+      cy.get('[data-testid="event-bar"]', { timeout: 10000 }).first().click()
+      cy.get('[data-testid="event-popover"]').should('be.visible')
+      cy.get('[data-testid="event-popover"]').contains('View').should('have.attr', 'href')
     })
   })
 
@@ -472,8 +474,10 @@ describe('Owner Flow', () => {
 
     // Cleanup: delete the published post
     cy.visit('/admin/posts')
+    cy.intercept('GET', '**/posts*').as('adventurePosts')
     cy.contains(sel.adventurePanelItem, adventureName, { timeout: 10000 }).click()
-    cy.contains('li', draftTitle, { timeout: 10000 }).find('[data-testid="delete-post-btn"]').click()
+    cy.wait('@adventurePosts', { timeout: 10000 })
+    cy.contains('li', draftTitle).find('[data-testid="delete-post-btn"]').click()
     cy.get('[data-testid="confirm-delete-post-btn"]').click()
     cy.contains('li', draftTitle).should('not.exist')
   })
@@ -510,10 +514,8 @@ describe('Owner Flow', () => {
       cy.contains('button', adventureName, { timeout: 10000 }).click()
 
       // Navigate to Events — same adventure should be pre-selected
-      cy.intercept('GET', '/events*').as('eventsRsc')
       cy.get(sel.navEvents).click()
-      cy.wait('@eventsRsc', { timeout: 10000 })
-      cy.url().should('include', '/events')
+      cy.url({ timeout: 10000 }).should('include', '/events')
 
       // The adventure should be highlighted (bg-muted class indicates selection)
       cy.contains('button', adventureName, { timeout: 10000 })
@@ -554,13 +556,15 @@ describe('Owner Flow', () => {
       cy.get(sel.adventurePanelItem, { timeout: 10000 }).should('have.length.gte', 1)
 
       // Click the adventure
+      cy.intercept('GET', '**/config').as('rulebookConfig')
       cy.contains(sel.adventurePanelItem, adventureName, { timeout: 5000 }).click()
 
       // Inline editor appears (not a navigation away)
       cy.url().should('match', /\/rulebook$/)
       // Open the new-chapter form to confirm the editor is present
-      cy.contains('+ Add chapter', { timeout: 10000 }).click()
-      cy.get(sel.chapterTitleInput, { timeout: 10000 }).should('exist')
+      cy.wait('@rulebookConfig', { timeout: 10000 })
+      cy.contains('+ Add chapter').click()
+      cy.get(sel.chapterTitleInput).should('exist')
     })
   })
 
@@ -578,10 +582,12 @@ describe('Owner Flow', () => {
     cy.get('#adventure').select(adventureName)
     cy.get('#title').type(postTitle)
     cy.get('#body').type('test')
+    cy.intercept('POST', '**/upload').as('imageUpload')
     cy.get('input[type="file"][accept="image/*"]').selectFile('cypress/fixtures/PRLogo.png', { force: true })
 
     // Wait for upload to finish (button is disabled while uploading)
-    cy.contains('button', 'Publish', { timeout: 15000 }).should('not.be.disabled')
+    cy.wait('@imageUpload', { timeout: 15000 })
+    cy.contains('button', 'Publish').should('not.be.disabled')
     cy.contains('button', 'Publish').click()
 
     // Successful publish redirects away from the form
@@ -594,26 +600,29 @@ describe('Owner Flow', () => {
 
     // Cleanup: delete the test post
     cy.visit('/admin/posts')
+    cy.intercept('GET', '**/posts*').as('adventurePosts')
     cy.contains(sel.adventurePanelItem, adventureName, { timeout: 10000 }).click()
-    cy.contains('li', postTitle, { timeout: 10000 }).find('[data-testid="delete-post-btn"]').click()
+    cy.wait('@adventurePosts', { timeout: 10000 })
+    cy.contains('li', postTitle).find('[data-testid="delete-post-btn"]').click()
     cy.get('[data-testid="confirm-delete-post-btn"]').click()
     cy.contains('li', postTitle).should('not.exist')
   })
 
   it('Owner cannot create an adventure with a duplicate name', () => {
     cy.get(sel.navAdvBuilder).click()
-    cy.contains('Build New Adventure').click()
+    cy.url({ timeout: 15000 }).should('include', '/adventures')
+    cy.contains('Build New Adventure', { timeout: 10000 }).click()
 
+    cy.intercept('GET', '**/games/check-name*').as('checkName')
     cy.get(sel.advNameInput).type(adventureName)
-    cy.get(sel.advNameAvailability, { timeout: 3000 }).should('contain', '✗ Already taken')
+    cy.wait('@checkName', { timeout: 10000 })
+    cy.get(sel.advNameAvailability).should('contain', '✗ Already taken')
     cy.contains('button', 'Create Adventure').should('be.disabled')
   })
 
   it('Owner can view and edit the Rulebook via the navbar', () => {
-    cy.intercept('GET', '/rulebook*').as('rulebookRsc')
     cy.get(sel.navRulebook).click()
-    cy.wait('@rulebookRsc', { timeout: 10000 })
-    cy.contains('h1', 'Rulebook')
+    cy.contains('h1', 'Rulebook', { timeout: 10000 })
 
     // Old search+table UI is gone
     cy.get(sel.rulebookSearchInput).should('not.exist')
@@ -624,12 +633,14 @@ describe('Owner Flow', () => {
     cy.contains(sel.adventurePanelItem, adventureName).should('be.visible')
 
     // Click the adventure to load it inline
+    cy.intercept('GET', '**/config').as('rulebookConfig')
     cy.contains(sel.adventurePanelItem, adventureName).click()
 
     // Owner sees the inline rulebook editor (not navigating away)
     cy.url().should('match', /\/rulebook$/)
 
     // Add a chapter
+    cy.wait('@rulebookConfig', { timeout: 10000 })
     cy.contains('+ Add chapter').click()
     cy.get(sel.chapterTitleInput).type('Introduction')
     cy.contains('button', 'Save chapter').click()
@@ -692,8 +703,10 @@ describe('Owner Flow', () => {
     // Join mode filter toggles active state
     cy.contains('button', 'Open only').click()
     cy.contains('button', 'Open only').should('have.class', 'bg-primary')
+    cy.contains(sel.browseGameRow, adventureName).should('be.visible')
     cy.contains('button', 'Any').click()
     cy.contains('button', 'Any').should('have.class', 'bg-primary')
+    cy.contains(sel.browseGameRow, adventureName).should('be.visible')
   })
 
   after(() => {

@@ -21,6 +21,7 @@ import {
 import { CreateGameInput, UpdateSiteConfigInput, UpdateGameStatusInput, generateSlug } from '@plotrunner/shared'
 import { buildPatch } from '../lib/roles.js'
 import { parsePagination } from '../lib/pagination.js'
+import { invalidateMembership } from '../lib/membershipCache.js'
 
 // No max-attempts cap here — after the first DB check finds a free slug, collisions
 // on subsequent attempts would require an exact match including the numeric suffix,
@@ -188,7 +189,7 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
 
       let newGame: typeof game.$inferSelect | undefined
       for (let attempt = 0; attempt < 5 && !newGame; attempt++) {
-        const slug = attempt === 0 ? await uniqueSlug(baseSlug) : `${baseSlug}-${attempt}`
+        const slug = await uniqueSlug(baseSlug)
         try {
           newGame = await db.transaction(async (tx) => {
             const [created] = await tx.insert(game).values({
@@ -258,6 +259,13 @@ export const gameRoutes: FastifyPluginAsync = async (fastify) => {
         .returning()
 
       if (!updated) return reply.status(404).send({ error: 'Game not found' })
+
+      const members = await db
+        .select({ userId: gameMembers.userId })
+        .from(gameMembers)
+        .where(and(eq(gameMembers.gameId, id), eq(gameMembers.status, 'active')))
+      for (const m of members) invalidateMembership(m.userId, id)
+
       request.log.info({ id, status: result.data.status }, "adventure status changed")
       return reply.send(updated)
     },

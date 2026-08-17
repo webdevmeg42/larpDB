@@ -72,8 +72,8 @@ export const characterXpRoutes: FastifyPluginAsync = async (fastify) => {
             }
           }
         }
-      } catch {
-        // Auto-level failure is non-fatal — XP was already awarded correctly
+      } catch (err) {
+        request.log.warn({ characterId: id, err }, 'auto-level failed after XP award; level not updated')
       }
 
       return reply.status(201).send(transaction)

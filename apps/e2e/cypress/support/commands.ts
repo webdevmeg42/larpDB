@@ -10,8 +10,16 @@ Cypress.Commands.add('loginOwner', () => {
   }).then(() => {
     cy.request('GET', `${Cypress.env('API_URL')}/my-games`).then((res) => {
       const first = res.body[0]
-      if (first) cy.setCookie('gameId', first.id, { path: '/', sameSite: 'lax' })
-      cy.visit('/dashboard')
+      if (first) {
+        cy.setCookie('gameId', first.id, { path: '/', sameSite: 'lax' })
+        cy.visit('/dashboard', {
+          onBeforeLoad(win) {
+            win.localStorage.setItem('plotrunner_game_id', first.id)
+          },
+        })
+      } else {
+        cy.visit('/dashboard')
+      }
     })
   })
 })
@@ -25,8 +33,16 @@ Cypress.Commands.add('loginPlayer', () => {
   }).then(() => {
     cy.request('GET', `${Cypress.env('API_URL')}/my-games`).then((res) => {
       const first = res.body[0]
-      if (first) cy.setCookie('gameId', first.id, { path: '/', sameSite: 'lax' })
-      cy.visit('/dashboard')
+      if (first) {
+        cy.setCookie('gameId', first.id, { path: '/', sameSite: 'lax' })
+        cy.visit('/dashboard', {
+          onBeforeLoad(win) {
+            win.localStorage.setItem('plotrunner_game_id', first.id)
+          },
+        })
+      } else {
+        cy.visit('/dashboard')
+      }
     })
   })
 })

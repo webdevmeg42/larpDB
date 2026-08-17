@@ -32,7 +32,7 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
   }, [pickerOpen])
 
   return (
-    <header className="md:hidden flex-shrink-0 border-b border-border bg-[#080f07]">
+    <header className="md:hidden flex-shrink-0 border-b border-border bg-sidebar">
       {/* Row 1: hamburger | brand | adventure chip */}
       <div className="flex items-center gap-2 px-3 h-12">
         <button
@@ -40,12 +40,12 @@ export function MobileHeader({ onMenuClick }: MobileHeaderProps) {
           data-testid="mobile-menu-btn"
           onClick={onMenuClick}
           aria-label="Open navigation menu"
-          className="p-1 rounded-md hover:bg-muted text-muted-foreground"
+          className="p-1 rounded-sm hover:bg-muted text-muted-foreground"
         >
           <Menu className="h-5 w-5" aria-hidden="true" />
         </button>
 
-        <span className="font-heading text-gold text-sm flex-1">PlotRunner</span>
+        <span className="font-label text-steel text-[10px] tracking-widest uppercase flex-1">PlotRunner</span>
 
         <HelpButton compact />
 

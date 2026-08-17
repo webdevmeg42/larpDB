@@ -270,7 +270,7 @@ export function CharacterDetailClient({ character: characterProp, xpData, schema
           <h1 className="text-2xl font-semibold">{character.name}</h1>
           <div className="flex items-center gap-2 flex-wrap">
             {currentLevel !== undefined && (
-              <span className="text-sm font-medium flex items-center gap-1">
+              <span data-testid="character-level" className="text-sm font-medium flex items-center gap-1">
                 Level {currentLevel}
                 {!isPlayer && mode === 'view' && (
                   <>
@@ -296,7 +296,7 @@ export function CharacterDetailClient({ character: characterProp, xpData, schema
                 )}
               </span>
             )}
-            <span className="text-sm text-muted-foreground">
+            <span data-testid="xp-balance" className="text-sm text-muted-foreground">
               {xpBalance} XP available
               {xpSpent > 0 && <> · {xpSpent} spent</>}
               {xpToNextLevel !== null && (

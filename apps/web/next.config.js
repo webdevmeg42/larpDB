@@ -4,8 +4,10 @@ const path = require('path')
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
-  outputFileTracingRoot: path.join(__dirname, '../../'),
-  transpilePackages: ['@larpdb/shared'],
+  experimental: {
+    outputFileTracingRoot: path.join(__dirname, '../../'),
+  },
+  transpilePackages: ['@plotrunner/shared'],
   async headers() {
     return [
       {
@@ -36,7 +38,12 @@ module.exports = withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   silent: !process.env.CI,
+  disableSourceMapUpload: !!process.env.CI,
   widenClientFileUpload: true,
   hideSourceMaps: true,
-  disableLogger: true,
+  webpack: {
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
 })

@@ -29,7 +29,6 @@ function getAdventureColor(gameId: string): string {
   for (let i = 0; i < gameId.length; i++) hash = (hash * 31 + gameId.charCodeAt(i)) & 0xffffffff
   const idx = Math.abs(hash) % ADVENTURE_COLORS.length
   // idx is always a valid index since we mod by length
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return ADVENTURE_COLORS[idx]!
 }
 

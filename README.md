@@ -31,6 +31,11 @@ A management platform for live-action roleplay (LARP) groups. Handles characters
 - Schema versioning (create and activate new schema versions)
 - Posts and announcements with player likes and comments
 
+**Sys_admin**
+- View and delete any adventure across all games (`/adventures`)
+- View and delete any character across all games (`/characters`)
+- Promote any user to sys_admin
+
 **LARP Builder**
 - Public browse page (`/browse`) to discover games
 - Per-game landing page (`/larps/[slug]`) for public-facing game info
@@ -130,7 +135,7 @@ pnpm --filter @larpdb/api db:seed
 Any change to `packages/shared/src/` must be rebuilt before the API or web app picks it up:
 
 ```bash
-pnpm --filter @larpdb/shared build
+pnpm --filter @plotrunner/shared build
 ```
 
 Restart the API dev server after rebuilding.
@@ -194,9 +199,10 @@ apps/
       lib/              Shared utilities (roles, progression, character validation)
       plugins/          JWT auth, game context middleware
       routes/           One file per resource:
-                          auth, character, characterSchema, event,
-                          game, gameMember, npc, plot, post, profile,
-                          schemaTemplate, store, subscription, upload, user
+                          admin, auth, character, characterSchema, characterXp,
+                          event, game, gameMember, gamePublic, health,
+                          npc, plot, post, profile, schemaTemplate,
+                          store, subscription, upload, user
     drizzle/            Migration SQL files
     uploads/            Local file storage (dev only — swap for object storage in prod)
   web/                  Next.js frontend
@@ -208,11 +214,15 @@ apps/
                           site-config/  Identity, rulebook, codex, store, builds
                           users/        Member management
                           posts/        Post creation
+          adventures/   Adventure builder (create, edit, branding, schema, classes)
           characters/   Character list, detail, and creation
           events/       Event list and detail
           dashboard/
+          help/
+          npcs/
           profile/
           rulebook/
+          sys-admin/    Sys_admin-only tools
         browse/         Public game discovery
         larps/[slug]/   Public per-game landing page
         login/
