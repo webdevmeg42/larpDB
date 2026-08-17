@@ -6,10 +6,18 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   api:
     name: API — typecheck + test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -36,12 +44,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-
-      - run: corepack enable
 
       - run: pnpm install --frozen-lockfile
 
@@ -49,7 +57,7 @@ jobs:
         run: pnpm --filter @plotrunner/shared build
 
       - name: Type-check API
-        run: pnpm --filter @larpdb/api build
+        run: pnpm --filter @larpdb/api typecheck
 
       - name: Run API tests
         run: pnpm --filter @larpdb/api test
@@ -57,6 +65,7 @@ jobs:
   web:
     name: Web — typecheck + lint + build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     env:
       NEXT_TELEMETRY_DISABLED: 1
@@ -64,12 +73,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-
-      - run: corepack enable
 
       - run: pnpm install --frozen-lockfile
 

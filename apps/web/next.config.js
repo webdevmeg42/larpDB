@@ -7,7 +7,7 @@ const nextConfig = {
   experimental: {
     outputFileTracingRoot: path.join(__dirname, '../../'),
   },
-  transpilePackages: ['@larpdb/shared'],
+  transpilePackages: ['@plotrunner/shared'],
   async headers() {
     return [
       {
@@ -38,6 +38,7 @@ module.exports = withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   silent: !process.env.CI,
+  disableSourceMapUpload: !!process.env.CI,
   widenClientFileUpload: true,
   hideSourceMaps: true,
   webpack: {
