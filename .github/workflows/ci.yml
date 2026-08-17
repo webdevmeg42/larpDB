@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  api:
+    name: API — typecheck + test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: larpdb_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/larpdb_test
+      JWT_SECRET: ci-test-secret-at-least-16-chars
+      ALLOWED_ORIGIN: http://localhost:3000
+      NODE_ENV: test
+      STORAGE_PROVIDER: local
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: corepack enable
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @plotrunner/shared build
+
+      - name: Type-check API
+        run: pnpm --filter @larpdb/api build
+
+      - name: Run API tests
+        run: pnpm --filter @larpdb/api test
+
+  web:
+    name: Web — typecheck + lint + build
+    runs-on: ubuntu-latest
+
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: corepack enable
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @plotrunner/shared build
+
+      - name: Type-check web
+        run: pnpm --filter @larpdb/web typecheck
+
+      - name: Lint web
+        run: pnpm --filter @larpdb/web lint
+
+      - name: Build web
+        run: pnpm --filter @larpdb/web build
