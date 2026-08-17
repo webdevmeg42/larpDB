@@ -69,6 +69,8 @@ jobs:
 
     env:
       NEXT_TELEMETRY_DISABLED: 1
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      SENTRY_AUTH_TOKEN: ""
 
     steps:
       - uses: actions/checkout@v4
