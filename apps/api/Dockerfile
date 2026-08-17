@@ -21,9 +21,9 @@ COPY . .
 RUN pnpm --filter @plotrunner/shared build
 RUN pnpm --filter @larpdb/api build
 
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
-RUN npm install -g pnpm@9
+RUN npm install -g pnpm@11.5.2
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/pnpm-lock.yaml ./
