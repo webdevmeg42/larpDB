@@ -1,0 +1,3 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/${{RAILWAY_SERVICE_NAME}}/Dockerfile"
