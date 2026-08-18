@@ -1,3 +1,9 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "apps/${{RAILWAY_SERVICE_NAME}}/Dockerfile"
+dockerfilePath = "apps/api/Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
