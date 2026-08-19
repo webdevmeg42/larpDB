@@ -37,10 +37,9 @@ const nextConfig = {
 module.exports = withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
-  silent: !process.env.CI,
-  disableSourceMapUpload: !!process.env.CI,
   widenClientFileUpload: true,
   hideSourceMaps: true,
+  deleteSourceMapsAfterUpload: true,
   webpack: {
     treeshake: {
       removeDebugLogging: true,
