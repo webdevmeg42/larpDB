@@ -163,7 +163,7 @@ export const gamePublicRoutes: FastifyPluginAsync = async (fastify) => {
           itemId: storeItems.id,
           itemName: storeItems.name,
           itemDescription: storeItems.description,
-          itemPrice: storeItems.price,
+          itemPriceUsd: storeItems.priceUsd,
           itemIsAvailable: storeItems.isAvailable,
         })
         .from(events)
@@ -175,7 +175,7 @@ export const gamePublicRoutes: FastifyPluginAsync = async (fastify) => {
         id: string
         title: string
         startDate: string | null
-        items: { id: string; name: string; description: string | null; price: number; isAvailable: boolean }[]
+        items: { id: string; name: string; description: string | null; priceUsd: number; isAvailable: boolean }[]
       }>()
 
       for (const r of eventRows) {
@@ -191,7 +191,7 @@ export const gamePublicRoutes: FastifyPluginAsync = async (fastify) => {
           id: r.itemId,
           name: r.itemName,
           description: r.itemDescription ?? null,
-          price: r.itemPrice,
+          priceUsd: r.itemPriceUsd,
           isAvailable: r.itemIsAvailable,
         })
       }

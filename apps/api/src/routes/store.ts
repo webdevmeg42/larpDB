@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { eq, and, or, sql, inArray } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { db } from '../db/index.js'
-import { storeItems, purchases, siteConfig, eventRegistrations, characters, users, events } from '../db/schema.js'
+import { storeItems, purchases, eventRegistrations, characters, users, events } from '../db/schema.js'
 import { CreateStoreItemInput, UpdateStoreItemInput, CreatePurchaseInput } from '@plotrunner/shared'
 import { buildPatch } from '../lib/roles.js'
 import { parsePagination } from '../lib/pagination.js'
@@ -22,7 +22,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
           eventId: storeItems.eventId,
           name: storeItems.name,
           description: storeItems.description,
-          price: storeItems.price,
+          priceUsd: storeItems.priceUsd,
           quantityAvailable: storeItems.quantityAvailable,
           isAvailable: storeItems.isAvailable,
           createdAt: storeItems.createdAt,
@@ -49,22 +49,27 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Invalid input', details: result.error.flatten() })
       }
 
-      const [event] = await db.select().from(events).where(and(eq(events.id, result.data.eventId), eq(events.gameId, gameId))).limit(1)
-      if (!event) {
-        request.log.warn({ eventId: result.data.eventId, gameId }, "event not found")
-        return reply.status(404).send({ error: 'Event not found' })
+      if (result.data.eventId) {
+        const [event] = await db.select().from(events).where(and(eq(events.id, result.data.eventId), eq(events.gameId, gameId))).limit(1)
+        if (!event) {
+          request.log.warn({ eventId: result.data.eventId, gameId }, "event not found")
+          return reply.status(404).send({ error: 'Event not found' })
+        }
       }
 
       const [item] = await db.insert(storeItems).values({
-        eventId: result.data.eventId,
+        gameId,
+        eventId: result.data.eventId ?? null,
+        itemType: result.data.itemType,
         name: result.data.name,
         description: result.data.description ?? null,
-        price: result.data.price,
+        priceUsd: result.data.priceUsd,
+        xpAmount: result.data.xpAmount ?? null,
         quantityAvailable: result.data.quantityAvailable ?? null,
         isAvailable: result.data.isAvailable ?? true,
       }).returning()
 
-      request.log.info({ id: item!.id, name: item!.name, price: item!.price, gameId }, "store item created")
+      request.log.info({ id: item!.id, name: item!.name, priceUsd: item!.priceUsd, gameId }, "store item created")
       return reply.status(201).send(item)
     },
   )
@@ -203,8 +208,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
           userId: purchases.userId,
           characterId: purchases.characterId,
           quantity: purchases.quantity,
-          unitPrice: purchases.unitPrice,
-          currencyName: purchases.currencyName,
+          unitPriceUsd: purchases.unitPriceUsd,
           purchasedAt: purchases.purchasedAt,
           playerName: users.displayName,
           characterName: characters.name,
@@ -243,14 +247,14 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
       const [item] = await db
         .select({
           id: storeItems.id,
+          gameId: storeItems.gameId,
           eventId: storeItems.eventId,
           isAvailable: storeItems.isAvailable,
           quantityAvailable: storeItems.quantityAvailable,
-          price: storeItems.price,
+          priceUsd: storeItems.priceUsd,
         })
         .from(storeItems)
-        .innerJoin(events, and(eq(events.id, storeItems.eventId), eq(events.gameId, gameId)))
-        .where(eq(storeItems.id, storeItemId))
+        .where(and(eq(storeItems.id, storeItemId), eq(storeItems.gameId, gameId)))
         .limit(1)
       if (!item) {
         request.log.warn({ storeItemId, gameId }, "store item not found")
@@ -267,24 +271,31 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(404).send({ error: 'Character not found' })
       }
 
-      const [registration] = await db
-        .select()
-        .from(eventRegistrations)
-        .where(and(
-          eq(eventRegistrations.eventId, item.eventId),
-          eq(eventRegistrations.characterId, characterId),
-          or(
-            eq(eventRegistrations.status, 'pending'),
-            eq(eventRegistrations.status, 'confirmed'),
-          ),
-        ))
-        .limit(1)
+      if (item.eventId) {
+        const [registration] = await db
+          .select()
+          .from(eventRegistrations)
+          .where(and(
+            eq(eventRegistrations.eventId, item.eventId),
+            eq(eventRegistrations.characterId, characterId),
+            or(
+              eq(eventRegistrations.status, 'pending'),
+              eq(eventRegistrations.status, 'confirmed'),
+            ),
+          ))
+          .limit(1)
 
-      if (!registration) {
-        return reply.status(422).send({
-          error: 'Character must be registered for this event before purchasing amenities.',
-        })
+        if (!registration) {
+          return reply.status(422).send({
+            error: 'Character must be registered for this event before purchasing amenities.',
+          })
+        }
       }
+
+      if (!item.eventId) {
+        return reply.status(422).send({ error: 'This store item is not associated with an event and cannot be purchased here.' })
+      }
+      const itemEventId = item.eventId
 
       let purchase: typeof purchases.$inferSelect | undefined
       try {
@@ -303,17 +314,13 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
             }
           }
 
-          const [config] = await tx.select({ currencyName: siteConfig.currencyName }).from(siteConfig).where(eq(siteConfig.gameId, gameId)).limit(1)
-          const currencyName = config?.currencyName ?? 'monies'
-
           return tx.insert(purchases).values({
             storeItemId,
-            eventId: item.eventId,
+            eventId: itemEventId,
             userId: character.userId,
             characterId,
             quantity,
-            unitPrice: item.price,
-            currencyName,
+            unitPriceUsd: item.priceUsd,
           }).returning()
         })
       } catch (err: unknown) {

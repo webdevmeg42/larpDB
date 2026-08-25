@@ -1,5 +1,6 @@
 import {
   pgTable,
+  pgEnum,
   uuid,
   text,
   timestamp,
@@ -201,16 +202,22 @@ export const plots = pgTable('plots', {
   gameIdIdx: index('plots_game_id_idx').on(t.gameId),
 }))
 
+export const storeItemTypeEnum = pgEnum('store_item_type', ['ticket', 'xp', 'item', 'merchandise'])
+
 export const storeItems = pgTable('store_items', {
   id: uuid('id').primaryKey().defaultRandom(),
-  eventId: uuid('event_id').notNull().references(() => events.id),
+  gameId: uuid('game_id').notNull().references(() => game.id, { onDelete: 'cascade' }),
+  eventId: uuid('event_id').references(() => events.id, { onDelete: 'cascade' }),
+  itemType: storeItemTypeEnum('item_type').notNull(),
   name: text('name').notNull(),
   description: text('description'),
-  price: integer('price').notNull().default(0),
+  priceUsd: integer('price_usd').notNull(),
+  xpAmount: integer('xp_amount'),
   quantityAvailable: integer('quantity_available'),
   isAvailable: boolean('is_available').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
+  gameIdIdx: index('store_items_game_id_idx').on(t.gameId),
   eventIdIdx: index('store_items_event_id_idx').on(t.eventId),
 }))
 
@@ -221,8 +228,7 @@ export const purchases = pgTable('purchases', {
   userId: uuid('user_id').notNull().references(() => users.id),
   characterId: uuid('character_id').notNull().references(() => characters.id),
   quantity: integer('quantity').notNull().default(1),
-  unitPrice: integer('unit_price').notNull(),
-  currencyName: text('currency_name').notNull(),
+  unitPriceUsd: integer('unit_price_usd').notNull(),
   purchasedAt: timestamp('purchased_at').notNull().defaultNow(),
 }, (t) => ({
   eventIdIdx: index('purchases_event_id_idx').on(t.eventId),
