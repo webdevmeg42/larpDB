@@ -1,9 +1,14 @@
+import type { StoreItemType } from '../schemas/store.js'
+
 export interface StoreItem {
   id: string
-  eventId: string
+  gameId: string
+  eventId: string | null
+  itemType: StoreItemType
   name: string
   description: string | null
-  price: number
+  priceUsd: number   // stored in cents (e.g. 1500 = $15.00)
+  xpAmount: number | null
   quantityAvailable: number | null
   isAvailable: boolean
   createdAt: string
@@ -16,8 +21,7 @@ export interface Purchase {
   userId: string
   characterId: string
   quantity: number
-  unitPrice: number
-  currencyName: string
+  unitPriceUsd: number   // in cents
   purchasedAt: string
 }
 
