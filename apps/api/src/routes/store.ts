@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq, and, or, sql, inArray } from 'drizzle-orm'
+import { eq, and, or, sql } from 'drizzle-orm'
 import type { SQL } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import { storeItems, purchases, eventRegistrations, characters, users, events } from '../db/schema.js'
@@ -14,22 +14,27 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { gameId } = request.gameContext
       const { eventId } = request.query as { eventId?: string }
-      const baseConditions: SQL[] = [eq(events.gameId, gameId)]
-      if (eventId) baseConditions.push(eq(storeItems.eventId, eventId))
+
+      const conditions: SQL[] = [eq(storeItems.gameId, gameId)]
+      if (eventId) conditions.push(eq(storeItems.eventId, eventId))
+
       const rows = await db
         .select({
           id: storeItems.id,
+          gameId: storeItems.gameId,
           eventId: storeItems.eventId,
+          itemType: storeItems.itemType,
           name: storeItems.name,
           description: storeItems.description,
           priceUsd: storeItems.priceUsd,
+          xpAmount: storeItems.xpAmount,
           quantityAvailable: storeItems.quantityAvailable,
           isAvailable: storeItems.isAvailable,
           createdAt: storeItems.createdAt,
         })
         .from(storeItems)
-        .innerJoin(events, eq(storeItems.eventId, events.id))
-        .where(and(...baseConditions))
+        .where(and(...conditions))
+
       return reply.send(rows)
     },
   )
@@ -86,10 +91,9 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
 
       const { id } = request.params as { id: string }
       const [existing] = await db
-        .select({ id: storeItems.id, eventId: storeItems.eventId })
+        .select({ id: storeItems.id })
         .from(storeItems)
-        .innerJoin(events, and(eq(events.id, storeItems.eventId), eq(events.gameId, gameId)))
-        .where(eq(storeItems.id, id))
+        .where(and(eq(storeItems.id, id), eq(storeItems.gameId, gameId)))
         .limit(1)
       if (!existing) {
         request.log.warn({ id, gameId }, "store item not found")
@@ -103,10 +107,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
 
       const [updated] = await db.update(storeItems)
         .set(buildPatch(result.data) as Parameters<ReturnType<typeof db.update<typeof storeItems>>['set']>[0])
-        .where(and(
-          eq(storeItems.id, id),
-          inArray(storeItems.eventId, db.select({ id: events.id }).from(events).where(eq(events.gameId, gameId))),
-        ))
+        .where(and(eq(storeItems.id, id), eq(storeItems.gameId, gameId)))
         .returning()
       request.log.info({ id, gameId }, "store item updated")
       return reply.send(updated)
@@ -127,8 +128,7 @@ export const storeRoutes: FastifyPluginAsync = async (fastify) => {
       const [existing] = await db
         .select({ id: storeItems.id })
         .from(storeItems)
-        .innerJoin(events, and(eq(events.id, storeItems.eventId), eq(events.gameId, gameId)))
-        .where(eq(storeItems.id, id))
+        .where(and(eq(storeItems.id, id), eq(storeItems.gameId, gameId)))
         .limit(1)
       if (!existing) {
         request.log.warn({ id, gameId }, "store item not found")
