@@ -93,8 +93,9 @@ describe('POST /store/items', () => {
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
       payload: {
         eventId: event.id,
+        itemType: 'merchandise',
         name: 'Luxury Tent',
-        price: 500,
+        priceUsd: 500,
         quantityAvailable: 10,
       },
     })
@@ -102,9 +103,91 @@ describe('POST /store/items', () => {
     expect(res.statusCode).toBe(201)
     const body = res.json()
     expect(body.name).toBe('Luxury Tent')
-    expect(body.price).toBe(500)
+    expect(body.priceUsd).toBe(500)
     expect(body.quantityAvailable).toBe(10)
     expect(body.isAvailable).toBe(true)
+    await app.close()
+  })
+
+  it('owner can create a game-wide item with no eventId', async () => {
+    const { app, ownerToken, gameId } = await setupForStore()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/store/items',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: {
+        itemType: 'merchandise',
+        name: 'Game T-Shirt',
+        priceUsd: 2000,
+      },
+    })
+
+    expect(res.statusCode).toBe(201)
+    const body = res.json()
+    expect(body.name).toBe('Game T-Shirt')
+    expect(body.eventId).toBeNull()
+    expect(body.gameId).toBe(gameId)
+    await app.close()
+  })
+
+  it('owner can create an XP item with xpAmount', async () => {
+    const { app, ownerToken, event, gameId } = await setupForStore()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/store/items',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: {
+        eventId: event.id,
+        itemType: 'xp',
+        name: 'Bonus XP Pack',
+        priceUsd: 1000,
+        xpAmount: 100,
+      },
+    })
+
+    expect(res.statusCode).toBe(201)
+    const body = res.json()
+    expect(body.xpAmount).toBe(100)
+    expect(body.itemType).toBe('xp')
+    await app.close()
+  })
+
+  it('returns 400 when XP item is missing xpAmount', async () => {
+    const { app, ownerToken, event, gameId } = await setupForStore()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/store/items',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: {
+        eventId: event.id,
+        itemType: 'xp',
+        name: 'Broken XP Item',
+        priceUsd: 500,
+      },
+    })
+
+    expect(res.statusCode).toBe(400)
+    await app.close()
+  })
+
+  it('returns 400 when ticket item is missing eventId', async () => {
+    const { app, ownerToken, gameId } = await setupForStore()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/store/items',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: {
+        itemType: 'ticket',
+        name: 'Weekend Ticket',
+        priceUsd: 5000,
+      },
+    })
+
+    expect(res.statusCode).toBe(400)
     await app.close()
   })
 
@@ -115,7 +198,7 @@ describe('POST /store/items', () => {
       method: 'POST',
       url: '/store/items',
       headers: { authorization: `Bearer ${playerToken}`, 'x-game-id': gameId },
-      payload: { eventId: event.id, name: 'Hack', price: 0 },
+      payload: { eventId: event.id, itemType: 'merchandise', name: 'Hack', priceUsd: 0 },
     })
 
     expect(res.statusCode).toBe(403)
@@ -131,7 +214,7 @@ describe('GET /store/items', () => {
       method: 'POST',
       url: '/store/items',
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { eventId: event.id, name: 'Potion', price: 100 },
+      payload: { eventId: event.id, itemType: 'merchandise', name: 'Potion', priceUsd: 100 },
     })
 
     const res = await app.inject({
@@ -158,14 +241,23 @@ describe('GET /store/items', () => {
     await app.close()
   })
 
-  it('filters by eventId', async () => {
+  it('filters by eventId and excludes items from other events', async () => {
     const { app, ownerToken, event, gameId } = await setupForStore()
 
+    // Event-specific item
     await app.inject({
       method: 'POST',
       url: '/store/items',
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { eventId: event.id, name: 'Potion', price: 100 },
+      payload: { eventId: event.id, itemType: 'merchandise', name: 'Potion', priceUsd: 100 },
+    })
+
+    // Game-wide item (no eventId)
+    await app.inject({
+      method: 'POST',
+      url: '/store/items',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { itemType: 'merchandise', name: 'Game T-Shirt', priceUsd: 2000 },
     })
 
     const res = await app.inject({
@@ -175,20 +267,52 @@ describe('GET /store/items', () => {
     })
 
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toHaveLength(1)
+    const items = res.json() as Array<Record<string, unknown>>
+    expect(items).toHaveLength(1)
+    expect(items[0]!.name).toBe('Potion')
+    await app.close()
+  })
+
+  it('GET without filter returns both event-specific and game-wide items', async () => {
+    const { app, ownerToken, event, gameId } = await setupForStore()
+
+    // Event-specific item
+    await app.inject({
+      method: 'POST',
+      url: '/store/items',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { eventId: event.id, itemType: 'merchandise', name: 'Potion', priceUsd: 100 },
+    })
+
+    // Game-wide item (no eventId)
+    await app.inject({
+      method: 'POST',
+      url: '/store/items',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+      payload: { itemType: 'merchandise', name: 'Game T-Shirt', priceUsd: 2000 },
+    })
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/store/items',
+      headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toHaveLength(2)
     await app.close()
   })
 })
 
 describe('PATCH /store/items/:id', () => {
-  it('owner can update price and availability', async () => {
+  it('owner can update priceUsd and availability', async () => {
     const { app, ownerToken, event, gameId } = await setupForStore()
 
     const createRes = await app.inject({
       method: 'POST',
       url: '/store/items',
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { eventId: event.id, name: 'Tent', price: 500 },
+      payload: { eventId: event.id, itemType: 'merchandise', name: 'Tent', priceUsd: 500 },
     })
     const item = createRes.json()
 
@@ -196,11 +320,11 @@ describe('PATCH /store/items/:id', () => {
       method: 'PATCH',
       url: `/store/items/${item.id}`,
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { price: 600, isAvailable: false },
+      payload: { priceUsd: 600, isAvailable: false },
     })
 
     expect(res.statusCode).toBe(200)
-    expect(res.json().price).toBe(600)
+    expect(res.json().priceUsd).toBe(600)
     expect(res.json().isAvailable).toBe(false)
     await app.close()
   })
@@ -214,7 +338,7 @@ describe('DELETE /store/items/:id', () => {
       method: 'POST',
       url: '/store/items',
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { eventId: event.id, name: 'Tent', price: 500 },
+      payload: { eventId: event.id, itemType: 'merchandise', name: 'Tent', priceUsd: 500 },
     })
     const item = createRes.json()
 
@@ -235,7 +359,7 @@ describe('DELETE /store/items/:id', () => {
       method: 'POST',
       url: '/store/items',
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { eventId: event.id, name: 'Tent', price: 500 },
+      payload: { eventId: event.id, itemType: 'merchandise', name: 'Tent', priceUsd: 500 },
     })
     const item = createRes.json()
 
@@ -267,7 +391,7 @@ describe('POST /store/purchases', () => {
       method: 'POST',
       url: '/store/items',
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { eventId: event.id, name: 'Tent', price: 500 },
+      payload: { eventId: event.id, itemType: 'merchandise', name: 'Tent', priceUsd: 500 },
     })
     const item = itemRes.json()
 
@@ -282,9 +406,8 @@ describe('POST /store/purchases', () => {
     const body = res.json()
     expect(body.storeItemId).toBe(item.id)
     expect(body.characterId).toBe(character.id)
-    expect(body.unitPrice).toBe(500)
+    expect(body.unitPriceUsd).toBe(500)
     expect(body.quantity).toBe(1)
-    expect(body.currencyName).toBe('monies')
     await app.close()
   })
 
@@ -320,7 +443,7 @@ describe('POST /store/purchases', () => {
       method: 'POST',
       url: '/store/items',
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { eventId: event.id, name: 'Tent', price: 500 },
+      payload: { eventId: event.id, itemType: 'merchandise', name: 'Tent', priceUsd: 500 },
     })
     const item = itemRes.json()
 
@@ -342,7 +465,7 @@ describe('POST /store/purchases', () => {
       method: 'POST',
       url: '/store/items',
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { eventId: event.id, name: 'Limited Tent', price: 500, quantityAvailable: 1 },
+      payload: { eventId: event.id, itemType: 'merchandise', name: 'Limited Tent', priceUsd: 500, quantityAvailable: 1 },
     })
     const item = itemRes.json()
 
@@ -373,7 +496,7 @@ describe('POST /store/purchases', () => {
       method: 'POST',
       url: '/store/items',
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { eventId: event.id, name: 'Tent', price: 500, isAvailable: false },
+      payload: { eventId: event.id, itemType: 'merchandise', name: 'Tent', priceUsd: 500, isAvailable: false },
     })
     const item = itemRes.json()
 
@@ -411,7 +534,7 @@ describe('GET /store/purchases', () => {
       method: 'POST',
       url: '/store/items',
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { eventId: event.id, name: 'Tent', price: 500 },
+      payload: { eventId: event.id, itemType: 'merchandise', name: 'Tent', priceUsd: 500 },
     })
     const item = itemRes.json()
 
@@ -436,6 +559,7 @@ describe('GET /store/purchases', () => {
     expect(body.items[0]!.characterName).toBe('Elara')
     expect(body.items[0]!.eventTitle).toBe('Test Event')
     expect(body.items[0]!.itemName).toBe('Tent')
+    expect(body.items[0]!.unitPriceUsd).toBe(500)
     await app.close()
   })
 
@@ -446,7 +570,7 @@ describe('GET /store/purchases', () => {
       method: 'POST',
       url: '/store/items',
       headers: { authorization: `Bearer ${ownerToken}`, 'x-game-id': gameId },
-      payload: { eventId: event.id, name: 'Tent', price: 500 },
+      payload: { eventId: event.id, itemType: 'merchandise', name: 'Tent', priceUsd: 500 },
     })
     const item = itemRes.json()
 
