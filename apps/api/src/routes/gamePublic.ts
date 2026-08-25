@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, isNull } from 'drizzle-orm'
 import { db } from '../db/index.js'
 import {
   game,
@@ -147,9 +147,8 @@ export const gamePublicRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { slug } = request.params
       const [gameRow] = await db
-        .select({ id: game.id, currencyName: siteConfig.currencyName })
+        .select({ id: game.id })
         .from(game)
-        .leftJoin(siteConfig, eq(siteConfig.gameId, game.id))
         .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
         .limit(1)
 
@@ -163,19 +162,44 @@ export const gamePublicRoutes: FastifyPluginAsync = async (fastify) => {
           itemId: storeItems.id,
           itemName: storeItems.name,
           itemDescription: storeItems.description,
+          itemType: storeItems.itemType,
           itemPriceUsd: storeItems.priceUsd,
+          itemXpAmount: storeItems.xpAmount,
           itemIsAvailable: storeItems.isAvailable,
+          itemQuantityAvailable: storeItems.quantityAvailable,
         })
         .from(events)
         .innerJoin(storeItems, eq(storeItems.eventId, events.id))
-        .where(and(eq(events.gameId, gameRow.id), eq(events.status, 'published')))
+        .where(and(
+          eq(events.gameId, gameRow.id),
+          eq(events.status, 'published'),
+          eq(storeItems.isAvailable, true),
+        ))
         .orderBy(events.startAt)
+
+      const gameWideItems = await db
+        .select({
+          id: storeItems.id,
+          name: storeItems.name,
+          description: storeItems.description,
+          itemType: storeItems.itemType,
+          priceUsd: storeItems.priceUsd,
+          xpAmount: storeItems.xpAmount,
+          isAvailable: storeItems.isAvailable,
+          quantityAvailable: storeItems.quantityAvailable,
+        })
+        .from(storeItems)
+        .where(and(
+          eq(storeItems.gameId, gameRow.id),
+          isNull(storeItems.eventId),
+          eq(storeItems.isAvailable, true),
+        ))
 
       const eventMap = new Map<string, {
         id: string
         title: string
         startDate: string | null
-        items: { id: string; name: string; description: string | null; priceUsd: number; isAvailable: boolean }[]
+        items: { id: string; name: string; description: string | null; itemType: string | null; priceUsd: number; xpAmount: number | null; isAvailable: boolean; quantityAvailable: number | null }[]
       }>()
 
       for (const r of eventRows) {
@@ -191,14 +215,17 @@ export const gamePublicRoutes: FastifyPluginAsync = async (fastify) => {
           id: r.itemId,
           name: r.itemName,
           description: r.itemDescription ?? null,
+          itemType: r.itemType,
           priceUsd: r.itemPriceUsd,
+          xpAmount: r.itemXpAmount,
           isAvailable: r.itemIsAvailable,
+          quantityAvailable: r.itemQuantityAvailable,
         })
       }
 
       return reply.send({
-        currencyName: gameRow.currencyName ?? 'monies',
         events: [...eventMap.values()].filter(e => e.items.length > 0),
+        gameWideItems,
       })
     },
   )
