@@ -3,11 +3,15 @@ export interface ApiError extends Error {
   data: unknown
 }
 
+export interface RequestOptions {
+  headers?: Record<string, string>
+}
+
 export function createApiClient(
   baseUrl: string,
   getGameId?: () => string | null,
 ) {
-  async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  async function request<T>(method: string, path: string, body?: unknown, options?: RequestOptions): Promise<T> {
     const gameId = getGameId?.()
 
     let res: Response
@@ -18,6 +22,7 @@ export function createApiClient(
         headers: {
           ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
           ...(gameId ? { 'X-Game-Id': gameId } : {}),
+          ...options?.headers,
         },
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
       })
@@ -43,10 +48,10 @@ export function createApiClient(
   }
 
   return {
-    get: <T>(path: string) => request<T>('GET', path),
-    post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
-    patch: <T>(path: string, body: unknown) => request<T>('PATCH', path, body),
-    delete: <T>(path: string) => request<T>('DELETE', path),
+    get: <T>(path: string, options?: RequestOptions) => request<T>('GET', path, undefined, options),
+    post: <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>('POST', path, body, options),
+    patch: <T>(path: string, body: unknown, options?: RequestOptions) => request<T>('PATCH', path, body, options),
+    delete: <T>(path: string, options?: RequestOptions) => request<T>('DELETE', path, undefined, options),
   }
 }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -11,18 +11,21 @@ interface PaymentsTabProps {
   onStripeConnectedChange?: (connected: boolean) => void
 }
 
-export default function PaymentsTab({ gameId: _gameId, onStripeConnectedChange }: PaymentsTabProps) {
+export default function PaymentsTab({ gameId, onStripeConnectedChange }: PaymentsTabProps) {
   const [status, setStatus] = useState<StripeStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [disconnecting, setDisconnecting] = useState(false)
   const [connectLoading, setConnectLoading] = useState(false)
+  const isCheckingConnectionRef = useRef(false)
 
-  async function fetchStatus() {
+  const fetchStatus = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const data = await api.get<StripeStatus>('/stripe/status')
+      const data = await api.get<StripeStatus>('/stripe/status', {
+        headers: { 'x-game-id': gameId },
+      })
       setStatus(data)
       onStripeConnectedChange?.(data.stripeOnboardingComplete)
     } catch (err: unknown) {
@@ -30,12 +33,14 @@ export default function PaymentsTab({ gameId: _gameId, onStripeConnectedChange }
     } finally {
       setLoading(false)
     }
-  }
+  }, [gameId, onStripeConnectedChange])
 
   async function handleConnect() {
     setConnectLoading(true)
     try {
-      const result = await api.post<{ url: string }>('/stripe/connect')
+      const result = await api.post<{ url: string }>('/stripe/connect', undefined, {
+        headers: { 'x-game-id': gameId },
+      })
       window.location.href = result.url
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Failed to start Stripe Connect'))
@@ -47,7 +52,9 @@ export default function PaymentsTab({ gameId: _gameId, onStripeConnectedChange }
     if (!confirm('Disconnect your Stripe account? Your store will stop accepting payments.')) return
     setDisconnecting(true)
     try {
-      await api.delete('/stripe/disconnect')
+      await api.delete('/stripe/disconnect', {
+        headers: { 'x-game-id': gameId },
+      })
       setStatus({ stripeAccountId: null, stripeOnboardingComplete: false })
       onStripeConnectedChange?.(false)
     } catch (err: unknown) {
@@ -59,6 +66,7 @@ export default function PaymentsTab({ gameId: _gameId, onStripeConnectedChange }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    isCheckingConnectionRef.current = params.get('connected') === 'true'
 
     if (params.get('refresh') === 'true') {
       // Immediately trigger a new connect flow
@@ -66,22 +74,13 @@ export default function PaymentsTab({ gameId: _gameId, onStripeConnectedChange }
       return
     }
 
-    if (params.get('connected') === 'true') {
-      // Re-fetch to confirm the connection
-      void fetchStatus()
-      return
-    }
-
     void fetchStatus()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [fetchStatus])
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
-        {new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('connected') === 'true'
-          ? 'Checking connection…'
-          : 'Loading…'}
+        {isCheckingConnectionRef.current ? 'Checking connection…' : 'Loading…'}
       </div>
     )
   }
@@ -100,15 +99,11 @@ export default function PaymentsTab({ gameId: _gameId, onStripeConnectedChange }
       <div data-testid="payments-connected" className="space-y-4">
         <p className="text-sm text-muted-foreground">Your store is ready to accept payments.</p>
         <div className="flex gap-3">
-          <a
-            data-testid="stripe-dashboard-link"
-            href="https://dashboard.stripe.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
-          >
-            View Stripe dashboard
-          </a>
+          <Button asChild variant="outline" data-testid="stripe-dashboard-link">
+            <a href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer">
+              View Stripe dashboard
+            </a>
+          </Button>
           <Button
             data-testid="stripe-disconnect-btn"
             variant="destructive"
