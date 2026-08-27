@@ -1,28 +1,27 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { buildApp } from '../../app.js'
 import { env } from '../../env.js'
 
-// vi.mock calls are hoisted — factories must be self-contained (no module-scope helpers)
+// IMPORTANT: singleFork: true in vitest.config.ts means vi.mock() calls persist across
+// all test files. We must NOT mock env.js — instead, mutate the real shared env object
+// directly and restore it in afterEach.
+const mutableEnv = env as Record<string, unknown>
+let savedStripeKey: unknown
+let savedWebhookSecret: unknown
 
-vi.mock('../../env.js', () => ({
-  // Mutable object — individual tests set/clear stripe keys per-scenario via the
-  // `mockEnv` alias below. Default has no stripe keys so test 3 (503) passes out of the box.
-  env: {
-    NODE_ENV: 'test',
-    ALLOWED_ORIGIN: 'http://localhost:3000',
-    JWT_SECRET: 'test-jwt-secret-minimum-16-chars',
-    STORAGE_PROVIDER: 'local',
-    PORT: 3001,
-    HOST: '0.0.0.0',
-    SENTRY_DSN: undefined,
-    STRIPE_SECRET_KEY: undefined,
-    STRIPE_WEBHOOK_SECRET: undefined,
-    STRIPE_RETURN_URL: undefined,
-  },
-}))
+beforeEach(() => {
+  savedStripeKey = mutableEnv.STRIPE_SECRET_KEY
+  savedWebhookSecret = mutableEnv.STRIPE_WEBHOOK_SECRET
+  mutableEnv.STRIPE_SECRET_KEY = undefined
+  mutableEnv.STRIPE_WEBHOOK_SECRET = undefined
+})
+
+afterEach(() => {
+  mutableEnv.STRIPE_SECRET_KEY = savedStripeKey
+  mutableEnv.STRIPE_WEBHOOK_SECRET = savedWebhookSecret
+})
 
 vi.mock('../../db/index.js', () => {
-  // Build a chainable mock inline (no helper — vi.mock is hoisted and helpers cause TDZ errors)
   const makeSelectChain = (resolveValue: unknown) => {
     const chain = {
       from: vi.fn(),
@@ -68,15 +67,6 @@ vi.mock('stripe', () => ({
   })),
 }))
 
-// Cast to a mutable record so tests can set stripe keys without TypeScript complaining
-const mockEnv = env as Record<string, unknown>
-
-beforeEach(() => {
-  // Reset stripe env vars before each test so tests don't bleed into each other
-  mockEnv.STRIPE_SECRET_KEY = undefined
-  mockEnv.STRIPE_WEBHOOK_SECRET = undefined
-})
-
 describe('Stripe routes', () => {
   it('GET /stripe/status returns 401 without auth', async () => {
     const app = buildApp()
@@ -89,9 +79,8 @@ describe('Stripe routes', () => {
   })
 
   it('POST /stripe/webhook returns 400 when stripe-signature header is missing', async () => {
-    // Set stripe keys on the mocked env object so the route passes the 503 guard
-    mockEnv.STRIPE_SECRET_KEY = 'sk_test_fake'
-    mockEnv.STRIPE_WEBHOOK_SECRET = 'whsec_fake'
+    mutableEnv.STRIPE_SECRET_KEY = 'sk_test_fake'
+    mutableEnv.STRIPE_WEBHOOK_SECRET = 'whsec_fake'
     const app = buildApp()
     const res = await app.inject({
       method: 'POST',
@@ -105,7 +94,6 @@ describe('Stripe routes', () => {
   })
 
   it('POST /stripe/webhook returns 503 when Stripe is not configured', async () => {
-    // env.STRIPE_WEBHOOK_SECRET is undefined by default (see beforeEach) — route returns 503
     const app = buildApp()
     const res = await app.inject({
       method: 'POST',
