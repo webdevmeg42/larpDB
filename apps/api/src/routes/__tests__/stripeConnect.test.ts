@@ -1,27 +1,37 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { buildApp } from '../../app.js'
 
-// Mock DB with chainable query builder
-const mockDbUpdate = vi.fn()
-const mockDbSelect = vi.fn()
-
-const makeChain = (resolveValue: unknown) => {
-  const chain: Record<string, unknown> = {}
-  const methods = ['select', 'from', 'where', 'limit', 'update', 'set', 'innerJoin', 'returning']
-  methods.forEach((m) => { chain[m] = vi.fn().mockReturnValue(chain) })
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ;(chain as any).limit = vi.fn().mockResolvedValue(resolveValue)
-  ;(chain as any).returning = vi.fn().mockResolvedValue(resolveValue)
-  return chain
-}
+// vi.mock calls are hoisted — factories must be self-contained (no module-scope helpers)
 
 vi.mock('../../db/index.js', () => {
-  const selectChain = makeChain([{ id: 'game-uuid-123', stripeAccountId: null, stripeOnboardingComplete: false }])
-  const updateChain = makeChain([{ stripeAccountId: 'acct_test123' }])
+  const makeSelectChain = (resolveValue: unknown) => {
+    const chain = {
+      from: vi.fn(),
+      where: vi.fn(),
+      limit: vi.fn().mockResolvedValue(resolveValue),
+      innerJoin: vi.fn(),
+    }
+    chain.from.mockReturnValue(chain)
+    chain.where.mockReturnValue(chain)
+    chain.innerJoin.mockReturnValue(chain)
+    return chain
+  }
+
+  const makeUpdateChain = (resolveValue: unknown) => {
+    const chain = {
+      set: vi.fn(),
+      where: vi.fn(),
+      returning: vi.fn().mockResolvedValue(resolveValue),
+    }
+    chain.set.mockReturnValue(chain)
+    chain.where.mockReturnValue(chain)
+    return chain
+  }
+
   return {
     db: {
-      select: vi.fn().mockReturnValue(selectChain),
-      update: vi.fn().mockReturnValue(updateChain),
+      select: vi.fn(() => makeSelectChain([{ id: 'game-uuid-123', stripeAccountId: null, stripeOnboardingComplete: false }])),
+      update: vi.fn(() => makeUpdateChain([{ stripeAccountId: 'acct_test123' }])),
     },
   }
 })
@@ -38,6 +48,11 @@ vi.mock('stripe', () => ({
     },
   })),
 }))
+
+afterEach(() => {
+  delete process.env.STRIPE_SECRET_KEY
+  delete process.env.STRIPE_WEBHOOK_SECRET
+})
 
 describe('Stripe routes', () => {
   it('GET /stripe/status returns 401 without auth', async () => {
@@ -63,8 +78,6 @@ describe('Stripe routes', () => {
     expect(res.statusCode).toBe(400)
     const body = res.json<{ error: string }>()
     expect(body.error).toMatch(/stripe-signature/i)
-    delete process.env.STRIPE_SECRET_KEY
-    delete process.env.STRIPE_WEBHOOK_SECRET
   })
 
   it('POST /stripe/webhook returns 503 when Stripe is not configured', async () => {
