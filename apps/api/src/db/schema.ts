@@ -35,6 +35,8 @@ export const game = pgTable('game', {
   joinMode: text('join_mode', { enum: ['open', 'approval'] }).notNull().default('open'),
   status: text('status', { enum: ['active', 'inactive'] }).notNull().default('inactive'),
   isBlocked: boolean('is_blocked').notNull().default(false),
+  stripeAccountId: text('stripe_account_id'),
+  stripeOnboardingComplete: boolean('stripe_onboarding_complete').notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (t) => ({
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment

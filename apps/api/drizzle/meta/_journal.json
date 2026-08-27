@@ -169,6 +169,13 @@
       "when": 1787675691716,
       "tag": "0023_soft_starfox",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1787849207269,
+      "tag": "0024_stiff_stone_men",
+      "breakpoints": true
     }
   ]
 }
