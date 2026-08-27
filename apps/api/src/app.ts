@@ -29,6 +29,7 @@ import { subscriptionRoutes } from './routes/subscription.js'
 import { postRoutes } from './routes/post.js'
 import { profileRoutes } from './routes/profile.js'
 import { adminRoutes } from './routes/admin.js'
+import { stripeConnectRoutes } from './routes/stripeConnect.js'
 import { seedBuiltinTemplates } from './db/seeds/templates.js'
 import { db } from './db/index.js'
 import { requestLogs } from './db/schema.js'
@@ -100,6 +101,7 @@ export function buildApp() {
   app.register(postRoutes)
   app.register(profileRoutes)
   app.register(adminRoutes)
+  app.register(stripeConnectRoutes)
 
   app.addHook('onSend', async (request, reply, payload) => {
     try {
