@@ -17,6 +17,8 @@ import { ChevronDown, ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react'
 interface Props {
   config: SiteConfig | null
   reload: () => void
+  stripeConnected: boolean
+  onTabChange: (tab: string) => void
 }
 
 function formatUsd(cents: number) {
@@ -30,8 +32,19 @@ const ITEM_TYPE_LABELS: Record<StoreItemType, string> = {
   merchandise: '👕 Merchandise',
 }
 
-export default function StoreTab({ config: _config, reload: _reload }: Props) {
+export default function StoreTab({ config: _config, reload: _reload, stripeConnected, onTabChange }: Props) {
   const { toast } = useToast()
+
+  if (!stripeConnected) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+        <p className="text-muted-foreground text-lg">🔒 Connect Stripe to unlock your store</p>
+        <Button variant="outline" onClick={() => onTabChange('payments')}>
+          Go to Payments →
+        </Button>
+      </div>
+    )
+  }
 
   const [events, setEvents] = useState<AdventureEvent[]>([])
   const [items, setItems] = useState<StoreItem[]>([])
@@ -149,7 +162,7 @@ function ItemsSection({ events, items, onRefresh }: ItemsSectionProps) {
           </td>
         </tr>
       ) : (
-        <tr key={item.id} className="border-t">
+        <tr key={item.id} className="border-t" data-testid="store-item-row">
           <td className="p-3 font-medium">{item.name}</td>
           <td className="p-3">
             <Badge variant="secondary" className="text-xs">
@@ -163,6 +176,7 @@ function ItemsSection({ events, items, onRefresh }: ItemsSectionProps) {
           <td className="p-3">
             <button
               type="button"
+              data-testid="store-item-availability-badge"
               onClick={() => void handleToggleAvailable(item)}
               className="cursor-pointer"
             >
@@ -174,10 +188,10 @@ function ItemsSection({ events, items, onRefresh }: ItemsSectionProps) {
           </td>
           <td className="p-3">
             <div className="flex gap-2 justify-end">
-              <Button size="sm" variant="outline" aria-label="Edit item" onClick={() => setEditingId(item.id)}>
+              <Button size="sm" variant="outline" aria-label="Edit item" data-testid="store-item-edit-btn" onClick={() => setEditingId(item.id)}>
                 <Pencil className="h-3 w-3" />
               </Button>
-              <Button size="sm" variant="destructive" aria-label="Delete item" onClick={() => void handleDelete(item.id)}>
+              <Button size="sm" variant="destructive" aria-label="Delete item" data-testid="store-item-delete-btn" onClick={() => void handleDelete(item.id)}>
                 <Trash2 className="h-3 w-3" />
               </Button>
             </div>
@@ -212,7 +226,11 @@ function ItemsSection({ events, items, onRefresh }: ItemsSectionProps) {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button onClick={() => setShowAddForm(v => !v)} variant={showAddForm ? 'outline' : 'default'}>
+        <Button
+          data-testid="add-store-item-btn"
+          onClick={() => setShowAddForm(v => !v)}
+          variant={showAddForm ? 'outline' : 'default'}
+        >
           <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
           {showAddForm ? 'Cancel' : 'Add item'}
         </Button>
@@ -231,10 +249,11 @@ function ItemsSection({ events, items, onRefresh }: ItemsSectionProps) {
       )}
 
       {gameWideItems.length > 0 && (
-        <Card>
+        <Card data-testid="store-group-game-wide">
           <CardHeader className="p-4 pb-2">
             <button
               type="button"
+              data-testid="store-group-game-wide-toggle"
               onClick={() => toggleExpanded('__game_wide__')}
               className="flex items-center gap-2 text-left w-full"
             >
@@ -255,6 +274,7 @@ function ItemsSection({ events, items, onRefresh }: ItemsSectionProps) {
           <CardHeader className="p-4 pb-2">
             <button
               type="button"
+              data-testid={`store-group-event-${event.id}-toggle`}
               onClick={() => toggleExpanded(event.id)}
               className="flex items-center gap-2 text-left w-full"
             >
@@ -362,6 +382,7 @@ function ItemForm({ events, item, onSave, onCancel }: ItemFormProps) {
                 <button
                   key={t}
                   type="button"
+                  data-testid={`store-item-type-${t}`}
                   onClick={() => setItemType(t)}
                   className={`px-3 py-1 rounded text-sm border transition-colors ${
                     itemType === t
@@ -382,6 +403,7 @@ function ItemForm({ events, item, onSave, onCancel }: ItemFormProps) {
               <div className="flex gap-2">
                 <button
                   type="button"
+                  data-testid="store-scope-event"
                   onClick={() => setScope('event')}
                   className={`px-3 py-1 rounded text-sm border transition-colors ${
                     scope === 'event'
@@ -393,6 +415,7 @@ function ItemForm({ events, item, onSave, onCancel }: ItemFormProps) {
                 </button>
                 <button
                   type="button"
+                  data-testid="store-scope-game-wide"
                   onClick={() => setScope('game')}
                   className={`px-3 py-1 rounded text-sm border transition-colors ${
                     scope === 'game'
@@ -411,6 +434,7 @@ function ItemForm({ events, item, onSave, onCancel }: ItemFormProps) {
             <div className="space-y-1">
               <Label>Event</Label>
               <select
+                data-testid="store-event-select"
                 value={form.eventId}
                 onChange={e => setForm(f => ({ ...f, eventId: e.target.value }))}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -428,7 +452,7 @@ function ItemForm({ events, item, onSave, onCancel }: ItemFormProps) {
 
       <div className="space-y-1">
         <Label>Name</Label>
-        <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+        <Input data-testid="store-item-name-input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
       </div>
 
       <div className="space-y-1">
@@ -442,6 +466,7 @@ function ItemForm({ events, item, onSave, onCancel }: ItemFormProps) {
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
             <Input
+              data-testid="store-item-price-input"
               type="number"
               min={0}
               step="0.01"
@@ -455,6 +480,7 @@ function ItemForm({ events, item, onSave, onCancel }: ItemFormProps) {
         <div className="space-y-1">
           <Label>Quantity (blank = unlimited)</Label>
           <Input
+            data-testid="store-item-qty-input"
             type="number"
             min={1}
             value={form.quantityAvailable}
@@ -468,6 +494,7 @@ function ItemForm({ events, item, onSave, onCancel }: ItemFormProps) {
         <div className="space-y-1">
           <Label>XP amount <span className="text-destructive">*</span></Label>
           <Input
+            data-testid="store-item-xp-input"
             type="number"
             min={1}
             value={form.xpAmount}
@@ -482,6 +509,7 @@ function ItemForm({ events, item, onSave, onCancel }: ItemFormProps) {
         <input
           type="checkbox"
           id="isAvailable"
+          data-testid="store-item-available-checkbox"
           checked={form.isAvailable}
           onChange={e => setForm(f => ({ ...f, isAvailable: e.target.checked }))}
         />
@@ -490,7 +518,7 @@ function ItemForm({ events, item, onSave, onCancel }: ItemFormProps) {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-2">
-        <Button type="submit" disabled={saving}>{saving ? 'Saving…' : item ? 'Update' : 'Add item'}</Button>
+        <Button data-testid="store-item-submit-btn" type="submit" disabled={saving}>{saving ? 'Saving…' : item ? 'Update' : 'Add item'}</Button>
         <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
       </div>
     </form>

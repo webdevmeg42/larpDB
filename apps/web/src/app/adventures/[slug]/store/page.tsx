@@ -25,6 +25,7 @@ interface StoreEvent {
 interface StoreData {
   events: StoreEvent[]
   gameWideItems: StoreItem[]
+  locked?: boolean
 }
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
@@ -43,13 +44,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 function ItemCard({ item }: { item: StoreItem }) {
   return (
     <div
+      data-testid="store-item-card"
       className={`flex items-start justify-between rounded-lg border p-4 ${
         !item.isAvailable ? 'opacity-50' : ''
       }`}
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-xs text-muted-foreground">
+          <span data-testid="store-item-type-badge" className="text-xs text-muted-foreground">
             {ITEM_TYPE_LABELS[item.itemType] ?? item.itemType}
           </span>
         </div>
@@ -67,7 +69,7 @@ function ItemCard({ item }: { item: StoreItem }) {
           <p className="text-xs text-muted-foreground mt-1">Sold out</p>
         )}
       </div>
-      <span className="text-sm font-semibold ml-4 flex-shrink-0">
+      <span data-testid="store-item-price" className="text-sm font-semibold ml-4 flex-shrink-0">
         {formatUsd(item.priceUsd)}
       </span>
     </div>
@@ -99,6 +101,16 @@ export default function PublicStorePage() {
   if (loading) return <div className="p-6 text-muted-foreground">Loading…</div>
   if (notFound || !data) return <div className="p-6">Adventure not found.</div>
 
+  if (data.locked) {
+    return (
+      <AdventurePublicShell title="Store" subtitle="Tickets & items">
+        <div className="py-16 text-center text-muted-foreground">
+          <p>This store isn&apos;t available yet.</p>
+        </div>
+      </AdventurePublicShell>
+    )
+  }
+
   const hasItems =
     data.gameWideItems.length > 0 || data.events.some(e => e.items.length > 0)
 
@@ -111,7 +123,7 @@ export default function PublicStorePage() {
       ) : (
         <div className="space-y-8">
           {data.gameWideItems.length > 0 && (
-            <section>
+            <section data-testid="store-game-wide-section">
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Available Anytime
               </h2>
@@ -125,7 +137,7 @@ export default function PublicStorePage() {
 
           {data.events.map(ev => (
             ev.items.length > 0 && (
-              <section key={ev.id}>
+              <section key={ev.id} data-testid="store-event-section">
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                   {ev.title}
                   {ev.startDate && (

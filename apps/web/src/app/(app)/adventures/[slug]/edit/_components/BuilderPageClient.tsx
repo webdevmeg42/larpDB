@@ -402,7 +402,7 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
           </TabsContent>
 
           <TabsContent value="store">
-            <StoreTab config={config} reload={reload} />
+            <StoreTab config={config} reload={reload} stripeConnected={stripeConnected} onTabChange={setActiveTab} />
           </TabsContent>
 
           <TabsContent value="payments">

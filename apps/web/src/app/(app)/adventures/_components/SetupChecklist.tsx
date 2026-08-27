@@ -31,6 +31,7 @@ export default function SetupChecklist({ config, game, onTabChange }: Props) {
     { label: 'Set a tagline', done: hasTagline, action: () => onTabChange('branding'), actionLabel: '→ Branding' },
     { label: 'Configure Codex', done: hasCodexEntry, action: () => onTabChange('codex'), actionLabel: '→ Codex' },
     { label: 'Add a rulebook chapter', done: hasChapter, action: () => onTabChange('rulebook'), actionLabel: '→ Rulebook' },
+    { label: 'Connect Stripe to accept payments', done: game.stripeOnboardingComplete ?? false, action: () => onTabChange('payments'), actionLabel: '→ Payments' },
     { label: 'Enable the adventure', done: isEnabled, action: () => {}, actionLabel: '→ Adventures', href: '/adventures' },
   ]
 
