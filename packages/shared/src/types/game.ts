@@ -12,6 +12,13 @@ export interface Game {
   joinMode: GameJoinMode
   status: GameStatus
   createdAt: string
+  stripeAccountId: string | null
+  stripeOnboardingComplete: boolean
+}
+
+export interface StripeStatus {
+  stripeAccountId: string | null
+  stripeOnboardingComplete: boolean
 }
 
 export interface MyGame extends Game {
