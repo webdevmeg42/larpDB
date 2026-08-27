@@ -1,5 +1,5 @@
-import type { FastifyPluginAsync } from 'fastify'
-import { eq } from 'drizzle-orm'
+import type { FastifyBaseLogger, FastifyPluginAsync } from 'fastify'
+import { and, eq, isNull } from 'drizzle-orm'
 import Stripe from 'stripe'
 import { db } from '../db/index.js'
 import { game, storeItems, purchases } from '../db/schema.js'
@@ -10,8 +10,12 @@ function getStripe() {
   return new Stripe(env.STRIPE_SECRET_KEY)
 }
 
-function getReturnUrl() {
-  return env.STRIPE_RETURN_URL ?? 'http://localhost:3000'
+function getReturnUrl(log?: FastifyBaseLogger) {
+  const url = env.STRIPE_RETURN_URL
+  if (!url) {
+    log?.warn('STRIPE_RETURN_URL not set — falling back to http://localhost:3000')
+  }
+  return url ?? 'http://localhost:3000'
 }
 
 export const stripeConnectRoutes: FastifyPluginAsync = async (fastify) => {
@@ -39,11 +43,28 @@ export const stripeConnectRoutes: FastifyPluginAsync = async (fastify) => {
       if (!accountId) {
         const account = await stripe.accounts.create({ type: 'express' })
         accountId = account.id
-        await db.update(game).set({ stripeAccountId: accountId }).where(eq(game.id, gameId))
-        request.log.info({ gameId, accountId }, 'Stripe Express account created')
+
+        const [saved] = await db
+          .update(game)
+          .set({ stripeAccountId: accountId })
+          .where(and(eq(game.id, gameId), isNull(game.stripeAccountId)))
+          .returning({ stripeAccountId: game.stripeAccountId })
+
+        if (!saved) {
+          // Another request won the race; use whatever was saved
+          const [freshRow] = await db
+            .select({ stripeAccountId: game.stripeAccountId })
+            .from(game)
+            .where(eq(game.id, gameId))
+            .limit(1)
+          accountId = freshRow?.stripeAccountId ?? accountId
+          request.log.warn({ gameId }, 'Stripe account creation race — using existing account')
+        } else {
+          request.log.info({ gameId, accountId }, 'Stripe Express account created')
+        }
       }
 
-      const returnBase = getReturnUrl()
+      const returnBase = getReturnUrl(request.log)
       const accountLink = await stripe.accountLinks.create({
         account: accountId,
         refresh_url: `${returnBase}/adventures/${gameId}/edit?tab=payments&refresh=true`,
@@ -121,7 +142,7 @@ export const stripeConnectRoutes: FastifyPluginAsync = async (fastify) => {
     )
 
     scope.post('/stripe/webhook', async (request, reply) => {
-      if (!env.STRIPE_WEBHOOK_SECRET || !env.STRIPE_SECRET_KEY) {
+      if (!env.STRIPE_WEBHOOK_SECRET) {
         return reply.status(503).send({ error: 'Stripe not configured' })
       }
 
@@ -130,12 +151,13 @@ export const stripeConnectRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.status(400).send({ error: 'Missing stripe-signature header' })
       }
 
-      const stripe = new Stripe(env.STRIPE_SECRET_KEY)
+      const sigValue = Array.isArray(sig) ? sig[0] : sig
+      const stripe = getStripe() // throws 503 if STRIPE_SECRET_KEY missing
       let event: Stripe.Event
       try {
         event = stripe.webhooks.constructEvent(
           request.body as Buffer,
-          sig as string,
+          sigValue,
           env.STRIPE_WEBHOOK_SECRET,
         )
       } catch {
@@ -145,22 +167,20 @@ export const stripeConnectRoutes: FastifyPluginAsync = async (fastify) => {
 
       if (event.type === 'account.updated') {
         const account = event.data.object as Stripe.Account
-        if (account.details_submitted && account.charges_enabled) {
-          const [gameRow] = await db
-            .select({ id: game.id })
-            .from(game)
-            .where(eq(game.stripeAccountId, account.id))
-            .limit(1)
+        const [gameRow] = await db
+          .select({ id: game.id })
+          .from(game)
+          .where(eq(game.stripeAccountId, account.id))
+          .limit(1)
 
-          if (gameRow) {
-            await db
-              .update(game)
-              .set({ stripeOnboardingComplete: true })
-              .where(eq(game.id, gameRow.id))
-            request.log.info({ gameId: gameRow.id, accountId: account.id }, 'Stripe onboarding marked complete')
-          } else {
-            request.log.warn({ accountId: account.id }, 'account.updated for unknown Stripe account — ignoring')
-          }
+        if (gameRow) {
+          await db
+            .update(game)
+            .set({ stripeOnboardingComplete: account.details_submitted && account.charges_enabled })
+            .where(eq(game.id, gameRow.id))
+          request.log.info({ gameId: gameRow.id, accountId: account.id }, 'Stripe onboarding status updated')
+        } else {
+          request.log.warn({ accountId: account.id }, 'account.updated for unknown Stripe account — ignoring')
         }
       }
 
