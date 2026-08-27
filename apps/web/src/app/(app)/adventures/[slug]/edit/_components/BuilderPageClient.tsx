@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
@@ -22,6 +23,7 @@ import RulebookTab from '../../../_components/RulebookTab'
 import StoreTab from '../../../_components/StoreTab'
 import BuildsTab from '../../../_components/BuildsTab'
 import SetupChecklist from '../../../_components/SetupChecklist'
+import PaymentsTab from '../../../_components/PaymentsTab'
 
 type FormState = Partial<{
   siteTitle: string
@@ -48,8 +50,11 @@ interface Props {
   gameId: string
 }
 
+const VALID_TABS = ['branding', 'codex', 'rulebook', 'store', 'payments', 'race-builds', 'class-builds']
+
 export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props) {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
   const [config, setConfig] = useState<SiteConfig>(initialConfig)
   const game = initialGame
 
@@ -63,7 +68,13 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
     },
   )
 
-  const [activeTab, setActiveTab] = useState('branding')
+  const tabParam = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(() =>
+    VALID_TABS.includes(tabParam ?? '') ? (tabParam as string) : 'branding'
+  )
+  const [stripeConnected, setStripeConnected] = useState(
+    initialGame.stripeOnboardingComplete ?? false
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
@@ -173,6 +184,7 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
             <TabsTrigger value="codex" data-testid="tab-codex">The Codex</TabsTrigger>
             <TabsTrigger value="rulebook" data-testid="tab-rulebook">Rulebook</TabsTrigger>
             <TabsTrigger value="store" data-testid="tab-store">The Store</TabsTrigger>
+            <TabsTrigger value="payments" data-testid="tab-payments">Payments</TabsTrigger>
             <TabsTrigger value="race-builds" data-testid="tab-race-builds">Race Builds</TabsTrigger>
             <TabsTrigger value="class-builds" data-testid="tab-class-builds">Class Builds</TabsTrigger>
           </TabsList>
@@ -390,7 +402,14 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
           </TabsContent>
 
           <TabsContent value="store">
-            <div className="p-6 text-muted-foreground">Coming soon.</div>
+            <StoreTab config={config} reload={reload} />
+          </TabsContent>
+
+          <TabsContent value="payments">
+            <PaymentsTab
+              gameId={gameId}
+              onStripeConnectedChange={(connected) => setStripeConnected(connected)}
+            />
           </TabsContent>
 
           <TabsContent value="race-builds">
