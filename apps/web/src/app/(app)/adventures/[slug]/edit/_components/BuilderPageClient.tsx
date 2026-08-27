@@ -408,7 +408,7 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
           <TabsContent value="payments">
             <PaymentsTab
               gameId={gameId}
-              onStripeConnectedChange={(connected) => setStripeConnected(connected)}
+              onStripeConnectedChange={setStripeConnected}
             />
           </TabsContent>
 
