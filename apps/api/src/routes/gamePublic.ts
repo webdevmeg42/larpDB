@@ -147,12 +147,16 @@ export const gamePublicRoutes: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const { slug } = request.params
       const [gameRow] = await db
-        .select({ id: game.id })
+        .select({ id: game.id, stripeOnboardingComplete: game.stripeOnboardingComplete })
         .from(game)
         .where(and(eq(game.slug, slug), eq(game.isPublic, true), eq(game.status, 'active')))
         .limit(1)
 
       if (!gameRow) return reply.status(404).send({ error: 'Adventure not found' })
+
+      if (!gameRow.stripeOnboardingComplete) {
+        return reply.send({ locked: true, items: [] })
+      }
 
       const eventRows = await db
         .select({
@@ -224,6 +228,7 @@ export const gamePublicRoutes: FastifyPluginAsync = async (fastify) => {
       }
 
       return reply.send({
+        locked: false,
         events: [...eventMap.values()].filter(e => e.items.length > 0),
         gameWideItems,
       })
