@@ -35,6 +35,33 @@ const ITEM_TYPE_LABELS: Record<StoreItemType, string> = {
 export default function StoreTab({ config: _config, reload: _reload, stripeConnected, onTabChange }: Props) {
   const { toast } = useToast()
 
+  const [events, setEvents] = useState<AdventureEvent[]>([])
+  const [items, setItems] = useState<StoreItem[]>([])
+  const [purchases, setPurchases] = useState<PurchaseDetail[]>([])
+  const [filterEventId, setFilterEventId] = useState('')
+
+  useEffect(() => {
+    if (!stripeConnected) return
+    void Promise.all([
+      api.get<AdventureEvent[]>('/events'),
+      api.get<StoreItem[]>('/store/items'),
+      api.get<PurchaseDetail[]>('/store/purchases'),
+    ]).then(([evts, itms, purch]) => {
+      setEvents(evts)
+      setItems(itms)
+      setPurchases(purch)
+    })
+  }, [stripeConnected])
+
+  useEffect(() => {
+    if (!stripeConnected) return
+    const url = filterEventId ? `/store/purchases?eventId=${filterEventId}` : '/store/purchases'
+    void api.get<PurchaseDetail[]>(url).then(setPurchases)
+  }, [stripeConnected, filterEventId])
+
+  // toast is used by child components indirectly; keep reference to suppress lint
+  void toast
+
   if (!stripeConnected) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
@@ -46,35 +73,10 @@ export default function StoreTab({ config: _config, reload: _reload, stripeConne
     )
   }
 
-  const [events, setEvents] = useState<AdventureEvent[]>([])
-  const [items, setItems] = useState<StoreItem[]>([])
-  const [purchases, setPurchases] = useState<PurchaseDetail[]>([])
-  const [filterEventId, setFilterEventId] = useState('')
-
-  useEffect(() => {
-    void Promise.all([
-      api.get<AdventureEvent[]>('/events'),
-      api.get<StoreItem[]>('/store/items'),
-      api.get<PurchaseDetail[]>('/store/purchases'),
-    ]).then(([evts, itms, purch]) => {
-      setEvents(evts)
-      setItems(itms)
-      setPurchases(purch)
-    })
-  }, [])
-
   async function refreshItems() {
     const updated = await api.get<StoreItem[]>('/store/items')
     setItems(updated)
   }
-
-  useEffect(() => {
-    const url = filterEventId ? `/store/purchases?eventId=${filterEventId}` : '/store/purchases'
-    void api.get<PurchaseDetail[]>(url).then(setPurchases)
-  }, [filterEventId])
-
-  // toast is used by child components indirectly; keep reference to suppress lint
-  void toast
 
   return (
     <div className="space-y-6">
