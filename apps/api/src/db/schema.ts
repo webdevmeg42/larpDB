@@ -22,6 +22,8 @@ export const users = pgTable('users', {
   phone: text('phone'),
   isSysAdmin: boolean('is_sys_admin').notNull().default(false),
   isBlocked: boolean('is_blocked').notNull().default(false),
+  isGuest: boolean('is_guest').notNull().default(false),
+  guestExpiresAt: timestamp('guest_expires_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
