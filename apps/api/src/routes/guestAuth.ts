@@ -27,7 +27,7 @@ export const guestAuthRoutes: FastifyPluginAsync = async (fastify) => {
 
       await tx.insert(game).values({
         id: gameId,
-        name: 'Thornwood Chronicles',
+        name: `Thornwood Chronicles (${userId.slice(0, 8)})`,
         slug: `thornwood-${userId.slice(0, 8)}`,
         isPublic: false,
         status: 'active',

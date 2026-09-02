@@ -25,13 +25,15 @@ describe('Guest session flow', () => {
   })
 
   it('clicking Try it free redirects to the adventure builder', () => {
+    cy.intercept('POST', '**/auth/guest').as('guestAuth')
     cy.contains('button', 'Try it free').click()
-    cy.url().should('match', /\/adventures\/[a-f0-9-]{36}\/edit/)
+    cy.wait('@guestAuth', { timeout: 15000 })
+    cy.url({ timeout: 15000 }).should('match', /\/adventures\/[a-f0-9-]{36}\/edit/)
     cy.url().then((url) => {
       const match = url.match(/\/adventures\/([a-f0-9-]{36})\/edit/)
       if (match) capturedGameId = match[1]
     })
-    cy.contains('h1', 'Adventure Builder')
+    cy.contains('h1', 'Adventure Builder', { timeout: 10000 })
   })
 
   it('shows the guest banner', () => {
@@ -46,6 +48,6 @@ describe('Guest session flow', () => {
   })
 
   it('adventure name input contains Thornwood Chronicles', () => {
-    cy.get('[data-testid="adv-name-input"]').should('have.value', 'Thornwood Chronicles')
+    cy.get('[data-testid="adv-name-input"]').invoke('val').should('contain', 'Thornwood Chronicles')
   })
 })
