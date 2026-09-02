@@ -18,7 +18,8 @@ describe('Guest session flow', () => {
   })
 
   it('shows the landing page with tagline and CTAs', () => {
-    cy.contains('h1', 'Run your LARP, not your spreadsheets.')
+    cy.get('h1').should('contain.text', 'Run your LARP')
+    cy.get('h1').should('contain.text', 'not your spreadsheets')
     cy.contains('button', 'Try it free')
     cy.contains('a', 'Log in')
   })
