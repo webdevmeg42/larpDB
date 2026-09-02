@@ -126,11 +126,15 @@ export function buildApp() {
     if (env.NODE_ENV !== 'test') {
       await seedBuiltinTemplates()
       await purgeOldLogs()
-      await cleanupExpiredGuests()
+      try {
+        await cleanupExpiredGuests()
+        const guestTimer = setInterval(cleanupExpiredGuests, 60 * 60 * 1000)
+        guestTimer.unref()
+      } catch (err) {
+        app.log.warn({ err }, 'cleanupExpiredGuests failed on startup — guest columns may not be migrated yet')
+      }
       const logTimer = setInterval(purgeOldLogs, 24 * 60 * 60 * 1000)
       logTimer.unref()
-      const guestTimer = setInterval(cleanupExpiredGuests, 60 * 60 * 1000)
-      guestTimer.unref()
     }
   })
 
