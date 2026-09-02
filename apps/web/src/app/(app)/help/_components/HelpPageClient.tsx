@@ -3,10 +3,11 @@ import { HELP_ENTRIES, canSeeEntry } from '@/lib/help-content'
 
 interface HelpPageClientProps {
   role: AuthUser['role']
+  isGuest: boolean
 }
 
-export function HelpPageClient({ role }: HelpPageClientProps) {
-  const entries = HELP_ENTRIES.filter(e => canSeeEntry(role, e))
+export function HelpPageClient({ role, isGuest }: HelpPageClientProps) {
+  const entries = HELP_ENTRIES.filter(e => canSeeEntry(role, e, isGuest))
 
   return (
     <div className="p-6 max-w-2xl mx-auto">

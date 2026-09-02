@@ -70,6 +70,7 @@ export const profileRoutes: FastifyPluginAsync = async (fastify) => {
         email: updated.email,
         displayName: updated.displayName,
         isSysAdmin: updated.isSysAdmin,
+        isGuest: updated.isGuest,
         role,
       }, { expiresIn: '7d' })
       reply.setCookie('token', token, {

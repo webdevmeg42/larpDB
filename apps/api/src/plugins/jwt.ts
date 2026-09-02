@@ -12,8 +12,8 @@ export type GameContext = {
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
-    payload: { sub: string; email: string; displayName: string; isSysAdmin: boolean; role: 'owner' | 'gm' | 'player' }
-    user:    { sub: string; email: string; displayName: string; isSysAdmin: boolean; role: 'owner' | 'gm' | 'player' }
+    payload: { sub: string; email: string; displayName: string; isSysAdmin: boolean; isGuest: boolean; role: 'owner' | 'gm' | 'player' }
+    user:    { sub: string; email: string; displayName: string; isSysAdmin: boolean; isGuest: boolean; role: 'owner' | 'gm' | 'player' }
   }
 }
 

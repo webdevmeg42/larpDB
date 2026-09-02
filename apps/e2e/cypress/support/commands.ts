@@ -47,6 +47,21 @@ Cypress.Commands.add('loginPlayer', () => {
   })
 })
 
+Cypress.Commands.add('loginGuest', () => {
+  cy.clearCookies()
+  cy.clearLocalStorage()
+  cy.request('POST', `${Cypress.env('API_URL')}/auth/guest`).then((res) => {
+    const { gameId } = res.body as { gameId: string }
+    cy.wrap(gameId).as('guestGameId')
+    cy.setCookie('gameId', gameId, { path: '/', sameSite: 'lax' })
+    cy.visit(`/adventures/${gameId}/edit`, {
+      onBeforeLoad(win) {
+        win.localStorage.setItem('plotrunner_game_id', gameId)
+      },
+    })
+  })
+})
+
 Cypress.Commands.add('createUser', () => {
   const ts = testDateTime(new Date())
   const username = `Cypress Testuser ${ts}`
@@ -110,6 +125,7 @@ declare global {
       createUser(): Chainable<void>
       loginOwner(): Chainable<void>
       loginPlayer(): Chainable<void>
+      loginGuest(): Chainable<void>
       loginUser(email: string, password: string): Chainable<void>
       logout(): Chainable<void>
       schemaBuilderAddField(testId: string, expectedLabel?: string): Chainable<void>

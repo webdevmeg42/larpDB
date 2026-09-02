@@ -22,6 +22,14 @@ const ownerEntry: HelpEntry = {
   paths: ['/test-owner'],
   sections: [],
 }
+const guestOnlyEntry: HelpEntry = {
+  slug: 'test-guest',
+  title: 'Test Guest',
+  minRole: 'player',
+  guestOnly: true,
+  paths: [],
+  sections: [],
+}
 
 describe('canSeeEntry', () => {
   it('player can see player entries', () => {
@@ -49,6 +57,19 @@ describe('canSeeEntry', () => {
   })
   it('unknown role cannot see any entries', () => {
     expect(canSeeEntry('stranger', playerEntry)).toBe(false)
+  })
+  it('guest-only entry is visible when isGuest=true', () => {
+    expect(canSeeEntry('player', guestOnlyEntry, true)).toBe(true)
+  })
+  it('guest-only entry is hidden when isGuest=false', () => {
+    expect(canSeeEntry('player', guestOnlyEntry, false)).toBe(false)
+  })
+  it('guest-only entry is hidden when isGuest is undefined', () => {
+    expect(canSeeEntry('player', guestOnlyEntry)).toBe(false)
+  })
+  it('non-guest entry is visible regardless of isGuest flag', () => {
+    expect(canSeeEntry('player', playerEntry, true)).toBe(true)
+    expect(canSeeEntry('player', playerEntry, false)).toBe(true)
   })
 })
 
@@ -90,8 +111,8 @@ describe('findEntryForPath', () => {
 })
 
 describe('HELP_ENTRIES', () => {
-  it('has exactly 8 entries', () => {
-    expect(HELP_ENTRIES.length).toBe(8)
+  it('has exactly 10 entries', () => {
+    expect(HELP_ENTRIES.length).toBe(10)
   })
   it('every entry has at least one section', () => {
     for (const entry of HELP_ENTRIES) {

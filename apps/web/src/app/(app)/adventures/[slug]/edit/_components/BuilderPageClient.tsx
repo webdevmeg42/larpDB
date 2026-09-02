@@ -187,6 +187,7 @@ export function BuilderPageClient({ initialConfig, initialGame, gameId }: Props)
                   <div className="space-y-1">
                     <Label>Adventure Name <span className="text-destructive">*</span></Label>
                     <Input
+                      data-testid="adv-name-input"
                       value={form.siteTitle ?? ''}
                       onChange={e => set('siteTitle', e.target.value)}
                       maxLength={150}

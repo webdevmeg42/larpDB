@@ -6,6 +6,7 @@ import { MobileHeader } from './MobileHeader'
 import { MobileDrawer } from './MobileDrawer'
 import { AuthProvider } from '@/providers/AuthProvider'
 import { GameProvider } from '@/providers/GameProvider'
+import { GuestBanner } from '@/app/_components/GuestBanner'
 import type { AuthUser } from '@/lib/auth'
 import type { MyGame } from '@plotrunner/shared'
 
@@ -32,6 +33,7 @@ export function AppShell({ initialUser, initialGames, initialGameId, children }:
           <Sidebar />
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
             <MobileHeader onMenuClick={() => setDrawerOpen(true)} />
+            <GuestBanner />
             <main id="main-content" tabIndex={0} className="flex-1 overflow-y-auto">{children}</main>
           </div>
           <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />

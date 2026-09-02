@@ -11,11 +11,13 @@ export interface HelpEntry {
   minRole: MinRole
   paths: string[]
   sections: HelpSection[]
+  guestOnly?: boolean
 }
 
 const ROLE_LEVEL: Record<MinRole, number> = { player: 0, gm: 1, owner: 2 }
 
-export function canSeeEntry(userRole: string, entry: HelpEntry): boolean {
+export function canSeeEntry(userRole: string, entry: HelpEntry, isGuest?: boolean): boolean {
+  if (entry.guestOnly && !isGuest) return false
   return ((ROLE_LEVEL as Record<string, number | undefined>)[userRole] ?? -1) >= ROLE_LEVEL[entry.minRole]
 }
 
@@ -39,6 +41,23 @@ export function findEntryForPath(
 }
 
 export const HELP_ENTRIES: HelpEntry[] = [
+  {
+    slug: 'guest-mode',
+    title: 'Guest Mode',
+    minRole: 'player',
+    guestOnly: true,
+    paths: [],
+    sections: [
+      {
+        heading: "You're in guest mode",
+        body: "You're exploring PlotRunner with a temporary account. Everything you see is pre-loaded demo data for the Thornwood Chronicles game. Your session expires after 24 hours and cannot be recovered.",
+      },
+      {
+        heading: 'How do I keep my account?',
+        body: 'Create a free account to get your own persistent game, characters, and data. Click "Create a free account" in the banner at the top of the screen.',
+      },
+    ],
+  },
   {
     slug: 'dashboard',
     title: 'Dashboard',
@@ -108,6 +127,22 @@ export const HELP_ENTRIES: HelpEntry[] = [
       {
         heading: 'What do the statuses mean?',
         body: "Confirmed means you're in. Waitlist means the event is full but you'll be let in if someone cancels. Pending means your game master hasn't confirmed you yet.",
+      },
+    ],
+  },
+  {
+    slug: 'store',
+    title: 'Store',
+    minRole: 'player',
+    paths: ['/store'],
+    sections: [
+      {
+        heading: 'What is the store?',
+        body: 'The store lets you spend your XP on in-game items — potions, equipment, abilities, and more. Your game masters stock the store with items before each event.',
+      },
+      {
+        heading: 'How do I buy something?',
+        body: "Browse the available items and click Buy on anything you'd like. Confirm the purchase when prompted — your XP balance will update immediately. Purchases are final.",
       },
     ],
   },

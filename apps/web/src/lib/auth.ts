@@ -4,6 +4,7 @@ export interface AuthUser {
   role: 'owner' | 'gm' | 'player'
   displayName: string
   isSysAdmin?: boolean
+  isGuest?: boolean
 }
 
 const GAME_KEY = 'plotrunner_game_id'
