@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ParticleCanvas } from './ParticleCanvas'
 import { FeatureCarousel } from './FeatureCarousel'
+import styles from './LandingPage.module.css'
 
 export function LandingPage() {
   const router = useRouter()
@@ -33,7 +34,7 @@ export function LandingPage() {
       <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', background: '#0b1020', color: '#c4d4e6', fontFamily: 'system-ui, sans-serif' }}>
         {/* Nav */}
         <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 40px', borderBottom: '1px solid #c9a84c22' }}>
-          <span style={{ fontFamily: '"Cinzel Decorative", serif', color: '#c9a84c', fontSize: 20, fontWeight: 700, letterSpacing: 1 }}>
+          <span style={{ fontFamily: 'var(--font-heading), serif', color: '#c9a84c', fontSize: 20, fontWeight: 700, letterSpacing: 1 }}>
             PlotRunner
           </span>
           <a
@@ -45,20 +46,10 @@ export function LandingPage() {
         </nav>
 
         {/* Split hero */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 48,
-          maxWidth: 1100,
-          margin: '0 auto',
-          padding: '80px 40px',
-          alignItems: 'center',
-        }}
-          className="landing-grid"
-        >
+        <div className={styles.grid}>
           {/* Left: pitch */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <h1 style={{ fontFamily: '"Cinzel Decorative", serif', color: '#c9a84c', fontSize: 'clamp(28px, 4vw, 48px)', lineHeight: 1.2, margin: 0 }}>
+            <h1 style={{ fontFamily: 'var(--font-heading), serif', color: '#c9a84c', fontSize: 'clamp(28px, 4vw, 48px)', lineHeight: 1.2, margin: 0 }}>
               Run your LARP,<br />not your spreadsheets.
             </h1>
             <p style={{ color: '#8ab0d4', fontSize: 17, lineHeight: 1.6, margin: 0 }}>
@@ -117,15 +108,6 @@ export function LandingPage() {
         </div>
       </div>
 
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap');
-        @media (max-width: 700px) {
-          .landing-grid {
-            grid-template-columns: 1fr !important;
-            padding: 40px 20px !important;
-          }
-        }
-      `}</style>
     </>
   )
 }
