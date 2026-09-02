@@ -28,6 +28,7 @@ async function issueAuthCookie(
     email: user.email,
     displayName: user.displayName,
     isSysAdmin: user.isSysAdmin,
+    isGuest: user.isGuest,
     role,
   }, { expiresIn: '7d' })
   reply.setCookie('token', token, {
@@ -135,6 +136,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       displayName: user.displayName,
       role,
       isSysAdmin: user.isSysAdmin,
+      isGuest: user.isGuest,
     }
   })
 }
