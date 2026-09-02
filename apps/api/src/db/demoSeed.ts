@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import { db } from './index.js'
 import {
   siteConfig,
@@ -6,7 +7,6 @@ import {
   xpTransactions,
   events,
   eventRegistrations,
-  storeItems,
 } from './schema.js'
 import type { SchemaField } from '@plotrunner/shared'
 
@@ -208,10 +208,13 @@ export async function seedDemoGame(userId: string, gameId: string) {
   ])
 
   // Store items (attached to the upcoming event)
-  await db.insert(storeItems).values([
-    { eventId: reckoning.id, name: 'Healing Potion',  description: 'Restores 10 HP instantly.', price: 5,  isAvailable: true },
-    { eventId: reckoning.id, name: 'Silver Blade',    description: 'Effective against undead.',  price: 20, isAvailable: true },
-    { eventId: reckoning.id, name: 'Forest Cloak',    description: '+2 to Stealth checks.',      price: 15, isAvailable: true },
-    { eventId: reckoning.id, name: 'Lorebook',        description: 'Grants access to the Thornwood codex.', price: 10, isAvailable: true },
-  ])
+  // Use raw SQL because schema.ts is behind the actual DB schema for store_items
+  await db.execute(sql`
+    INSERT INTO store_items (game_id, event_id, name, description, item_type, price_usd, is_available)
+    VALUES
+      (${gameId}, ${reckoning.id}, 'Healing Potion',  'Restores 10 HP instantly.', 'item', 5,  true),
+      (${gameId}, ${reckoning.id}, 'Silver Blade',    'Effective against undead.',  'item', 20, true),
+      (${gameId}, ${reckoning.id}, 'Forest Cloak',    '+2 to Stealth checks.',      'item', 15, true),
+      (${gameId}, ${reckoning.id}, 'Lorebook',        'Grants access to the Thornwood codex.', 'item', 10, true)
+  `)
 }

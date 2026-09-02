@@ -95,6 +95,11 @@ Default credentials: `webdevmeg@gmail.com` / `password`
 
 Run the API and web app in separate terminals.
 
+> **After a Docker Desktop restart:** the database container does not restart automatically. Bring it back up before starting the API:
+> ```bash
+> docker compose up db -d
+> ```
+
 **API** (runs on port 3001):
 
 ```bash

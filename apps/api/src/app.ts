@@ -29,6 +29,8 @@ import { subscriptionRoutes } from './routes/subscription.js'
 import { postRoutes } from './routes/post.js'
 import { profileRoutes } from './routes/profile.js'
 import { adminRoutes } from './routes/admin.js'
+import { guestAuthRoutes } from './routes/guestAuth.js'
+import { cleanupExpiredGuests } from './db/cleanup.js'
 import { seedBuiltinTemplates } from './db/seeds/templates.js'
 import { db } from './db/index.js'
 import { requestLogs } from './db/schema.js'
@@ -83,6 +85,7 @@ export function buildApp() {
   app.register(gameContextPlugin)
   app.register(healthRoutes)
   app.register(authRoutes)
+  app.register(guestAuthRoutes)
   app.register(gameRoutes)
   app.register(gamePublicRoutes)
   app.register(gameMemberRoutes)
@@ -123,8 +126,11 @@ export function buildApp() {
     if (env.NODE_ENV !== 'test') {
       await seedBuiltinTemplates()
       await purgeOldLogs()
-      const timer = setInterval(purgeOldLogs, 24 * 60 * 60 * 1000)
-      timer.unref()
+      await cleanupExpiredGuests()
+      const logTimer = setInterval(purgeOldLogs, 24 * 60 * 60 * 1000)
+      logTimer.unref()
+      const guestTimer = setInterval(cleanupExpiredGuests, 60 * 60 * 1000)
+      guestTimer.unref()
     }
   })
 
