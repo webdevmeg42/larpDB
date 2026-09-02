@@ -1,4 +1,3 @@
-import { sql } from 'drizzle-orm'
 import { db } from './index.js'
 import {
   siteConfig,
@@ -207,14 +206,4 @@ export async function seedDemoGame(userId: string, gameId: string) {
     { eventId: reckoning.id, userId, characterId: aelindra.id, status: 'pending' },
   ])
 
-  // Store items — use raw SQL because schema.ts is behind the actual DB schema for store_items
-  // (storeDev migration added game_id, item_type, price_usd and dropped price)
-  await db.execute(sql`
-    INSERT INTO store_items (game_id, event_id, name, description, item_type, price_usd, is_available)
-    VALUES
-      (${gameId}, ${reckoning.id}, 'Healing Potion', 'Restores 10 HP instantly.', 'item', 5,  true),
-      (${gameId}, ${reckoning.id}, 'Silver Blade',   'Effective against undead.',  'item', 20, true),
-      (${gameId}, ${reckoning.id}, 'Forest Cloak',   '+2 to Stealth checks.',      'item', 15, true),
-      (${gameId}, ${reckoning.id}, 'Lorebook',       'Grants access to the Thornwood codex.', 'item', 10, true)
-  `)
 }
