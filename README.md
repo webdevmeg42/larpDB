@@ -89,8 +89,6 @@ pnpm --filter @larpdb/api db:migrate
 pnpm --filter @larpdb/api db:seed
 ```
 
-Default credentials: `webdevmeg@gmail.com` / `password`
-
 ## Running the app
 
 Run the API and web app in separate terminals.
